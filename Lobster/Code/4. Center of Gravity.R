@@ -221,19 +221,14 @@ st_geometry_type(shoreline)
 shoreline_lines <- shoreline[st_geometry_type(shoreline) == "LINESTRING", ]
 combined_shoreline <- st_union(shoreline_lines)
 combined_shoreline <- st_cast(combined_shoreline, "LINESTRING")
-
-
 plot(combined_shoreline)
-res(D128pix)
+
 
 v <- terra::vect(combined_shoreline)
 r <- rast(v, res = 10)
 r <- rasterize(v, r)
 d <- distance(r)
 plot(d)
-
-
-
 
 
 # Define the extent (xmin, xmax, ymin, ymax)
