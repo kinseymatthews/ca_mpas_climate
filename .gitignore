@@ -7,7 +7,6 @@
 
 Lobster/Figures/Block Data
 
-<<<<<<< HEAD
 Lobster/Data
 
 .RDataTmp
@@ -16,6 +15,4 @@ RDataTmp
 
 *.RDataTmp
 .RDataTmp
-=======
-Lobster/Data
->>>>>>> 364af39fde40b972f86dbb3b4b664d61a0490151
+
