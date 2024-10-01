@@ -211,7 +211,7 @@ p<-ggplot() +
 
 
 ###############
-#Alternative Distance to shore raster to create in R
+#Alternative Distance to shore raster to create in R - this is a combination of random ideas and imcomplete code
 
 #upload shoreline data
 shoreline<-st_read("Lobster/Data/Raw Data/Shoreline/shoreline.shp")%>%
@@ -221,18 +221,6 @@ st_geometry_type(shoreline)
 shoreline_lines <- shoreline[st_geometry_type(shoreline) == "LINESTRING", ]
 combined_shoreline <- st_union(shoreline_lines)
 combined_shoreline <- st_cast(combined_shoreline, "LINESTRING")
-
-
-shoreline_psp <- as.psp(combined_shoreline)
-shoreline_psp
-
-L <- shift(shoreline_psp, origin = "bottomleft")
-unitname(L) <- "m"
-L
-
-system.time(D128pix <- distmap(L))
-
-plot(D128pix, log = TRUE)
 
 
 plot(combined_shoreline)
