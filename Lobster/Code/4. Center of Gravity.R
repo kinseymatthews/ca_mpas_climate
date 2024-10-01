@@ -4,7 +4,8 @@ library(sf)
 library(dplyr)
 library(spatstat)
 library(raster)
-
+library(sf)
+library(terra)
 
 ###############
 #Data
@@ -14,6 +15,14 @@ distance_raster1<-raster('Lobster/Data/Processed Data/Distance to shore/Dist_sho
 projection(distance_raster1)
 plot(distance_raster1)
 res(distance_raster1)
+
+# Set values above the threshold to NA
+distance_raster1[distance_raster1 > 10000] <- NA
+
+# Set NA values to 0 (or any value you choose)
+distance_raster1[is.na(distance_raster1)] <- 0  # Replace NA with 0
+
+
 
 #lobster data that has been filtered already
 explor<-readRDS("Lobster/Data/Processed Data/lobster_filtered.csv")
@@ -159,6 +168,7 @@ write.csv(df,'COG_distance_results_traphours_final.csv')
 
 ###############
 #plotting COG on their own - not doing a function as I am trying to figure out what is going wrong with San Diego
+
 COG_port<-read.csv('COG_distance_results_traphours_final.csv')%>%
   dplyr:: select(-X)%>%
   filter(port.complex=="San Diego")
@@ -193,7 +203,61 @@ p<-ggplot() +
   # Theme
   theme_bw() + base_theme +
   #theme(axis.title.x=element_blank())+
-  ggtitle(('Los Angeles Fishing Grounds'), subtitle = 'Lobster Fishery Center of Gravity')+
+  ggtitle(('San Diego Fishing Grounds'), subtitle = 'Lobster Fishery Center of Gravity')+
   scale_color_viridis_d(name = "Year", option = "D") 
-p
 
+###############
+
+
+
+###############
+#Alternative Distance to shore raster to create in R
+
+#upload shoreline data
+shoreline<-st_read("Lobster/Data/Raw Data/Shoreline/shoreline.shp")%>%
+  st_transform(crs = 3310) #California Albers projection which is good for distance calculations
+
+st_geometry_type(shoreline)
+shoreline_lines <- shoreline[st_geometry_type(shoreline) == "LINESTRING", ]
+combined_shoreline <- st_union(shoreline_lines)
+combined_shoreline <- st_cast(combined_shoreline, "LINESTRING")
+
+
+shoreline_psp <- as.psp(combined_shoreline)
+shoreline_psp
+
+L <- shift(shoreline_psp, origin = "bottomleft")
+unitname(L) <- "m"
+L
+
+system.time(D128pix <- distmap(L))
+
+plot(D128pix, log = TRUE)
+
+
+plot(combined_shoreline)
+res(D128pix)
+
+v <- terra::vect(combined_shoreline)
+r <- rast(v, res = 10)
+r <- rasterize(v, r)
+d <- distance(r)
+plot(d)
+
+
+
+
+
+# Define the extent (xmin, xmax, ymin, ymax)
+extent_values <- c(-126, -116, 32, 42)
+
+# Create a raster template
+raster_template <- raster(extent(extent_values), res = 10)  # Set resolution as needed
+
+# Rasterize the shoreline
+shoreline_raster <- raster::rasterize(st_geometry(shoreline_sp), raster_template, field = 1, fun = "first", background = NA)
+
+# Calculate distance from shoreline
+distance_raster <- distance(shoreline_raster)
+
+###############

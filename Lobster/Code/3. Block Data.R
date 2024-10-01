@@ -1,6 +1,8 @@
 #libraries
 library(gganimate)
-
+library(dplyr)
+library(sf)
+library(sp)
 
 ############ 
 #read in data
@@ -63,6 +65,7 @@ block.to.remove<-c(108,135,256,257,265,419,456,457,465)
 
 #adding in mpa implemtnation dates
 values=c(2012,2012,2012)
+port.complex=c("Santa Barbara","Los Angeles","San Diego")
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
 
@@ -86,7 +89,7 @@ explor<- Lobster%>%
   filter(n_traps_pulled>0)%>%
   filter(n_nights>0)
 
-saveRDS(explor,"Lobster/Data/Processed Data/lobster_filtered.csv")
+saveRDS(explor,"Lobster/Data/Processed Data/lobster_filtered.rds")
 
 #outliers for trap nights
 p<-ggplot(explor, aes(x = port.complex, y = trap_nights)) +

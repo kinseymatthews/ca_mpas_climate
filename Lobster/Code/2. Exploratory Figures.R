@@ -24,7 +24,8 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 
 ###### read in lobster data
-Lobster<-read.csv("Lobster/Data/Processed Data/lobster_logbooks_intermediate_9.csv") 
+Lobster2<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
+  rename(port.complex=port_complex1, port.complex2=port_complex2)
 
 ###### read in block data
 all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
