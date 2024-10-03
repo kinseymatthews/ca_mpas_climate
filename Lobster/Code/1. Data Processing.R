@@ -304,10 +304,7 @@ no.ports<-lobster.logbook7%>%
 ports<-lobster.logbook7%>%
   filter(!is.na(port_complex1) | !is.na(port_complex2))
 
-
-
 vessels<-no.ports$vessel_id
-
 
 df<-landings2%>%
   filter(vessel_id %in% vessels)%>%
@@ -329,7 +326,6 @@ df.tomerge<-df%>%
 no.ports<-no.ports%>%
   left_join(df.tomerge, by=c("vessel_id" , "year", "month"))%>%
   rename(port_complex1=port.complex)
-
 
 lobster.logbook8<-rbind(ports,no.ports)
 #################
@@ -379,14 +375,15 @@ df.tomerge<-df%>%
 #match those per year 
 no.ports<-no.ports%>%
   left_join(df.tomerge, by=c("vessel_id" , "year"))%>%
-  rename(port_complex=port.complex)
+  rename(port_complex1=port.complex)
 
 
 lobster.logbook9<-rbind(ports,no.ports)
-
+#################
 
 
 #################
+#STEP 6
 #Six, we added a port complex to the logbook data if a vessel went to a specific port complex in over 90% of the landings data
 
 no.ports<-lobster.logbook9%>%
@@ -422,7 +419,6 @@ vessels.tomerge$vessel_id<-as.character(vessels.tomerge$vessel_id)
 no.ports2<-no.ports%>%
   left_join(vessels.tomerge, by=c("vessel_id"))%>%
  rename(port_complex1=port.complex)
-
 
 lobster.logbooks10<-rbind(ports,no.ports2)
 
