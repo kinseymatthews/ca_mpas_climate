@@ -52,7 +52,7 @@ base_theme <- theme(axis.text=element_text(size=7),
 
 
 #################
-##### Fishing blocks to remove
+# Data Manipulation
 
 #Want to remove fishing blocks that occur outside the range of the fishery (which goes up to Monterey Bay for a northern range)
 #are too deep for the fishery (minimum block depth >300 feet)
