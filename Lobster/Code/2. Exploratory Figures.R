@@ -254,8 +254,12 @@ p <-ggplot(data=depth.reported, aes(x=year, y=percent.depth))+
   base_theme
 
 ggsave(filename = 'Lobster/Figures/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+#################
 
-#depth by complexes
+
+
+#################
+#Depth by complexes
 # number of trips with the reported depth not in the correct bounds
 lobster.with.depth<-explor[!is.na(explor$depth_ft),]%>%
   dplyr::select(port.complex, year,depth_ft, Depth_m,block_id, block_id_gps, Max_Depthm, Min_Depthm, mpayear)

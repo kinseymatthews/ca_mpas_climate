@@ -96,7 +96,7 @@ explor<- CPFV %>%
   filter(is.na(blck_st) |blck_st!="International")%>%
   mutate(angler_hours=hours_fished*number_of_fishers)%>%
   mutate(Depth_fathom=depth/(-6))
-
+#################
 
 
 #################
@@ -126,8 +126,10 @@ p2 <-ggplot(data=df, aes(x=year, y=percent.NA))+
   base_theme
 
 ggsave(plot = p2, filename = ("CPFV/Figures/Exploratory/Percentage of CPFV Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
+#################
 
 
+#################
 #vessels and trips per year by prot complex
 plot_fun<-function(portcomplex){ 
   
@@ -171,9 +173,11 @@ plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
+#################
 
 
-#Proportio of trips that are assigne a block that exists versus one that does not exis
+#################
+#Proportion of trips that are assigned a block that exists versus one that does not exists
 #entries with block long of NA which signifies that the block does not exist
 na.blocks.df<-explor[is.na(explor$block_long_dd),]%>%
   group_by(year)%>%
@@ -195,6 +199,93 @@ p <-ggplot(data=na.nonna.blocks, aes(x=year, y=percent.na))+
   labs(x="Year", y="Percentage")+
   geom_smooth(method="lm")+
   base_theme
-p
 
 ggsave(filename = 'CPFV/Figures/Exploratory/Percent_Incorrect_Blocks.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+#################
+
+
+
+#################
+##Depth
+#Depth being reported through time
+#what percentage of trips report depth through time
+depth.year<-explor[!is.na(explor$depth),]%>%
+  group_by(year)%>%
+  summarize(ntrips.depth=n_distinct(logbookID_vesselID_date))
+
+no.depth.year<-explor[is.na(explor$depth),]%>%
+  group_by(year)%>%
+  summarize(ntrips.no.depth=n_distinct(logbookID_vesselID_date))
+
+#combine
+df <- merge(depth.year, no.depth.year, by = "year", all = TRUE) %>%
+  mutate(
+    percent.depth = (ntrips.depth / (ntrips.depth + ntrips.no.depth)) * 100,
+    across(everything(), ~replace_na(., 0)))  # Replace NA with 0 for all columns
+
+p <-ggplot(data=df, aes(x=year, y=percent.depth))+
+  geom_point()+
+  ggtitle("Percent of Trips with Reported Depth")+
+  labs(x="Year", y="Percentage")+
+  base_theme
+
+ggsave(filename = 'CPFV/Figures/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+#################
+
+
+
+#################
+CPFV.with.depth<-explor[!is.na(explor$depth),]%>%
+  dplyr::select(port.complex, logbookID_vesselID_date, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+  filter(!duplicated(logbookID_vesselID_date)) #444,559 trips with depth
+
+inside.bounds<- CPFV.with.depth%>%
+  filter(
+    (is.na(Max_Depthm) |Depth_m >= Max_Depthm) & 
+      (is.na(Min_Depthm) | Depth_m <= Min_Depthm)#opposite cause negative numbers
+  )
+inside.bounds$year<-as.factor(inside.bounds$year)
+
+outside.bounds<- CPFV.with.depth%>%
+  filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) #31792 outside bounds
+
+plot_fun<-function(portcomplex){ 
+  
+  df<-inside.bounds%>%
+    filter(port.complex==portcomplex)%>%
+    dplyr::select(logbookID_vesselID_date, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+    filter(!duplicated(logbookID_vesselID_date))%>%
+    filter(depth>15)%>%
+    mutate(log_depth=log(-1*Depth_m))
+  
+  mpayear <- as.factor(df %>%
+                         distinct(mpayear) %>%
+                         pull() ) # Extract the single value directly
+  
+  p<-ggplot(data=df, aes(x=year,y=log_depth))+
+    geom_rect(
+      aes(xmin = "2014", xmax = "2016",
+          ymin = -Inf, ymax = Inf),
+      fill = "gray80", alpha = 0.1, inherit.aes = FALSE)+
+    geom_boxplot()+
+    theme_bw() + base_theme +
+    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of CPFV Trips')+
+    # theme(legend.position = "bottom")+
+    ylab("Logged Depth (m)")+
+    xlab("Year")+
+    geom_vline(xintercept = mpayear, linetype = "dotted", color = "red",size=1)
+  
+  name=paste0('CPFV/Figures/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
+}
+
+plot_fun("Eureka")
+plot_fun("Fort Bragg")
+plot_fun("Bodega Bay")
+plot_fun("San Francisco")
+plot_fun("Monterey")
+plot_fun("Morro Bay")
+plot_fun("Santa Barbara")
+plot_fun("Los Angeles")
+
+#################
