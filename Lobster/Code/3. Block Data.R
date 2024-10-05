@@ -39,8 +39,6 @@ bathy.data$block_id=as.double(bathy.data$block_id)
 all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
-
-############
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -60,6 +58,8 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 ############
 
+
+############
 #removing block IDs north of monterey bay where fishing shouldnt occur
 block.to.remove<-c(108,135,256,257,265,419,456,457,465)
 
@@ -106,7 +106,7 @@ p2<-ggplot() +
 ggsave(filename = 'Lobster/Figures/Exploratory/Boxplot_outliers_numbertrapnights.jpg', plot = p, width = 10, height = 6, units = "in", dpi = 300)
 
 ggsave(filename = 'Lobster/Figures/Exploratory/Density_outliers_numbertrapnights.jpg', plot = p2, width = 10, height = 6, units = "in", dpi = 300)
-
+############
 
 
 ############ 
