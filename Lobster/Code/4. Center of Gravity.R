@@ -22,8 +22,6 @@ distance_raster1[distance_raster1 > 10000] <- NA
 # Set NA values to 0 (or any value you choose)
 distance_raster1[is.na(distance_raster1)] <- 0  # Replace NA with 0
 
-
-
 #lobster data that has been filtered already
 explor<-readRDS("Lobster/Data/Processed Data/lobster_filtered.csv")
 
@@ -73,7 +71,6 @@ stats_kd_sf<- st_transform(stats, st_crs("+proj=utm +zone=10 +datum=WGS84 +units
 
 stats_kd_sf$latitude <- st_coordinates(stats_kd_sf)[, "Y"] 
 stats_kd_sf$longitude<- st_coordinates(stats_kd_sf)[, "X"] 
-
 ###############
 
 

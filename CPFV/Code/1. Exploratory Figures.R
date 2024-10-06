@@ -6,7 +6,7 @@ library(ggplot2)
 #################
 
 ###### read in CPFV data
-CPFV<-readRDS("CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
+CPFV<-readRDS("/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
 
 ###### read in block data
 all_blocks<-st_read("CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%

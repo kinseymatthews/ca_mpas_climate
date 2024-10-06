@@ -178,7 +178,7 @@ stats_blocks_sf<- explor %>%
   sf::st_as_sf()%>% filter(!st_is_empty(.))
 st_make_valid(stats_blocks_sf) 
 
-#graphing - not working to do a full function so have to do it a weird way
+#graphing
 plot_fun<-function(portcomplex){ 
   
   portcomplex_data <- stats_blocks_sf %>%
