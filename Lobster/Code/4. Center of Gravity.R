@@ -156,7 +156,7 @@ b<-plot_fun("Los Angeles")
 c<-plot_fun("San Diego")
 
 df<-rbind(a,b,c)
-write.csv(df,'COG_distance_results_traphours_final.csv')
+saveRDS(df,'Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds')
 
 ###############
 
