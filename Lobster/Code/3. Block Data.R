@@ -134,7 +134,6 @@ plot_fun<-function(portcomplex){
     filter(port.complex==portcomplex)
   
   p<-ggplot(data=df, mapping=aes(fill=trap_nights)) +
-    
     # Blocks
     geom_sf(color="grey50", linewidth=0.1)+
     # Land
@@ -152,7 +151,7 @@ plot_fun<-function(portcomplex){
                          labels = scales::label_comma(accuracy = 100))+
   
     # Theme
-    theme_bw() + base_theme
+    theme_bw() + base_theme+
   ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Lobster Fishery" )
   
   

@@ -99,4 +99,81 @@ saveRDS(explor,"CPFV/Data/Processed Data/CPFV_filtered.rds")
 
 ############
 
+############
+#All years combined
+#summarizing across years to see what one graph with all of the data should kinda look like
+allports.acrossyears<- explor %>%
+  # Step 1: Remove duplicates within each logbookID_vesselID_date and calculate distinct angler_hours
+  group_by(logbookID_vesselID_date, angler_hours) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  # Step 2: Summarize distinct angler_hours for each logbookID_vesselID_date
+  group_by(logbookID_vesselID_date) %>%
+  summarize(total_angler_hours = sum(angler_hours), .groups = 'drop') %>%
+  # Step 3: Join with the original DataFrame to get year, port, and block information
+  left_join(explor %>% dplyr::select(logbookID_vesselID_date, year, port.complex, block_id), by = "logbookID_vesselID_date") %>%
+  distinct()%>%
+  # Step 4: Group by year, port, and block to aggregate results
+  group_by( port.complex, block_id) %>%
+  summarize(ntrips = n_distinct(logbookID_vesselID_date),
+            total_angler_hours = sum(total_angler_hours, na.rm = TRUE),
+            angler_hours_per_trip=(total_angler_hours/ntrips),
+            # same as hours_fished but oh well
+            .groups = 'drop')%>%
+  #get block data
+  left_join(all_blocks %>% 
+              dplyr::select(block_id)) %>% 
+  sf::st_as_sf()%>%
+  #remove blocks that dont exist
+st_make_valid()
 
+#order from north to south
+allports.acrossyears$port.complex<- factor(allports.acrossyears$port.complex, levels = c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco','Monterey', 'Morro Bay','Santa Barbara', 'Los Angeles'))
+############
+
+
+############
+#Graphing
+plot_fun<-function(portcomplex){ 
+  df<-allports.acrossyears%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=df, mapping=aes(fill=total_angler_hours)) +
+    # Blocks
+    geom_sf(color="grey50", linewidth=0.1)+
+    # Land
+    geom_sf(data =usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+    # State waters
+    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+    # Set the limits for the coordinate system
+    coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+    # Axes
+    scale_x_continuous(breaks=seq(-126, -118, 2)) +
+    scale_y_continuous(breaks=seq(32, 42, 2)) + 
+    scale_fill_gradientn(name="Angler Hours: \n1980 - 2022",  trans="log",
+                         colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev(),
+                         labels = scales::label_comma(accuracy = 100))+
+    # Theme
+    theme_bw() + base_theme+
+  ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="CPFV Fishery" )
+  
+  
+  name=paste0('CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+  
+}
+plot_fun('Eureka')
+plot_fun('Fort Bragg')
+plot_fun('Bodega Bay')
+plot_fun('San Francisco')
+plot_fun('Monterey')
+plot_fun('Morro Bay')
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+############
+
+
+############
+
+
+
+############
