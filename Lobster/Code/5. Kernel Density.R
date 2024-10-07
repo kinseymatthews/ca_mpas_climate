@@ -487,9 +487,6 @@ plot_fun("San Diego")
 ############
 
 
-
-
-
 ############
 #time series analyses
 #volume contours through time

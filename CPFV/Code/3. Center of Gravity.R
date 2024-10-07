@@ -49,6 +49,37 @@ all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 #Distances from shore of each block
 block_distances <- read.csv( "CPFV/Data/Raw Data/Block_Distances_shore.csv")%>%
   dplyr:: select(-X)
+
+#spatial data for graphing
+usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
+mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
+usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
+  st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
+
+# State waters
+state_waters <- readRDS( "CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+# base theme
+base_theme <- theme(axis.text=element_text(size=7),
+                    axis.text.y = element_text(angle = 90, hjust = 0.5),
+                    axis.title=element_text(size=8),
+                    legend.text=element_text(size=8),
+                    legend.title=element_text(size=9),
+                    strip.text = element_text(size=10),
+                    plot.tag =element_text(size=9),
+                    # plot.title=element_blank(),
+                    # Gridlines
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.background = element_blank(),
+                    axis.line = element_line(colour = "black"),
+                    # Legend
+                    legend.key = element_rect(fill = NA, color=NA),
+                    legend.background = element_rect(fill=alpha('blue', 0)))
+
+#adding in mpa implementation data
+port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+mpa<-data.frame(port.complex=port.complex,mpayear=values)
 ###############
 
 
@@ -170,5 +201,208 @@ g<-plot_fun("Santa Barbara")
 h<-plot_fun("Los Angeles")
 
 df<-rbind(a,b,c,d,e,f,g,h)
-saveRDS(df,'CPFV/Data/Processed Data/COG_distance_results_traphours_final.rds')
+saveRDS(df,'CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
+###############
+
+
+###############
+#Graphing on their pwn
+plot_fun<-function(portcomplex){
+  COG_port<-df%>% #can update with code to read in the RDS if starting at this stage
+    filter(port.complex==portcomplex)
+  
+  location_cog<-st_as_sf(COG_port, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+                st_transform( st_crs("+proj=longlat  +datum=WGS84 +units=m +no_defs"))
+  
+  #extracting coordinates 
+  coordinates<-st_coordinates(location_cog)
+  # Create a point pattern (ppp object)
+  minx<-(min(coordinates[,1]))
+  maxx<-(max(coordinates[,1]))
+  miny<-(min(coordinates[,2]))
+  maxy<-(max(coordinates[,2]))
+  
+  p<-ggplot() +
+    # Land
+    geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+    # State waters
+    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+    # points
+    geom_sf(data=location_cog, aes(color=(year)),size=1)+
+    # Crop
+    coord_sf(xlim = c(minx-.5, maxx+.5), ylim = c(miny-.5, maxy+.5)) +
+    # Axes
+    scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
+    scale_y_continuous(breaks=seq(maxx+.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
+    # Theme
+    theme_bw() + base_theme +
+    #theme(axis.title.x=element_blank())+
+    ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle = 'CPFV Fishery Center of Gravity')+
+    scale_color_viridis_c(name = "Year", option = "D") 
+  
+  name=paste0('CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,' _COG.jpg')
+  ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+  
+}
+
+plot_fun("Eureka")
+plot_fun('Fort Bragg')
+plot_fun('Bodega Bay')
+plot_fun('San Francisco')
+plot_fun('Monterey')
+plot_fun('Morro Bay')
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+###############
+
+
+
+###############
+#Coastwide figure with port complexes and fishing ground shifts
+
+#filter for first and last year which will be actual points on the plot
+COG1<-df%>%
+  filter(year=="1980" | year=="2022")%>%
+  rename(Year=year)
+
+COG_sf<-st_as_sf(COG1, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+st_transform(crs = "+proj=longlat +datum=WGS84")
+COG_sf$Year=as.factor(COG_sf$Year)
+
+COG_sf$port.complex<- factor(COG_sf$port.complex, levels = c( 'Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
+
+#get all spatial data for the path
+COG2<-st_as_sf(df, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  st_transform(crs = "+proj=longlat +datum=WGS84")
+COG2$Year=as.factor(COG2$year)
+
+# Group by port.complex and combine the geometries
+combined_geometries <- COG2 %>%
+  group_by(port.complex) %>%
+  summarise(geometry = st_union(geometry), .groups = 'drop')
+
+# Cast the combined geometries to LINESTRING
+linestring <- st_cast(combined_geometries, "LINESTRING")
+linestring $port.complex<- factor(linestring $port.complex, levels = c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
+cali<-usa%>%
+  filter(name=="California")
+
+p<-ggplot() +
+  # Land
+  geom_sf(data = cali, fill = "gray", col = "black", linewidth=0.2, inherit.aes = F) +
+  geom_sf(data=mexico, fill="gray", col="black", linewidth=0.2, inherit.aes = F) +
+  # Lines connecting points for the same port complex
+  geom_sf(data = linestring, aes(color = port.complex), linewidth = 0.8) +
+  # points
+  geom_sf(data=COG_sf,aes(shape=Year),size=2)+
+  # Crop
+  coord_sf(xlim = c(-125, -118), ylim = c(33.5, 42)) +
+  # Axes
+  scale_x_continuous(breaks=seq(-125, -118, 2)) +
+  scale_y_continuous(breaks=seq(33.5, 42, 2)) + 
+  # Theme
+  theme_bw() + base_theme +
+  theme(
+    axis.title.x = element_blank(),  # Remove x-axis title
+    axis.title.y = element_blank(),  # Remove y-axis title
+    axis.text.x = element_blank(),    # Remove x-axis text
+    axis.text.y = element_blank(),    # Remove y-axis text
+    axis.ticks.x = element_blank(),   # Remove x-axis ticks
+    axis.ticks.y = element_blank(),   # Remove y-axis ticks
+    panel.border = element_blank(),   # Remove the border around the plotting area
+    panel.grid = element_blank(),     # Remove grid lines
+    plot.background = element_blank(), # Remove the background color of the plot
+    plot.margin = margin(0, 0, 0, 0) # Remove margins around the plot
+  ) +
+  
+  ggtitle(('CPFV Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
+
+filename1 <- ('CPFV/Figures/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+###############
+
+
+
+###############
+#Time series analyses
+
+#COG distance from shore and latitude 
+COG3<-df%>%
+  mutate(distance_shore_km=cog_dist_shore/1000)%>% #might have to update if the units change with the COG calculation
+  left_join(mpa,by="port.complex")
+
+plot_fun<-function(portcomplex){
+  
+  location<-COG3%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=location, aes(x=year))+
+    geom_line(aes(y=distance_shore_km),size=1)+
+    labs(y = bquote('Distance from shore'~(km^2))) +
+    # Theme
+    theme_bw() + 
+    base_theme  +
+    theme(legend.title = element_blank())+
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
+    geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
+    xlab('Year')
+  
+  filename1 <- paste0('CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
+  ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+}
+
+plot_fun("Eureka")
+plot_fun('Fort Bragg')
+plot_fun('Bodega Bay')
+plot_fun('San Francisco')
+plot_fun('Monterey')
+plot_fun('Morro Bay')
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+###############
+
+###############
+#Time series analyses
+#latitude
+df1<-st_as_sf(df, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  st_transform( st_crs("+proj=longlat  +datum=WGS84 +units=m +no_defs"))%>% 
+  left_join(mpa,by="port.complex")
+
+df1$latitude <- st_coordinates(df1)[, "Y"]  # Extracts latitude
+df1$longitude <- st_coordinates(df1)[, "X"]
+df1<-df1 %>% sf::st_drop_geometry()
+
+plot_fun<-function(portcomplex){
+  
+  location<-df1%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=location, aes(x=year))+
+    geom_line(aes(y=latitude),size=1)+
+    labs(y = ('Latitude °N')) +
+    # Theme
+    theme_bw() + 
+    base_theme  +
+    theme(legend.title = element_blank())+
+    #adding heatwave informaiton
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
+    #adding mpa implemetnation year
+    geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
+    xlab('Year')
+  
+
+  filename1 <- paste0('CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
+  ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+}
+
+plot_fun("Eureka")
+plot_fun('Fort Bragg')
+plot_fun('Bodega Bay')
+plot_fun('San Francisco')
+plot_fun('Monterey')
+plot_fun('Morro Bay')
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+
 ###############

@@ -46,9 +46,17 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Distances from shore of each block
-
 block_distances <- read.csv( "Lobster/Data/Raw Data/Block_Distances_shore.csv")%>%
   dplyr:: select(-X)
+
+#spatial data for graphing
+usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
+mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
+usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
+  st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
+
+# State waters
+state_waters <- readRDS( "Lobster/Data/Raw Data/CA_state_waters_polyline.Rds")
 ###############
 
 
