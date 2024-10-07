@@ -404,5 +404,43 @@ plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
+###############
 
+
+###############
+#time series analyses
+#graph of all COG latitudes together 
+
+df2<-df1%>%
+  mutate(distance_shore_km=cog_dist_shore/1000)
+df2$port.complex<- factor(df2$port.complex, levels = c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
+
+
+p<-ggplot(data=df2, aes(x=year, color=port.complex))+
+  geom_line(aes(y=latitude),size=.5)+
+  labs(y = ('Latitude °N'), x='Year') +
+  scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+  # Theme
+  theme_bw() + 
+  base_theme  +
+  theme(legend.title = element_blank())
+
+filename1 <- ('CPFV/Figures/Kernel Density/All Ports_COG_latitude.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+###############
+
+###############
+#time series analyses
+#graph of all distance to shore together
+p<-ggplot(data=df2, aes(x=year, color=port.complex))+
+  geom_line(aes(y=distance_shore_km),size=.5)+
+  labs(y = ('Distance from shore (km)'), x='Year') +
+  scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+  # Theme
+  theme_bw() + 
+  base_theme  +
+  theme(legend.title = element_blank())
+
+filename1 <- ('CPFV/Figures/Kernel Density/All Ports_COG_distanceshore.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############
