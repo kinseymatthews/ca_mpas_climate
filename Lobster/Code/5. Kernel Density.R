@@ -5,6 +5,10 @@ library(sp)
 library(spatstat)
 library(raster)
 library(ggplot2)
+library(magick)
+library(ggforce)
+library(RColorBrewer)
+
 
 ##################
 #Read in data
@@ -46,8 +50,6 @@ bathy.data$block_id=as.double(bathy.data$block_id)
 # merge bathymetry data with block data
 all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
-
-############
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -514,7 +516,7 @@ plot_fun<-function(portcomplex){
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    weights<-year_data$ntrips
+    weights<-year_data$trap_nights
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1]))
@@ -626,7 +628,7 @@ for(i in 1:n_pages(p)){
   ggsave(plot = p_save, filename = paste0('Lobster/Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
 }
 
-#can also do the above so its not facetwrap and all seperate
+#can also do the above so its not facetwrap and all separate
 ############
 
 
