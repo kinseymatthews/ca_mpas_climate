@@ -8,7 +8,7 @@ library(lubridate)
 
 
 #################
-#uplopad raw data
+#upload raw data
 lobster_logbook<-readRDS("Lobster/Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds")
 landings<-readRDS("Lobster/Data/Raw Data/1980_2022_landings_receipts.rds")
 port_info<-read.csv('Lobster/Data/Raw Data/Port Codes.csv')%>%
@@ -55,7 +55,7 @@ landings2<-landings2%>%
 
 #################
 #STEP 1
-#lobster lognooks with landing receipts. will see if we can properply match those with the landings data
+#lobster logbooks with landing receipts. Will see if we can properply match those with the landings data
 lobster.receipt<-lobster_logbook2%>%
   filter(!is.na(receipt_id1))
 
@@ -128,7 +128,7 @@ lobster.logbook3<-rbind(lobster.no.receipt,lobster.receipt2)
 
 #################
 #STEP 1.5
-#matching receipti d that only has one port complex regardless of date
+#matching receipts that only has one port complex regardless of date
 no.ports<-lobster.logbook3%>%
   filter(is.na(port_id1) & is.na(port_id2))
 
@@ -343,15 +343,11 @@ no.ports<-lobster.logbook8%>%
 ports<-lobster.logbook8%>%
   filter(!is.na(port_complex1) | !is.na(port_complex2))
 
-
-
 #list of vessel ids and years that only had one port associated with it
 result <- landings2 %>%
   group_by(vesselID_year)%>%
   filter(n_distinct(port.complex) == 1) %>%
   summarize(port.complex=first(port.complex))
-
-
 
 vessels<-no.ports$vessel_id
 
@@ -363,20 +359,16 @@ df<-landings2%>%
   group_by(vessel_id,year)%>%
   mutate(perc.complex=number/sum(number))
 
-
 df.tomerge<-df%>%
   filter(perc.complex>=.9)%>%
   dplyr::select(-perc.complex,-number)%>%
-  #mutate(year=as.character(year))%>%
+  mutate(year=as.character(year))%>%
   mutate(vessel_id=as.character(vessel_id))
-
-
 
 #match those per year 
 no.ports<-no.ports%>%
   left_join(df.tomerge, by=c("vessel_id" , "year"))%>%
   rename(port_complex1=port.complex)
-
 
 lobster.logbook9<-rbind(ports,no.ports)
 #################
