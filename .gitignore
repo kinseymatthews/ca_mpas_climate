@@ -14,5 +14,10 @@ RDataTmp
 *.RDataTmp
 
 
+.RDataTmp1
+RDataTmp1
+*.RDataTmp1
+
+
 CPFV/Data
 CPFV/Figures
