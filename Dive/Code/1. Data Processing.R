@@ -435,9 +435,13 @@ df2<- dive_logbook10 %>%
 dive_logbook11<-rbind(df1,df2)
 #################
 
+
+
+
+#################
+#looking at  trip identifiers and target species and seeing how it differs from the dive target species
 dive_logbook11<-dive_logbook11%>%
   mutate(trip.identifier=paste(date.logbooks,port_id_logbook,vessel_id, sep="_"))
-
 
 df<-dive_logbook11%>%
   group_by(trip.identifier)%>%
@@ -458,8 +462,6 @@ target<-dive_logbook11%>%
   dplyr::select(-comm_name, - total_catch)%>%
   distinct()
 
-target
-
 #adding info and editing
 
 df1.1<-dive_logbook11 %>%
@@ -476,3 +478,4 @@ dive_logbook12<-rbind(df1.1,df2)
 # Extract rows where column1 does not match column2
 non_matching_rows <-  dive_logbook12[dive_logbook12$Target_species_Trip !=  dive_logbook12$Target_species, ]
 
+#################
