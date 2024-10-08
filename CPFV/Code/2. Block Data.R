@@ -93,7 +93,8 @@ filter(is.na(hrs_minutes_fished_flag))%>%
   filter(is.na(number_of_fishers_flag))%>%
   filter(number_of_fishers<=120 & number_of_fishers>0)%>%
   filter(hours_fished>0)%>%
-  filter(!is.na(port.complex))
+  filter(!is.na(port.complex))%>%
+  filter(!is.na(block_id))
 
 saveRDS(explor,"CPFV/Data/Processed Data/CPFV_filtered.rds")
 

@@ -96,13 +96,12 @@ df_sf<- df%>%
 df_sf$port.complex<- factor(df_sf$port.complex, levels = c('Santa Barbara', 'Los Angeles', 'San Diego'))
 
 df_sf<- df_sf%>% filter(!st_is_empty(.))
-
 ############
 
 
 
 ############
-#cog data manip
+#cog data manipulation
 COG_sf<-st_as_sf(COG, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
 COG_sf<-st_transform(COG_sf,crs = "+proj=longlat +datum=WGS84")
 
@@ -110,8 +109,6 @@ COG_df<-COG_sf%>%
   sf::st_drop_geometry()
 COG_df$COG_latitude <- st_coordinates(COG_sf)[, "Y"]  # Extracts latitude
 COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
-
-
 ############
 
 
@@ -194,7 +191,7 @@ plot_fun<-function(portcomplex){
     p<-ggplot() +
       geom_raster(data = density_df, aes(x = x, y = y, fill = value)) +
       
-      scale_fill_gradientn(name = "Kernel Density of \nTrap Nights", 
+      scale_fill_gradientn(name = "Trap Nights", 
                            colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
                            limits = c(0, max(density_df$value)),  # Adjust limits as needed
                            na.value = "white") +  # Set NA values to white
@@ -203,8 +200,7 @@ plot_fun<-function(portcomplex){
                    breaks = contour_level, color = "black", size = 0.5) +
       
       # Land
-      geom_sf(data = usa, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
-      geom_sf(data=mexico, fill="grey85", col="white", linewidth=0.2, inherit.aes = F) +
+      geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
       #mpas
       geom_sf(data=mpa_blocks, fill="black", col="white", linewidth=0.2, inherit.aes = F)+
       # State waters
@@ -370,19 +366,13 @@ plot_fun<-function(portcomplex){
   
   
   p<-ggplot(data=location, aes(x=Year))+
-    # geom_line(aes(y=vol_50_km ,color="50% contour"),size=1)+
     geom_line(aes(y=percentage_within_mpa), color="black",size=1)+
-    #  geom_line(aes(y=vol_95_km ,color="95% contour"),size=1)+
     labs(y ='Percent weighted effort \n within MPAs') +
-    #legened
     # Theme
     theme_bw() + 
     base_theme  +
     theme(legend.position="none")+
-    
-    
-    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
-    
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + 
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
   filename1 <- paste0('Lobster/Figures/Kernel Density/', portcomplex, '_perc.effort within mpa.jpg')
