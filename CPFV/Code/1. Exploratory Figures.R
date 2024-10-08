@@ -6,10 +6,10 @@ library(ggplot2)
 #################
 
 ###### read in CPFV data
-CPFV<-readRDS("/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
+CPFV<-readRDS("/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
 
 ###### read in block data
-all_blocks<-st_read("CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -17,7 +17,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv("Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -28,7 +28,7 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Port Codes
-port<-read.csv('Lobster/Data/Raw Data/Port Codes.csv')
+port<-read.csv('/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/Port Codes.csv')
 
 
 # base theme
