@@ -411,7 +411,6 @@ df<-dive_logbook10%>%
   pull(dive.identifier)
 
 #group by the identifier, common name, and then retain the one with more catch_lbs, if 
-
 target<-dive_logbook10%>%
   filter(dive.identifier %in% df)%>%
   filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")%>%
@@ -450,7 +449,6 @@ df<-dive_logbook11%>%
   pull(trip.identifier)
 
 #group by the identifier, common name, and then retain the one with more catch_lbs, if 
-
 target<-dive_logbook11%>%
   filter(trip.identifier %in% df)%>%
   filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")%>%
@@ -463,11 +461,9 @@ target<-dive_logbook11%>%
   distinct()
 
 #adding info and editing
-
 df1.1<-dive_logbook11 %>%
   filter(trip.identifier %in% df)%>%
   left_join(target, by="trip.identifier")
-
 
 df2<- dive_logbook11 %>%
   filter(!trip.identifier %in% df)%>%
@@ -477,5 +473,4 @@ dive_logbook12<-rbind(df1.1,df2)
 
 # Extract rows where column1 does not match column2
 non_matching_rows <-  dive_logbook12[dive_logbook12$Target_species_Trip !=  dive_logbook12$Target_species, ]
-
 #################
