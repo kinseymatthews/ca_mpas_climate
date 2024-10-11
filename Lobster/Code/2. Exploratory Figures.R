@@ -1,8 +1,7 @@
 
 library(tidyverse)
-library(dplyr)
 library(sf)
-library(ggplot2)
+
 
 
 #################
@@ -11,6 +10,8 @@ library(ggplot2)
 Lobster<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
   rename(port.complex1=port_complex1, port.complex2=port_complex2)
 
+
+     
 ###### read in block data
 all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
@@ -74,6 +75,7 @@ explor<- Lobster%>%
     TRUE ~ FALSE                                # Disagree
   ))%>%
   mutate(port.complex = coalesce(port.complex1, port.complex2))%>%
+  #filtering for only the port complexes that agree
   filter(agree==TRUE | is.na(agree))%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%

@@ -1,11 +1,9 @@
-library(dplyr)
 library(sf)
 library(tidyr)
 library(stringr)
 library(fuzzyjoin)
 library(data.table)
-library(compare)
-
+library(tidyverse)
 
 #################
 #upload raw data
@@ -395,7 +393,7 @@ no.ports<-no.ports%>%
   left_join(vessels.tomerge, by=c("vessel_id"))%>%
   rename(port_complex_landings1=port.complex)
 
-dive_logbook10<-rbind(ports,no.ports2)
+dive_logbook10<-rbind(ports,no.ports)
 #################
 
 
@@ -474,3 +472,64 @@ dive_logbook12<-rbind(df1.1,df2)
 # Extract rows where column1 does not match column2
 non_matching_rows <-  dive_logbook12[dive_logbook12$Target_species_Trip !=  dive_logbook12$Target_species, ]
 #################
+
+
+#################
+#dive wise
+#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+target<-dive_logbook10%>%
+  group_by(dive.identifier, comm_name)%>%
+  summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%
+  ungroup()%>%
+  group_by(dive.identifier)%>%
+  mutate(total_catch_dive=sum(total_catch_species))%>%
+  group_by(dive.identifier, comm_name)%>%
+  mutate(percent_catch=(total_catch_species/total_catch_dive)*100)%>%
+  mutate(percent_catch_log=log(percent_catch+1))%>%
+  filter(total_catch_species>0)%>%
+  filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")
+
+
+
+ggplot() + 
+  geom_density(data=target,aes(x=percent_catch,fill=comm_name),alpha = 0.5)+
+  xlab("Percent of Catch")+
+  ylab("Density") + 
+  # theme
+  theme(axis.text=element_text(size=8),
+        axis.text.y = element_text(angle = 90, hjust = 0.5),
+        axis.title=element_text(size=10),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))
+
+
+#trip wise
+
+#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+target<-dive_logbook12%>%
+  group_by(trip.identifier, comm_name)%>%
+  summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%
+  ungroup()%>%
+  group_by(trip.identifier)%>%
+  mutate(total_catch_dive=sum(total_catch_species))%>%
+  group_by(trip.identifier, comm_name)%>%
+  mutate(percent_catch=(total_catch_species/total_catch_dive)*100)%>%
+  mutate(percent_catch_log=log(percent_catch+1))%>%
+  filter(total_catch_species>0)%>%
+ filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")
+ 
+ 
+ggplot() + 
+  geom_density(data=target,aes(x=percent_catch,fill=comm_name),alpha = 0.5)+
+  xlab("Percent of Catch")+
+  ylab("Density") + 
+  # theme
+  theme(axis.text=element_text(size=8),
+        axis.text.y = element_text(angle = 90, hjust = 0.5),
+        axis.title=element_text(size=10),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))

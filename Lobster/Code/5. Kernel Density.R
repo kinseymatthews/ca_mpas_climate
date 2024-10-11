@@ -434,7 +434,7 @@ plot_fun<-function(portcomplex){
   }
   
   all.data<- dplyr::bind_rows(datalist)
-  all.data
+
 }
 
 i<-plot_fun("Santa Barbara")
