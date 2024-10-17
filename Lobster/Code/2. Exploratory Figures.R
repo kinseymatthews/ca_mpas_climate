@@ -9,8 +9,6 @@ library(sf)
 ###### read in lobster data
 Lobster<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
   rename(port.complex1=port_complex1, port.complex2=port_complex2)
-
-
      
 ###### read in block data
 all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
@@ -68,6 +66,12 @@ port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Mo
 values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
+#lots of incorrect blocks within the logbook data, filter out potential bad blocks before merging the various block id columns and removing block IDs north of monterey bay where fishing shouldnt occur
+block.to.remove<-c(108,135,256,257,265,419,456,457,465,0,2,3, 10, 18, 19, 20, 21, 25, 40, 49, 50, 52, 54, 56, 60, 61, 62, 63, 64, 65, 66, 68, 70, 71, 72, 73, 75, 79, 80, 81, 83, 85, 86, 87, 100, 152, 153, 156, 157, 160, 180, 181, 190, 306, 307, 326, 342, 345, 351, 352, 353, 381, 383, 385, 387, 389, 500, 575, 576, 588, 600, 698, 699, 700, 778, 780, 785, 786, 787, 788, 789, 800, 901, 904, 919, 921, 922, 953, 954, 955, 957, 960, 980, 982, 983, 984, 985, 988, 1019, 1028, 3718, 3798, 3860, 3900, 5814, 6001, 6353, 6354, 6355, 6389, 6520, 6532, 6533, 6543, 6654, 6665, 6866, 6885, 6889, 6893, 6894, 6953, 7009, 7102, 7110, 7203, 7230, 7387, 7455, 7520, 7536, 7564, 7569, 7574, 7757, 8136, 8432, 8442, 8460, 8520, 8600, 8605, 8630, 8650, 8660, 8693, 8707, 8760, 8777, 8821, 8822, 8850, 8860, 8922, 8942, 8960)
+
+Lobster<-Lobster%>%
+  filter(!block_id %in% block.to.remove)
+
 explor<- Lobster%>%
   mutate(agree = case_when(
     is.na(port.complex1) | is.na(port.complex2) ~ NA,  # Set to NA if either is NA
@@ -79,7 +83,7 @@ explor<- Lobster%>%
   filter(agree==TRUE | is.na(agree))%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%
-  mutate(block_id = coalesce(block_id_logbook,block_id_gps))%>% #prefers logbook block id to gps block id
+  mutate(block_id = coalesce(block_id_logbook,block_id_gps, block_id_landings1,block_id_landings2))%>% #prefers logbook block id to gps block id
   left_join(all_blocks_df, by="block_id")%>%
   #getting rid of international, offshore,  all midshore besides 897, and all blocks that are too deep
   filter(blck_st!="International" | is.na(blck_st) )%>%
@@ -88,9 +92,6 @@ explor<- Lobster%>%
   filter(Min_Depthm>= -110 | is.na(Min_Depthm))%>%
   #adding column for reported depth in meters
   mutate(Depth_m=depth_ft*(-0.3048))
-
-#removing block IDs north of monterey bay where fishing shouldnt occur
-block.to.remove<-c(108,135,256,257,265,419,456,457,465)
 
 explor<-explor%>%
   filter(!block_id %in% block.to.remove)
@@ -276,6 +277,7 @@ inside.bounds$year<-as.factor(inside.bounds$year)
 outside.bounds<-lobster.with.depth%>%
   filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) # 4516 rows out of bounds
 inside.bounds$year<-as.factor(inside.bounds$year)
+
 #boxplots function
 plot_fun<-function(portcomplex){ 
   

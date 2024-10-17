@@ -40,8 +40,6 @@ lobster_logbook2$month <- month(lobster_logbook2$date.logbooks)
 lobster_logbook2<-lobster_logbook2%>%
   mutate(vesselID_year_month=ifelse(is.na(vessel_id)| is.na(year)| is.na(month), NA,paste(vessel_id, year, month, sep="_" )))
 
-
-
 landings2<-landings  %>%
   mutate(receipt_vesselID_date = ifelse(is.na(receipt_id) | is.na(vessel_id) |is.na(date), NA, paste(receipt_id, vessel_id,date, sep = "_"))) %>%
   mutate(receipt_vesselID = ifelse(is.na(receipt_id) | is.na(vessel_id), NA, paste(receipt_id, vessel_id, sep = "_")))%>%
@@ -376,8 +374,9 @@ d<-lobster.receipt9%>%
   filter(matches.7=="FALSE") #100% match
 #################
 
-###################################################
 
+
+#################
 # Find cutoff for the number of days in a buffer. Create a accumulation curve with days in buffer on x axis and percent of matched logbook and landings receipts on y. 
 
 #get entries with landing receipts.
@@ -400,8 +399,10 @@ result%>%
 landings.tomerge<- landings2%>%
   distinct(receipt_vesselID, .keep_all = TRUE)%>%
   rename(receipt_ids=receipt_id)
+#################
 
 
+#################
 #create a loop for going through 1-15 days 
 # Initialize an empty data frame for storing results
 results_df <- data.frame(day = integer(), matched = integer(), total = integer(), percent_matched = numeric())
@@ -455,6 +456,11 @@ theme(axis.text=element_text(size=8),
 
 filename1 <- ('Lobster/Figures/Exploratory/Matching_Buffer_15 days.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+#################
+
+
+
+#################
 
 #now for 8 days on each side
 
@@ -512,10 +518,12 @@ p2<-ggplot(results_df, aes(x = day, y = percent_matched)) +
 filename1 <- ('Lobster/Figures/Exploratory/Matching_Buffer_8 days either side.jpg')
 ggsave(filename = filename1, plot = p2, width = 6, height = 3, units = "in", dpi = 300)
 
+#################
 
 
 
 
+#################
 
 #now for 15 days on each side
 
@@ -572,6 +580,7 @@ p3<-ggplot(results_df, aes(x = day, y = percent_matched)) +
 
 filename1 <- ('Lobster/Figures/Exploratory/Matching_Buffer_15 days either side.jpg')
 ggsave(filename = filename1, plot = p3, width = 6, height = 3, units = "in", dpi = 300)
+#################
 
 
 

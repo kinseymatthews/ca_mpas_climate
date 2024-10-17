@@ -36,14 +36,14 @@ lobster_logbook2<-lobster_logbook2%>%
   mutate(vesselID_year_month=ifelse(is.na(vessel_id)| is.na(year)| is.na(month), NA,paste(vessel_id, year, month, sep="_" )))
 
 
-
 landings2<-landings  %>%
   mutate(receipt_vesselID_date = ifelse(is.na(receipt_id) | is.na(vessel_id) |is.na(date), NA, paste(receipt_id, vessel_id,date, sep = "_"))) %>%
   mutate(receipt_vesselID = ifelse(is.na(receipt_id) | is.na(vessel_id), NA, paste(receipt_id, vessel_id, sep = "_")))%>%
   mutate(vesselID_date = ifelse(is.na(vessel_id) | is.na(date), NA, paste(vessel_id, date, sep = "_")))%>%
   mutate(date=as.Date(date, format = "%Y-%m-%d"))%>%
   rename(date.landings=date)%>%
-  left_join(dplyr::select(port_info, port_id, port.complex), by="port_id")
+  left_join(dplyr::select(port_info, port_id, port.complex), by="port_id")%>%
+  rename(block_id_landings=block_id)
 
 landings2$month <- month(landings2$date.landings)
 
@@ -61,19 +61,18 @@ lobster.receipt<-lobster_logbook2%>%
 
 lobster.no.receipt<-lobster_logbook2%>%
   filter(is.na(receipt_id1))
-
-# Check for duplicated values in 'ID' column
-duplicated_ids <- duplicated(landings2$receipt_vesselID)
-# Show rows with duplicated values
-df<-print(landings2[duplicated_ids, ])
-# Group by column A and check if values in column B are all the same
-result <- df %>% 
-  group_by(receipt_vesselID) %>%
-  summarise(same_B_values = n_distinct(port_id) == 1)
-
-result%>%
-  filter(same_B_values=="FALSE")
-#1 with different ports - none of which are in the lobster logbook data 
+            
+            # Check for duplicated values in 'ID' column
+            duplicated_ids <- duplicated(landings2$receipt_vesselID)
+            # Show rows with duplicated values
+            df<-print(landings2[duplicated_ids, ])
+            # Group by column A and check if values in column B are all the same
+            result <- df %>% 
+              group_by(receipt_vesselID) %>%
+              summarise(same_B_values = n_distinct(port_id) == 1)
+            
+            result%>%
+              filter(same_B_values=="FALSE") #1 with different ports - none of which are in the lobster logbook data 
 
 
 landings.tomerge<- landings2%>%
@@ -83,8 +82,9 @@ landings.tomerge<- landings2%>%
 #match with first landing receipt available
 matched_data<-lobster.receipt%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings,port.complex), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
-  filter((abs(date.landings - date.logbooks) <= 15 | is.na(date.landings)))
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
+filter(((date.landings - date.logbooks) <= 7 ) & (date.landings - date.logbooks) >= 0 )
+
 # Identify unmatched entries
 unmatched_entries <- lobster.receipt %>%
   anti_join(matched_data, by = c("receipt_vesselID_1", "date.logbooks"))
@@ -99,8 +99,9 @@ lobster.receipt2 <- bind_rows(
 #match with second landing receipt available
 matched_data<-lobster.receipt2%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
-  filter((abs(date.landings.y - date.logbooks) <= 15 | is.na(date.landings.y)))
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
+  filter(((date.landings.y - date.logbooks) <= 7 ) & (date.landings.y - date.logbooks) >= 0 )
+
 # Identify unmatched entries
 unmatched_entries <- lobster.receipt %>%
   anti_join(matched_data, by = c("receipt_vesselID_2", "date.logbooks"))
@@ -114,12 +115,11 @@ lobster.receipt2 <- bind_rows(
 
 
 lobster.receipt2<-lobster.receipt2%>%
-  rename( port_complex1=port.complex.x, port_id1=port_id.x, port_id2=port_id.y,gear1=gear.x, port_complex2=port.complex.y,  gear2=gear.y,primary_gear1=primary_gear.x, primary_gear2=primary_gear.y, date_landings1=date.landings.x,date_landings2=date.landings.y, port2=port.y, port1=port.x)
+  rename(port_complex1=port.complex.x, port_id1=port_id.x, port_id2=port_id.y,gear1=gear.x, port_complex2=port.complex.y,  gear2=gear.y,primary_gear1=primary_gear.x, primary_gear2=primary_gear.y, date_landings1=date.landings.x, date_landings2=date.landings.y, port2=port.y, port1=port.x, block_id_landings1=block_id_landings.x,block_id_landings2=block_id_landings.y)
 
 
 lobster.no.receipt<-lobster.no.receipt%>%
-  mutate(port_complex1=NA,date_landings1=NA, port_id1=NA, port1=NA, primary_gear1=NA, gear1=NA,date_landings2=NA, port_id2=NA, port2=NA, primary_gear2=NA, gear2=NA, port_complex2=NA)
-
+  mutate(port_complex1=NA,date_landings1=NA, port_id1=NA, port1=NA, primary_gear1=NA, gear1=NA,date_landings2=NA, port_id2=NA, port2=NA, primary_gear2=NA, gear2=NA, port_complex2=NA, block_id_landings1=NA,block_id_landings2=NA)
 
 lobster.logbook3<-rbind(lobster.no.receipt,lobster.receipt2)
 #################
@@ -166,8 +166,8 @@ landings2.tomerge<- landings2%>%
 no.ports.1.match<- no.ports.1%>%
   dplyr::select(-port_complex1,-date_landings1, -port_id1, -port1, -primary_gear1, -gear1)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
-  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear)
+  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
+  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings)
 
 #merge with no.ports2. 
 no.ports<-rbind(no.ports.1.match, no.ports.2)
@@ -176,8 +176,8 @@ no.ports<-rbind(no.ports.1.match, no.ports.2)
 no.ports<-no.ports%>%
   dplyr::select(-port_complex2, -port2, -port_id2, -date_landings2,-primary_gear2,-gear2)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
-  rename(port_complex2=port.complex, port2=port,port_id2=port_id, date_landings2=date.landings,primary_gear2=primary_gear,gear2=gear)
+  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
+  rename(port_complex2=port.complex, port2=port,port_id2=port_id, date_landings2=date.landings,primary_gear2=primary_gear,gear2=gear, block_id_landings2=block_id_landings)
 
 
 #add with other dataframe
@@ -250,45 +250,12 @@ landings.tomerge<- landings2%>%
   distinct(vesselID_date, .keep_all = TRUE) #just need the port info
 
 no.dupes<-no.dupes%>%
-  dplyr::select(-port_id1,-port1,-primary_gear1,-gear1,-date_landings1, -port_complex1)%>%
+  dplyr::select(-port_id1,-port1,-primary_gear1,-gear1,-date_landings1, -port_complex1,-block_id_landings1)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex), by="vesselID_date", na_matches = "never")%>%
-  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear)
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by="vesselID_date", na_matches = "never")%>%
+  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings)
 
 lobster.logbook6<-rbind(ports, no.dupes,dupes)
-#################
-
-
-#################
-#STEP 3.5
-#Matching entries with port complexes most often seen that day
-
-no.ports<-lobster.logbook6%>%
-  filter( is.na(port_complex1) & is.na(port_complex2))%>%
-  dplyr::select( -port_complex1)
-
-ports<-lobster.logbook6%>%
-  filter(!is.na(port_complex1) | !is.na(port_complex2))
-
-vessel_dates<-no.ports$vesselID_date
-
-landings3<- landings2[(landings2$vesselID_date %in% vessel_dates), ]
-
-
-df<-landings3%>%
-  group_by(vesselID_date, port.complex) %>%
-  summarise(count = n()) %>%
-  arrange(desc(count)) %>%
-  slice(1)%>%
-  rename(port_complex1=port.complex)
-
-#merging with port and gear information
-no.ports2<- no.ports%>%
-  #attach information from receipts
-  left_join(dplyr::select(df,vesselID_date,port_complex1), by="vesselID_date", na_matches = "never")
-
-lobster.logbook7<-rbind(ports,no.ports2)
-
 #################
 
 
@@ -297,11 +264,11 @@ lobster.logbook7<-rbind(ports,no.ports2)
 #Fourth, we assigned a port complex from the landings data if a vessel visited the same port 
 #complex 90% or more of the time during a specific year and month
 
-no.ports<-lobster.logbook7%>%
+no.ports<-lobster.logbook6%>%
   filter( is.na(port_complex1) & is.na(port_complex2))%>%
   dplyr::select( -port_complex1)
 
-ports<-lobster.logbook7%>%
+ports<-lobster.logbook6%>%
   filter(!is.na(port_complex1) | !is.na(port_complex2))
 
 vessels<-no.ports$vessel_id
@@ -327,9 +294,40 @@ no.ports<-no.ports%>%
   left_join(df.tomerge, by=c("vessel_id" , "year", "month"))%>%
   rename(port_complex1=port.complex)
 
-lobster.logbook8<-rbind(ports,no.ports)
+lobster.logbook7<-rbind(ports,no.ports)
 #################
 
+
+#################
+#STEP 3.5
+#Matching entries with port complexes most often seen that day
+
+no.ports<-lobster.logbook7%>%
+  filter( is.na(port_complex1) & is.na(port_complex2))%>%
+  dplyr::select( -port_complex1)
+
+ports<-lobster.logbook7%>%
+  filter(!is.na(port_complex1) | !is.na(port_complex2))
+
+vessel_dates<-no.ports$vesselID_date
+
+landings3<- landings2[(landings2$vesselID_date %in% vessel_dates), ]
+
+
+df<-landings3%>%
+  group_by(vesselID_date, port.complex) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  slice(1)%>%
+  rename(port_complex1=port.complex)
+
+#merging with port and gear information
+no.ports2<- no.ports%>%
+  #attach information from receipts
+  left_join(dplyr::select(df,vesselID_date,port_complex1), by="vesselID_date", na_matches = "never")
+
+lobster.logbook8<-rbind(ports,no.ports2)
+#################
 
 
 #################
@@ -362,7 +360,7 @@ df<-landings2%>%
 df.tomerge<-df%>%
   filter(perc.complex>=.9)%>%
   dplyr::select(-perc.complex,-number)%>%
-  mutate(year=as.character(year))%>%
+#  mutate(year=as.character(year))%>%
   mutate(vessel_id=as.character(vessel_id))
 
 #match those per year 

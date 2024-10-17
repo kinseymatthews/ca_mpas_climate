@@ -29,7 +29,8 @@ dive_logbook2<- dive_logbook2%>%
   mutate(vesselID_date = ifelse(is.na(vessel_id) | is.na(date), NA, paste(vessel_id, date, sep = "_")))%>%
   mutate(date=as.Date(date, format = "%Y-%m-%d"))%>%
   mutate(month = month(date))%>%
-  rename(date.logbooks=date, port_complex_logbook=port_complex, port_id_logbook=port_id, port_logbook=port)
+  rename(date.logbooks=date, port_complex_logbook=port_complex, port_id_logbook=port_id, port_logbook=port) %>%
+  mutate(vessel_id = str_replace(vessel_id, "^0+", ""))
 #################
 
 
@@ -46,9 +47,18 @@ landings2<-landings  %>%
   left_join(dplyr::select(port_info, port_id, port.complex), by="port_id")%>%
   mutate(vesselID_year_month=ifelse(is.na(vessel_id)| is.na(year)| is.na(month), NA,paste(vessel_id, year, month, sep="_" )))%>%
   mutate(vesselID_year=ifelse(is.na(vessel_id)| is.na(year), NA,paste(vessel_id, year,sep="_" )))%>%
-  mutate(vessel_id=if_else(vessel_id==6990, "06990", as.character(vessel_id))) #noticed this vessel_id was inputted incorrectly
+  #incorrectly input vesse;s
+ # mutate(vessel_id=if_else(vessel_id==6990, "06990", as.character(vessel_id))) %>% #noticed this vessel_id was inputted incorrectly 
+  #mutate(vessel_id=if_else(vessel_id==943, "00943", as.character(vessel_id)))%>%
+ #mutate(vessel_id=if_else(vessel_id==1163, "01163", as.character(vessel_id)))%>%
+ #mutate(vessel_id=if_else(vessel_id==9334, "09334", as.character(vessel_id)))%>%
+ #mutate(vessel_id=if_else(vessel_id==983, "00983", as.character(vessel_id)))%>%
+ #mutate(vessel_id=if_else(vessel_id==5786, "05786", as.character(vessel_id)))%>%
+ #mutate(vessel_id=if_else(vessel_id==472, "00472", as.character(vessel_id)))%>%
+ #mutate(vessel_id=if_else(vessel_id==6730, "06730", as.character(vessel_id)))%>%
+ #mutate(vesselID_year_month_lbs=ifelse(is.na(vessel_id)| is.na(year)| is.na(month)| is.na(landings_lbs), NA,paste(vessel_id, year, month, landings_lbs,  sep="_" )))%>%
+  rename(block_id_landings=block_id)
 #################
-
 
 
 #################
@@ -74,8 +84,7 @@ result <- df %>%
   summarise(same_B_values = n_distinct(port.complex) == 1)
 
         result%>%
-          filter(same_B_values=="FALSE")
-#4 with different ports - which are not in the dive data
+          filter(same_B_values=="FALSE") #4 with different ports - which are not in the dive data
 
 landings.tomerge<- landings2%>%
   distinct(receipt_vesselID, .keep_all = TRUE)%>%
@@ -85,8 +94,8 @@ landings.tomerge<- landings2%>%
 #Matching with first receipt and vessel ID
 matched_data<-dive.receipts%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
-  filter((abs(date.landings - date.logbooks) <= 15 | is.na(date.landings)))
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
+  filter(((date.landings - date.logbooks) <= 7 ) & (date.landings - date.logbooks) >= 0 )
 
 # Identify unmatched entries
 unmatched_entries <- dive.receipts %>%
@@ -95,14 +104,14 @@ unmatched_entries <- dive.receipts %>%
 
 # Combine matched entries with unmatched entries (without matched data)
 df <- bind_rows(matched_data, unmatched_entries)%>%
-  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex)
+  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex,block_id_landings1=block_id_landings)
 
 
 #matching with second landing receipt
 matched_data<-df%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
-  filter((abs(date.landings - date.logbooks) <= 15 | is.na(date.landings)))
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
+  filter(((date.landings - date.logbooks) <= 7 ) & (date.landings - date.logbooks) >= 0 )
 
 
 # Identify unmatched entries
@@ -114,12 +123,12 @@ unmatched_entries <- df %>%
 df2 <- bind_rows( matched_data, unmatched_entries )
 
 dive.receipts2<-df2%>%
-  rename( port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex)
+  rename( port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex,block_id_landings2=block_id_landings)
 
 
 
 dive.no.receipts<-dive.no.receipts%>%
-  mutate(port_complex_landings1=NA,date_landings1=NA, port_id_landings1=NA, port_landings1=NA, primary_gear_landings1=NA, gear_landings1=NA,date_landings2=NA, port_id_landings2=NA, port_landings2=NA, primary_gear_landings2=NA, gear_landings2=NA, port_complex_landings2=NA)
+  mutate(port_complex_landings1=NA,date_landings1=NA, port_id_landings1=NA, port_landings1=NA, primary_gear_landings1=NA, gear_landings1=NA, block_id_landings1=NA, date_landings2=NA, port_id_landings2=NA, port_landings2=NA, primary_gear_landings2=NA, gear_landings2=NA, port_complex_landings2=NA, block_id_landings2=NA)
 
 dive_logbook3<-rbind(dive.receipts2,dive.no.receipts)
 #################
@@ -160,17 +169,17 @@ landings2.tomerge<- landings2%>%
 
 #merging with port and gear information - based on receipt 1
 no.ports.match<- no.ports%>%
-  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1)%>%
+  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1,-block_id_landings1)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
-  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex)
+  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex,block_id_landings), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
+  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex, block_id_landings1=block_id_landings)
 
 #merging with port and gear information - based on receipt 2
 no.ports.match2<- no.ports.match%>%
-  dplyr::select(-port_complex_landings2,-date_landings2, -port_id_landings2, -port_landings2, -primary_gear_landings2, -gear_landings2)%>%
+  dplyr::select(-port_complex_landings2,-date_landings2, -port_id_landings2, -port_landings2, -primary_gear_landings2, -gear_landings2,-block_id_landings2)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
-  rename(port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex)
+  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex,block_id_landings), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
+  rename(port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex,block_id_landings2=block_id_landings)
 
 dive_logbook4<-rbind(no.ports.match2,ports)
 #################
@@ -235,44 +244,12 @@ landings.tomerge<- landings2%>%
   distinct(vesselID_date, .keep_all = TRUE) #just need the port info
 
 no.ports.match<-no.ports%>%
-  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1)%>%
+  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1,-block_id_landings1)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex), by="vesselID_date", na_matches = "never")%>%
-  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex)
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by="vesselID_date", na_matches = "never")%>%
+  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex, block_id_landings1=block_id_landings)
 
 dive_logbook6<-rbind(ports, no.ports.match)
-#################
-
-
-#################
-#STEP 3.5
-#Matching entries with port complexes most often seen that day
-no.ports<-dive_logbook6%>%
-  filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))%>%
-  dplyr::select( -port_complex_landings1)
-
-ports<-dive_logbook6%>%
-  filter(!is.na(port_complex_landings1) | !is.na(port_complex_landings2))
-
-vessel_dates<-na.omit(no.ports$vesselID_date)
-
-landings3<- landings2[(landings2$vesselID_date %in% vessel_dates), ]
-
-
-df<-landings3%>%
-  group_by(vesselID_date, port.complex) %>%
-  summarise(count = n()) %>%
-  arrange(desc(count)) %>%
-  slice(1)%>%
-  rename(port_complex_landings1=port.complex)
-
-#merging with port and gear information
-no.ports2<- no.ports%>%
-  #attach information from receipts
-  left_join(dplyr::select(df,vesselID_date,port_complex_landings1), by="vesselID_date", na_matches = "never")
-
-dive_logbook7<-rbind(ports,no.ports2)
-
 #################
 
 
@@ -281,11 +258,11 @@ dive_logbook7<-rbind(ports,no.ports2)
 #Fourth, we assigned a port complex from the landings data if a vessel visited the same port 
 #complex 90% or more of the time during a specific year and month
 
-no.ports<-dive_logbook7%>%
+no.ports<-dive_logbook6%>%
   filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))%>%
   dplyr::select( -port_complex_landings1)
 
-ports<-dive_logbook7%>%
+ports<-dive_logbook6%>%
   filter(!is.na(port_complex_landings1) | !is.na(port_complex_landings2))
 
 vessels<-no.ports$vessel_id
@@ -310,8 +287,41 @@ no.ports<-no.ports%>%
   left_join(df.tomerge, by=c("vessel_id" , "year", "month"))%>%
   rename(port_complex_landings1=port.complex)
 
-dive_logbook8<-rbind(ports,no.ports)
+dive_logbook7<-rbind(ports,no.ports)
 #################
+
+
+#################
+#STEP 3.5
+#Matching entries with port complexes most often seen that day
+no.ports<-dive_logbook7%>%
+  filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))%>%
+  dplyr::select( -port_complex_landings1)
+
+ports<-dive_logbook7%>%
+  filter(!is.na(port_complex_landings1) | !is.na(port_complex_landings2))
+
+vessel_dates<-na.omit(no.ports$vesselID_date)
+
+landings3<- landings2[(landings2$vesselID_date %in% vessel_dates), ]
+
+
+df<-landings3%>%
+  group_by(vesselID_date, port.complex) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  slice(1)%>%
+  rename(port_complex_landings1=port.complex)
+
+#merging with port and gear information
+no.ports2<- no.ports%>%
+  #attach information from receipts
+  left_join(dplyr::select(df,vesselID_date,port_complex_landings1), by="vesselID_date", na_matches = "never")
+
+dive_logbook8<-rbind(ports,no.ports2)
+
+#################
+
 
 
 #################
@@ -397,87 +407,84 @@ dive_logbook10<-rbind(ports,no.ports)
 #################
 
 
-#################
-#Assigning a dive as a sea cucumber or urchin fishery
-dive_logbook10<-dive_logbook10%>%
-  mutate(dive.identifier=paste(date.logbooks,port_id_logbook,vessel_id,block_id,depth_min_ft, depth_max_ft, hours, dive_number, sep="_"))
 
-df<-dive_logbook10%>%
-  group_by(dive.identifier)%>%
-  summarize(n_species= n_distinct(comm_name))%>%
-  filter(n_species >= 2) %>%
-  pull(dive.identifier)
+
+#################
+#New column to show if port complexes agree or dont agree
+
+dive_logbook11<- dive_logbook10 %>%
+  mutate(matching_logbook_complexes = case_when(
+    is.na(port_complex_landings1) | is.na(port_complex_landings2) ~ NA,  # Set to NA if either is NA
+      port_complex_landings1 == port_complex_landings2 ~ TRUE, # Agree
+    TRUE ~ FALSE                                # Disagree
+    
+  )) 
+
+#2 disagree, but the logbooks support the port_complex_landings_2
+
+dive_logbook12<- dive_logbook11 %>%
+  mutate(port_complex_landings=coalesce(port_complex_landings2,port_complex_landings1))%>%
+  mutate(matching_complexes = case_when(
+    is.na(port_complex_landings) | is.na(port_complex_logbook) ~ NA,  # Set to NA if either is NA
+    port_complex_landings == port_complex_logbook ~ TRUE, # Agree
+    TRUE ~ FALSE                                # Disagree
+    )) %>% #Do not all agree - but choosing logbooks over landings
+  mutate(port_most_reliable=coalesce(port_complex_logbook, port_complex_landings))
+#################
+
+#################
+#New column to show if blocks agree or dont agree
+
+dive_logbook13<-dive_logbook12 %>%
+  mutate(matching_landings_blocks = case_when(
+    is.na(block_id_landings1) | is.na(block_id_landings2) ~ NA,  # Set to NA if either is NA
+    block_id_landings1 == block_id_landings2  ~ TRUE,
+    TRUE ~ FALSE                                # Disagree
+  )) #all agree
+
+dive_logbook13%>%
+  summarize(n=sum(matching_landings_blocks==FALSE, na.rm = TRUE)) #204 cases where they do not agree
+
+#find out with the landing receipts which ones most often agree with the logbook blocks
+dive_logbook14<-dive_logbook13 %>%
+  mutate(matching_blocks_case1 = case_when(
+    is.na(block_id) | is.na(block_id_landings1) ~ NA,  # Set to NA if either is NA
+    block_id == block_id_landings1  ~ TRUE,
+    TRUE ~ FALSE                                # Disagree
+  ))%>%
+  mutate(matching_blocks_case2 = case_when(
+    is.na(block_id) | is.na(block_id_landings2) ~ NA,  # Set to NA if either is NA
+    block_id == block_id_landings2  ~ TRUE,
+    TRUE ~ FALSE                                # Disagree
+  ))
+
+
+#between block_landings1 and block_landings2, which one is more correct?
+dive_logbook14%>%
+  summarize(n=sum(matching_blocks_case1==FALSE, na.rm = TRUE), total=sum(!is.na(matching_blocks_case1)), percent=(n/total)*100) #27% where they do not agree
+
+dive_logbook14%>%
+  summarize(n=sum(matching_blocks_case2==FALSE, na.rm = TRUE), total=sum(!is.na(matching_blocks_case2)), percent=(n/total)*100) #15% where they do not agree
+
+dive_logbook15<-dive_logbook14%>%
+  mutate(block_most_reliable=coalesce(block_id, block_id_gps,block_id_landings2,block_id_landings1))
+
+#################
+
+
+
+#################
+#Should the unit of effort be a dive or a trip?
+
+#dive
+
+dive_logbook16<-dive_logbook15%>%
+  mutate(dive.identifier=paste(date.logbooks,port_most_reliable,vessel_id, location_orig,block_most_reliable,depth_min_ft, depth_max_ft, hours, dive_number, fisher_id, sep="_"))%>%
+  mutate(trip.identifier=paste(date.logbooks,port_most_reliable,vessel_id, sep="_"))
+
 
 #group by the identifier, common name, and then retain the one with more catch_lbs, if 
-target<-dive_logbook10%>%
-  filter(dive.identifier %in% df)%>%
-  filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")%>%
-  group_by(dive.identifier, comm_name)%>%
-  summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
-  group_by(dive.identifier) %>%
-  mutate(Target_species = comm_name[which.max(total_catch)]) %>%  # Identify comm_name with greatest total catch
-  ungroup() %>%# Ungroup for final output
-  dplyr::select(-comm_name, - total_catch)%>%
-  distinct()
-
-df1<-dive_logbook10 %>%
-  filter(dive.identifier %in% df)%>%
-  left_join(target, by="dive.identifier")
-
-
-df2<- dive_logbook10 %>%
-  filter(!dive.identifier %in% df)%>%
-  mutate(Target_species=comm_name)
-
-dive_logbook11<-rbind(df1,df2)
-#################
-
-
-
-
-#################
-#looking at  trip identifiers and target species and seeing how it differs from the dive target species
-dive_logbook11<-dive_logbook11%>%
-  mutate(trip.identifier=paste(date.logbooks,port_id_logbook,vessel_id, sep="_"))
-
-df<-dive_logbook11%>%
-  group_by(trip.identifier)%>%
-  summarize(n_species= n_distinct(comm_name))%>%
-  filter(n_species >= 2) %>%
-  pull(trip.identifier)
-
-#group by the identifier, common name, and then retain the one with more catch_lbs, if 
-target<-dive_logbook11%>%
-  filter(trip.identifier %in% df)%>%
-  filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")%>%
-  group_by(trip.identifier, comm_name)%>%
-  summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
-  group_by(trip.identifier) %>%
-  mutate(Target_species_Trip = comm_name[which.max(total_catch)]) %>%  # Identify comm_name with greatest total catch
-  ungroup() %>%# Ungroup for final output
-  dplyr::select(-comm_name, - total_catch)%>%
-  distinct()
-
-#adding info and editing
-df1.1<-dive_logbook11 %>%
-  filter(trip.identifier %in% df)%>%
-  left_join(target, by="trip.identifier")
-
-df2<- dive_logbook11 %>%
-  filter(!trip.identifier %in% df)%>%
-  mutate(Target_species_Trip=comm_name)
-
-dive_logbook12<-rbind(df1.1,df2)
-
-# Extract rows where column1 does not match column2
-non_matching_rows <-  dive_logbook12[dive_logbook12$Target_species_Trip !=  dive_logbook12$Target_species, ]
-#################
-
-
-#################
-#dive wise
-#group by the identifier, common name, and then retain the one with more catch_lbs, if 
-target<-dive_logbook10%>%
+target<-dive_logbook16%>%
   group_by(dive.identifier, comm_name)%>%
   summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%
   ungroup()%>%
@@ -489,8 +496,6 @@ target<-dive_logbook10%>%
   filter(total_catch_species>0)%>%
   filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")
 
-
-
 ggplot() + 
   geom_density(data=target,aes(x=percent_catch,fill=comm_name),alpha = 0.5)+
   xlab("Percent of Catch")+
@@ -505,10 +510,10 @@ ggplot() +
         axis.line = element_line(colour = "black"))
 
 
-#trip wise
+#trip 
 
 #group by the identifier, common name, and then retain the one with more catch_lbs, if 
-target<-dive_logbook12%>%
+target<-dive_logbook16%>%
   group_by(trip.identifier, comm_name)%>%
   summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%
   ungroup()%>%
@@ -518,9 +523,9 @@ target<-dive_logbook12%>%
   mutate(percent_catch=(total_catch_species/total_catch_dive)*100)%>%
   mutate(percent_catch_log=log(percent_catch+1))%>%
   filter(total_catch_species>0)%>%
- filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")
- 
- 
+  filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")
+
+
 ggplot() + 
   geom_density(data=target,aes(x=percent_catch,fill=comm_name),alpha = 0.5)+
   xlab("Percent of Catch")+
@@ -533,3 +538,121 @@ ggplot() +
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         axis.line = element_line(colour = "black"))
+
+#################
+
+
+#################
+#Assigning a dive as a sea cucumber or urchin fishery
+
+df<-dive_logbook16%>%
+  group_by(dive.identifier)%>%
+  summarize(n_species= n_distinct(comm_name))%>%
+  filter(n_species >= 2) %>%
+  pull(dive.identifier)
+
+#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+target<-dive_logbook16%>%
+  filter(dive.identifier %in% df)%>%
+  filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")%>%
+  group_by(dive.identifier, comm_name)%>%
+  summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
+  group_by(dive.identifier) %>%
+  mutate(Target_species = comm_name[which.max(total_catch)]) %>%  # Identify comm_name with greatest total catch
+  ungroup() %>%# Ungroup for final output
+  dplyr::select(-comm_name, - total_catch)%>%
+  distinct()
+
+df1<-dive_logbook16 %>%
+  filter(dive.identifier %in% df)%>%
+  left_join(target, by="dive.identifier")
+
+
+df2<- dive_logbook16 %>%
+  filter(!dive.identifier %in% df)%>%
+  mutate(Target_species=comm_name)
+
+dive_logbook17<-rbind(df1,df2)
+#################
+
+
+
+#################
+#Assigning a trip as a sea cucumber or urchin fishery
+
+df<-dive_logbook17%>%
+  group_by(trip.identifier)%>%
+  summarize(n_species= n_distinct(comm_name))%>%
+  filter(n_species >= 2) %>%
+  pull(trip.identifier)
+
+#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+target<-dive_logbook17%>%
+  filter(trip.identifier %in% df)%>%
+  filter(comm_name=="Red sea urchin" | comm_name=="Warty sea cucumber")%>%
+  group_by(trip.identifier, comm_name)%>%
+  summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
+  group_by(trip.identifier) %>%
+  mutate(Target_species_Trip = comm_name[which.max(total_catch)]) %>%  # Identify comm_name with greatest total catch
+  ungroup() %>%# Ungroup for final output
+  dplyr::select(-comm_name, - total_catch)%>%
+  distinct()
+
+#adding info and editing
+df1.1<-dive_logbook17 %>%
+  filter(trip.identifier %in% df)%>%
+  left_join(target, by="trip.identifier")
+
+df2<- dive_logbook17 %>%
+  filter(!trip.identifier %in% df)%>%
+  mutate(Target_species_Trip=comm_name)
+
+dive_logbook18<-rbind(df1.1,df2)
+
+
+#################
+
+
+
+
+#################
+#separating them into their respective fisheries - sea cucumber
+sc<-dive_logbook18%>%
+  filter(Target_species_Trip=="Warty sea cucumber")
+
+no.ports.sc<-sc%>%
+  filter(is.na(port_most_reliable))
+
+ports.sc<-sc%>%
+  filter(!is.na(port_most_reliable))
+
+
+#looking at specifics
+#vessel 42664 for year 2012 was seen in santa barbara for 110/111 trips. the other was in morro bay
+#vessel 40280 for year 2014 was seen in santa barbara for 261/262 trips, other was LA. matchin wtih SB
+#vessel 06990 for year 2013 only seen in LA
+#vessel 07420 for year 2014 onnly seen in LA - labeled as 7420 in landings
+#cannot match vessel 71688
+#others dont have a vessel id but have a fisher id and year. looked at landings for same fisher id and year, found the relevant landings but says red sea urchin. looked at that fisher id and any years after 2009 (two years before the appropriate logbook data) and all port complexes were fort bragg
+#vessel id 20724 and fisher id L47164 only had one port complex for the appropriate year and month
+
+
+no.ports.sc <- no.ports.sc %>%
+  mutate(port_most_reliable = case_when(
+ vessel_id == "06990" ~ "Los Angeles",
+    vessel_id == "07420" ~ "Los Angeles",
+    vessel_id == "20724" ~ "Los Angeles",
+    TRUE ~ port_most_reliable # Keep existing value if none of the conditions match
+  ))
+sc.updated<-rbind(no.ports.sc,ports.sc)
+
+saveRDS(sc.updated,"Dive/Data/Processed Data/seacucumberfishery_matched.rds")
+#################
+
+#################
+#separating them into their respective fisheries - red sea urchin
+rsu<-dive_logbook18%>%
+  filter(Target_species_Trip=="Red sea urchin")
+
+saveRDS(rsu,"Dive/Data/Processed Data/redseaurchinfishery_matched.rds")
+
