@@ -5,7 +5,6 @@ library(sf)
 
 
 #################
-
 ###### read in lobster data
 Lobster<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
   rename(port.complex1=port_complex1, port.complex2=port_complex2)
@@ -47,6 +46,7 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 #################
+
 
 
 
@@ -107,7 +107,6 @@ explor %>%
   mutate(percent.port = round(percent.port, 4))
 # only keep SB, LA, and SD for fishing ground analyses
 #################
-
 
 
 #################

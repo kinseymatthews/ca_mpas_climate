@@ -55,7 +55,7 @@ landings2<-landings2%>%
 
 #################
 #STEP 1
-#lobster logbooks with landing receipts. Will see if we can properply match those with the landings data
+#lobster logbooks with landing receipts. Will see if we can properly match those with the landings data
 lobster.receipt<-lobster_logbook2%>%
   filter(!is.na(receipt_id1))
 
@@ -164,7 +164,7 @@ landings2.tomerge<- landings2%>%
 
 #merging with port and gear information
 no.ports.1.match<- no.ports.1%>%
-  dplyr::select(-port_complex1,-date_landings1, -port_id1, -port1, -primary_gear1, -gear1)%>%
+  dplyr::select(-port_complex1,-date_landings1, -port_id1, -port1, -primary_gear1, -gear1, -block_id_landings1)%>%
   #attach information from receipts
   left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
   rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings)
@@ -174,7 +174,7 @@ no.ports<-rbind(no.ports.1.match, no.ports.2)
 
 #remove second receipt id information and then can add based on 2nd receipt id
 no.ports<-no.ports%>%
-  dplyr::select(-port_complex2, -port2, -port_id2, -date_landings2,-primary_gear2,-gear2)%>%
+  dplyr::select(-port_complex2, -port2, -port_id2, -date_landings2,-primary_gear2,-gear2,-block_id_landings2)%>%
   #attach information from receipts
   left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
   rename(port_complex2=port.complex, port2=port,port_id2=port_id, date_landings2=date.landings,primary_gear2=primary_gear,gear2=gear, block_id_landings2=block_id_landings)

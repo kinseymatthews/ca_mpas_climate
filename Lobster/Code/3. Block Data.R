@@ -6,7 +6,7 @@ library(sp)
 
 ############ 
 #read in data
-Lobster<-read.csv("Lobster/Data/Processed Data/lobster_logbooks_intermediate_9.csv") 
+Lobster<-read.csv("Lobster/Data/Processed Data/lobster_logbooks_edited.rds") 
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
