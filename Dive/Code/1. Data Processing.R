@@ -467,7 +467,8 @@ dive_logbook14%>%
   summarize(n=sum(matching_blocks_case2==FALSE, na.rm = TRUE), total=sum(!is.na(matching_blocks_case2)), percent=(n/total)*100) #15% where they do not agree
 
 dive_logbook15<-dive_logbook14%>%
-  mutate(block_most_reliable=coalesce(block_id, block_id_gps,block_id_landings2,block_id_landings1))
+  mutate(block_most_reliable=coalesce(block_id, block_id_gps,block_id_landings2,block_id_landings1))%>%
+  rename(block_id_logbook=block_id, block_id=block_most_reliable)
 
 #################
 
@@ -558,7 +559,7 @@ target<-dive_logbook16%>%
   group_by(dive.identifier, comm_name)%>%
   summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
   group_by(dive.identifier) %>%
-  mutate(Target_species = comm_name[which.max(total_catch)]) %>%  # Identify comm_name with greatest total catch
+  mutate(Target_species_dive = comm_name[which.max(total_catch)]) %>%  # Identify comm_name with greatest total catch
   ungroup() %>%# Ungroup for final output
   dplyr::select(-comm_name, - total_catch)%>%
   distinct()

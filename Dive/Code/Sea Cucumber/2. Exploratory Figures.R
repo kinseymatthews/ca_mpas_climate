@@ -2,8 +2,6 @@
 library(tidyverse)
 library(sf)
 
-
-
 #################
 
 ###### read in Dive data
@@ -82,13 +80,8 @@ filter(Min_Depthm>=-50)%>%
   #rename port complex so we can reuse code
   rename(port.complex=port_most_reliable)
 
-# WAIT REMOVE BLOCKS TOO DEEP AND REMOVE BLOCKS NORTH OF MONTEREY BAY
-
 #removing block IDs north of monterey bay where fishing shouldnt occur
-block.to.remove<-c(108,135,256,257,265,419,456,457,465)
 
-explor<-explor%>%
-  filter(!block_id %in% block.to.remove)
 
 ##### which port complexes to keep?
 explor %>%

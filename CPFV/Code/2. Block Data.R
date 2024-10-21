@@ -174,7 +174,7 @@ plot_fun('Los Angeles')
 
 
 ############
-#years seperate
+#years separate
 stats_blocks_sf<- explor %>%
   # Step 1: Remove duplicates within each logbookID_vesselID_date and calculate distinct angler_hours
   group_by(logbookID_vesselID_date, angler_hours) %>%

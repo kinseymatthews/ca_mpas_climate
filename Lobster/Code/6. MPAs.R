@@ -9,10 +9,10 @@ library(ggplot2)
 #Read in data
 
 #edited lobster data from the block script
-explor2<-readRDS("Lobster/Data/Processed Data/lobster_filtered.rds")
+explor<-readRDS("Lobster/Data/Processed Data/lobster_filtered.rds")
 
 #cog data
-COG<-read.csv('COG_distance_results_traphours_final!.csv')%>%
+COG<-readRDS('Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds')%>%
   dplyr::select(-X)
 
 #spatial mapping data
@@ -68,12 +68,17 @@ base_theme <- theme(axis.text=element_text(size=7),
                     # Legend
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
+
+#adding in mpa implementation data
+port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+mpa<-data.frame(port.complex=port.complex,mpayear=values)
 ############
 
 
 ############
 #yearly data
-df<- explor2 %>%
+df<- explor %>%
   #get rid of certain ports
   
   #summarize by, port, block
@@ -260,7 +265,7 @@ image_write(m,"Lobster/Figures/Kernel Density/San Diego/San Diego Kernel Densiti
 #area within an mpa
 plot_fun<-function(portcomplex){
   
-  location <- sf_df%>%
+  location <- df_sf%>%
     filter(port.complex== portcomplex)%>%
     group_by(year)%>%
     filter(n() > 1) %>%
@@ -333,7 +338,7 @@ plot_fun<-function(portcomplex){
     # Calculate percentage
     percentage_within_mpa <- (volume_within_mpa / total_volume) * 100
     
-    df <- data.frame(Portcomplex=portcomplex,
+    df <- data.frame(port.complex=portcomplex,
                      Year = year,
                      
                      volume_within_mpa=volume_within_mpa,
@@ -347,22 +352,21 @@ plot_fun<-function(portcomplex){
   
 }
 
-i<-plot_fun("Santa Barbara")
-j<-plot_fun("Los Angeles")
-k<-plot_fun("San Diego")
-#k<-plot_fun("San Diego")
+a<-plot_fun("Santa Barbara")
+b<-plot_fun("Los Angeles")
+c<-plot_fun("San Diego")
 
 
-all.volumes<-rbind(i,j,k)
+
+all.volumes<-rbind(a,b,c)
 all.volumes<-all.volumes%>%
-  # rename(port.complex=Portcomplex)%>%
-  left_join(mpa,by="Portcomplex")
+  left_join(mpa,by="port.complex")
 
 
 #or not facetwrap
 plot_fun<-function(portcomplex){
   location <- all.volumes%>%
-    filter(Portcomplex==portcomplex)
+    filter(port.complex==portcomplex)
   
   
   p<-ggplot(data=location, aes(x=Year))+
@@ -391,9 +395,6 @@ plot_fun("San Diego")
 
 
 ############
-all.volumes<-all.volumes%>%
-  rename(port.complex=Portcomplex)
-
 all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c('Santa Barbara', 'Los Angeles', 'San Diego'))
 
 

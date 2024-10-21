@@ -14,10 +14,10 @@ library(RColorBrewer)
 #Read in data
 
 #edited lobster data from the block script
-explor2<-readRDS("Lobster/Data/Processed Data/lobster_filtered.rds")
+explor<-readRDS("Lobster/Data/Processed Data/lobster_filtered.rds")
 
 #cog data
-COG<-read.csv('COG_distance_results_traphours_final!.csv')%>%
+COG<-readRDS('Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds')%>%
   dplyr::select(-X)
 
 #spatial mapping data
@@ -68,15 +68,20 @@ base_theme <- theme(axis.text=element_text(size=7),
                     # Legend
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
+
+#adding in mpa implementation data
+port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+mpa<-data.frame(port.complex=port.complex,mpayear=values)
 ############
 
 
 
 ############
-#Kernal Densities - All years combined
+#Kernel Densities - All years combined
 
 #summarizing across years to see what one graph with all of the data should kinda look like
-allports.acrossyears<- explor2 %>%
+allports.acrossyears<- explor %>%
   #summarize by, port, block
   group_by(port.complex,block_id)%>%
   summarize(ntrips=n(),
@@ -98,7 +103,6 @@ sf_df$port.complex<- factor(sf_df$port.complex, levels = c('Santa Barbara', 'Los
 
 #remove any bad spatial blocks
 sf_df<- sf_df%>% filter(!st_is_empty(.))
-
 
 plot_fun<-function(portcomplex){ 
   
@@ -181,14 +185,13 @@ ggtitle(paste0( portcomplex, ' Fishing Grounds') , subtitle=" Lobster Fishery Wi
 plot_fun("Santa Barbara")
 plot_fun("Los Angeles")
 plot_fun("San Diego")
-
 ############
 
 ############
 #Kernel Densities - years separated 
 
 #yearly data
-df<- explor2 %>%
+df<- explor %>%
   #get rid of certain ports
   
   #summarize by, port, block
@@ -420,7 +423,7 @@ plot_fun<-function(portcomplex){
     southernmost_latitude_75 <- min(filtered_df_75$y, na.rm = TRUE)
     
     #save in new dataframe with year so it can be in the animations. NEed to save density_df, contour_level, year
-    df <- data.frame(Portcomplex=portcomplex,
+    df <- data.frame(port.complex=portcomplex,
                      Year = year,
                      volume_50=volume_50,
                      volume_75=volume_75,
@@ -437,29 +440,29 @@ plot_fun<-function(portcomplex){
 
 }
 
-i<-plot_fun("Santa Barbara")
-j<-plot_fun("Los Angeles")
-k<-plot_fun("San Diego")
+a<-plot_fun("Santa Barbara")
+b<-plot_fun("Los Angeles")
+c<-plot_fun("San Diego")
 
 
-all.volumes<-rbind(i,j,k)
+all.volumes<-rbind(a,b,c)
 
 
 all.volumes<-all.volumes%>%
   mutate(vol_50_km=volume_50/1000)%>%
   mutate(vol_75_km=volume_75/1000)%>%
   mutate(vol_95_km=volume_95/1000)%>%
-  left_join(mpa,by="Portcomplex")
+  left_join(mpa,by="port.complex")
 
 
 saveRDS(all.volumes,"Lobster/Data/Processed Data/Lobster_all contour volumes.rds")
 
 #order from north to south
-all.volumes$Portcomplex<- factor(all.volumes$Portcomplex, levels = c( 'Santa Barbara', 'Los Angeles', 'San Diego'))
+all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c( 'Santa Barbara', 'Los Angeles', 'San Diego'))
 
 
 p<-ggplot(data=all.volumes, aes(x=Year))+
-  facet_wrap_paginate(~Portcomplex, ncol=3, nrow=1, scales="free_y")+
+  facet_wrap_paginate(~port.complex, ncol=3, nrow=1, scales="free_y")+
   
   geom_line(aes(y=vol_50_km ,color="50% contour"),size=1)+
   geom_line(aes(y=vol_75_km ,color="75% contour"),size=1)+
@@ -484,7 +487,7 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
 
 for(i in 1:n_pages(p)){
   p_save <-  p + 
-    facet_wrap_paginate( ~Portcomplex, ncol=3, nrow=1, page = i, scales="free_y")
+    facet_wrap_paginate( ~port.complex, ncol=3, nrow=1, page = i, scales="free_y")
   ggsave(plot = p_save, filename = paste0('Lobster/Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
 }
 
@@ -509,7 +512,7 @@ COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
 
 
 all.volumes<-readRDS('Lobster/Data/Processed Data/Lobster_all contour volumes.rds')%>%
-  rename(port.complex=Portcomplex, year=Year)
+  rename(year=Year)
 
 
 COG_vcontours<-COG_df%>%
@@ -534,7 +537,8 @@ plot_fun<-function(portcomplex){
     # Apply specific colors using scale_color_manual
     scale_color_manual(values = c("Northern extent" = colors[10],
                                   "COG"= "black",
-                                  "Southern extent" = colors[2])) +
+                                  "Southern extent" = colors[2]),
+                       breaks = c("Northern extent", "COG", "Southern extent")) +  # Control legend order
     # Set y-axis breaks at every 0.5 latitude
     scale_y_continuous(breaks = seq(floor(min(location$COG_latitude)), 
                                     ceiling(max(location$COG_latitude)), 
@@ -550,7 +554,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
 
   
-  filename1 <- paste0('Lobster/Figures/Kernel Density/', portcomplex, '_COG_extents_latitude.jpg')
+  filename1 <- paste0('Lobster/Figures/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 

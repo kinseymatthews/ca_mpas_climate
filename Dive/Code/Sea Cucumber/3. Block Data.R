@@ -6,7 +6,7 @@ library(sf)
 library(sp)
 
 
-#################
+############ 
 
 ###### read in Dive data
 cuc<-readRDS("Dive/Data/Processed Data/seacucumberfishery_matched.rds")
@@ -30,6 +30,18 @@ bathy.data$block_id=as.double(bathy.data$block_id)
 all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
+#spatial mapping data
+usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
+mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
+usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
+  st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
+
+#port codes
+port<-read.csv("CPFV/Data/Raw Data/Port Codes.csv")
+
+# State waters
+state_waters <- readRDS( "CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -47,10 +59,10 @@ base_theme <- theme(axis.text=element_text(size=7),
                     # Legend
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
-#################
+############ 
 
 
-#################
+############ 
 # Data Manipulation
 
 #Want to remove fishing blocks that occur outside the range of the fishery (which goes up to Monterey Bay for a northern range)
@@ -62,8 +74,8 @@ base_theme <- theme(axis.text=element_text(size=7),
 
 #Data Manipulation
 #adding in mpa implementation data
-port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
-values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+port.complex=c("Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
 explor<-cuc%>%
@@ -79,38 +91,153 @@ explor<-cuc%>%
   mutate(Max_depth_m_recorded=depth_max_ft*(-0.3048))%>%
   mutate(Med_depth_m_recorded=(Min_depth_m_recorded+Max_depth_m_recorded)/2)%>%
   #getting rid of blocks too deep
-  filter(Min_Depthm>=-50)%>%
+  filter(Min_Depthm>=-50)%>% #using the block information instead of the recorded depth in case there was a mistake in the recorded depth
   #rename port complex so we can reuse code
-  rename(port.complex=port_most_reliable)
-
-# WAIT REMOVE BLOCKS TOO DEEP AND REMOVE BLOCKS NORTH OF MONTEREY BAY
-
-
-explor<-explor%>%
-mutate(dive.identifier.2=paste(date.logbooks,port_id_logbook,vessel_id,block_id,depth_min_ft, depth_max_ft, hours, dive_number, fisher_id,catch_lbs, sep="_"))
+  rename(port.complex=port_most_reliable)%>%
+  #getting rid of bad or unrealistic dive hours
+  filter(hours<10 &  hours>0.10)%>%
+  filter(!is.na(port.complex))%>%
+  filter(!is.na(block_id))
   
-explor2<-explor%>%
-  filter(!is.na(hours)) %>%#loose 2.5% of data
-  filter(port.complex!="Unknown Major Port")
 
-duplicates <- explor2 %>%
-  group_by(dive.identifier.2) %>%
-  filter(n() > 1) %>%
-  ungroup()
-
-duplicates #302
+saveRDS(explor,"Dive/Data/Processed Data/seacucumber_filtered.rds")
+############ 
 
 
-differing_groups <- duplicates %>%
-  group_by(dive.identifier.2) %>%
-  filter(n_distinct(comm_name) <= 1) %>%
-  ungroup()
-differing_groups
+############ 
+#Block Data
+#summarizing across years to see what one graph with all of the data should kinda look like
 
-differing_groups2 <- differing_groups %>%
+#All years combined
+#summarizing across years to see what one graph with all of the data should kinda look like
+allports.acrossyears<- explor %>%
+  # Step 1: Remove duplicates within each dive.identifier and calculate distinct angler_hours
+  group_by(dive.identifier, hours) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  # Step 2: Summarize distinct dive_hours for each dive.identifier
   group_by(dive.identifier) %>%
-  filter(n_distinct(catch_lbs) <= 1)
+  summarize(total_hours = sum(hours), .groups = 'drop') %>%
+  # Step 3: Join with the original DataFrame to get year, port, and block information
+  left_join(explor %>% dplyr::select(dive.identifier, year, port.complex, block_id), by = "dive.identifier") %>%
+  distinct()%>%
+  # Step 4: Group by year, port, and block to aggregate results
+  group_by( port.complex, block_id) %>%
+  summarize(total_dive_hours = sum(total_hours, na.rm = TRUE),
+            .groups = 'drop')%>%
+  #get block data
+  left_join(all_blocks %>% 
+              dplyr::select(block_id)) %>% 
+  sf::st_as_sf()%>%
+  #remove blocks that dont exist
+  st_make_valid()
+
+#ordering
+allports.acrossyears$port.complex<- factor(allports.acrossyears$port.complex, levels = c('Santa Barbara', 'Los Angeles', 'San Diego'))
+
+#Graphing
+plot_fun<-function(portcomplex){ 
+  df<-allports.acrossyears%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=df, mapping=aes(fill=total_dive_hours)) +
+    # Blocks
+    geom_sf(color="grey50", linewidth=0.1)+
+    # Land
+    geom_sf(data =usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+    # State waters
+    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+    # Set the limits for the coordinate system
+    coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+    # Axes
+    scale_x_continuous(breaks=seq(-126, -118, 2)) +
+    scale_y_continuous(breaks=seq(32, 42, 2)) + 
+    scale_fill_gradientn(name="Dive Hours: \n1998 - 2023",  trans="log",
+                         colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev(),
+                         labels = scales::label_comma(accuracy = 100))+
+    # Theme
+    theme_bw() + base_theme+
+    ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Sea Cucumber Dive Fishery" )
+  
+  name=paste0('Dive/Figures/Cucumber/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+  
+}
+plot_fun("Santa Barbara")
+plot_fun("San Diego")
+plot_fun("Los Angeles")
+############ 
 
 
-explor2%>%
-  filter(duplicated(.) | duplicated(., fromLast = TRUE))
+############ 
+#Block Data
+#years separate
+
+#All years combined
+#summarizing across years to see what one graph with all of the data should kinda look like
+stats_blocks_sf<- explor %>%
+  # Step 1: Remove duplicates within each dive.identifier and calculate distinct angler_hours
+  group_by(dive.identifier, hours) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  # Step 2: Summarize distinct dive_hours for each dive.identifier
+  group_by(dive.identifier) %>%
+  summarize(total_hours = sum(hours), .groups = 'drop') %>%
+  # Step 3: Join with the original DataFrame to get year, port, and block information
+  left_join(explor %>% dplyr::select(dive.identifier, year, port.complex, block_id), by = "dive.identifier") %>%
+  distinct()%>%
+  # Step 4: Group by year, port, and block to aggregate results
+  group_by( port.complex, year, block_id) %>%
+  summarize(total_dive_hours = sum(total_hours, na.rm = TRUE),
+            .groups = 'drop')%>%
+  #get block data
+  left_join(all_blocks %>% 
+              dplyr::select(block_id)) %>% 
+  sf::st_as_sf()%>%
+  #remove blocks that dont exist
+  st_make_valid()%>%
+  #as numeric
+  mutate(year=as.numeric(year))
+
+#ordering
+stats_blocks_sf$port.complex<- factor(stats_blocks_sf$port.complex, levels = c('Santa Barbara', 'Los Angeles', 'San Diego'))
+
+
+############
+#Graphing
+plot_fun<-function(portcomplex){ 
+  
+  portcomplex_data <- stats_blocks_sf %>%
+    filter(port.complex== portcomplex)
+  
+  p<-ggplot(data=portcomplex_data, mapping=aes(fill=total_dive_hours, group=year)) +
+    # Blocks
+    geom_sf(linewidth=0.1)+
+    # Land
+    geom_sf(data=usa_mexico_sf , fill="grey85", col="white", linewidth=0.2, inherit.aes = F) +
+    # State waters
+    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+    # Set the limits for the coordinate system
+    coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+    # Axes
+    scale_x_continuous(breaks=seq(-126, -118, 2)) +
+    scale_y_continuous(breaks=seq(32, 44, 2)) + 
+    scale_fill_gradientn(name="Dive Hours" ,  trans="log",
+                         colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev(),
+                         labels = scales::label_comma(accuracy = 100))+
+    # Theme
+    theme_bw() + base_theme
+  
+  p_animation <-  p +
+    transition_states(year, transition_length = 1, state_length = 3)+
+    labs(subtitle="Sea Cucumber Fishery Year: {closest_state}", title=paste(portcomplex, "Port Complex"))
+  
+  num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
+  anim<-gganimate::animate(p_animation, duration=num_years)
+  
+  name=paste0('Dive/Figures/Cucumber/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
+  anim_save(name, anim)
+}
+plot_fun("Santa Barbara")
+plot_fun("San Diego")
+plot_fun("Los Angeles")
+
+############

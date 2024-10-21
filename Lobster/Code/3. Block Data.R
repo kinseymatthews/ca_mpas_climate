@@ -6,7 +6,8 @@ library(sp)
 
 ############ 
 #read in data
-Lobster<-read.csv("Lobster/Data/Processed Data/lobster_logbooks_edited.rds") 
+Lobster<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
+  rename(port.complex1=port_complex1, port.complex2=port_complex2)
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
@@ -82,7 +83,7 @@ explor<- Lobster%>%
   filter(agree==TRUE | is.na(agree))%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%
-  mutate(block_id = coalesce(block_id_logbook,block_id_gps))%>% #prefers logbook block id to gps block id
+  mutate(block_id = coalesce(block_id_logbook,block_id_gps, block_id_landings1,block_id_landings2))%>% #prefers logbook block id to gps block id
   left_join(all_blocks_df, by="block_id")%>%
   #getting rid of international, offshore,  all midshore besides 897, and all blocks that are too deep
   filter(blck_st!="International" | is.na(blck_st) )%>%

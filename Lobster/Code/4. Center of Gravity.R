@@ -23,7 +23,7 @@ distance_raster1[distance_raster1 > 10000] <- NA
 distance_raster1[is.na(distance_raster1)] <- 0  # Replace NA with 0
 
 #lobster data that has been filtered already
-explor<-readRDS("Lobster/Data/Processed Data/lobster_filtered.csv")
+explor<-readRDS("Lobster/Data/Processed Data/lobster_filtered.rds")
 
 #block data 
 
@@ -57,6 +57,30 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
 
 # State waters
 state_waters <- readRDS( "Lobster/Data/Raw Data/CA_state_waters_polyline.Rds")
+
+#adding in mpa implementation data
+port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+mpa<-data.frame(port.complex=port.complex,mpayear=values)
+
+
+# base theme
+base_theme <- theme(axis.text=element_text(size=7),
+                    axis.text.y = element_text(angle = 90, hjust = 0.5),
+                    axis.title=element_text(size=8),
+                    legend.text=element_text(size=8),
+                    legend.title=element_text(size=9),
+                    strip.text = element_text(size=10),
+                    plot.tag =element_text(size=9),
+                    # plot.title=element_blank(),
+                    # Gridlines
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.background = element_blank(),
+                    axis.line = element_line(colour = "black"),
+                    # Legend
+                    legend.key = element_rect(fill = NA, color=NA),
+                    legend.background = element_rect(fill=alpha('blue', 0)))
 ###############
 
 
@@ -173,16 +197,13 @@ saveRDS(df,'Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds
 
 ###############
 #plotting COG on their own - not doing a function as I am trying to figure out what is going wrong with San Diego
-
-COG_port<-read.csv('COG_distance_results_traphours_final.csv')%>%
+plot_fun<-function(portcomplex){
+COG_port<-readRDS('Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds')%>%
   dplyr:: select(-X)%>%
-  filter(port.complex=="San Diego")
+  filter(port.complex==portcomplex)
  
 location_cog<-st_as_sf(COG_port, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
 location_cog<-st_transform(location_cog, st_crs("+proj=longlat  +datum=WGS84 +units=m +no_defs"))
-location_cog$year=as.factor(location_cog$year)
-
-
 
 #extracting coordinates 
 coordinates<-st_coordinates(location_cog)
@@ -208,8 +229,17 @@ p<-ggplot() +
   # Theme
   theme_bw() + base_theme +
   #theme(axis.title.x=element_blank())+
-  ggtitle(('San Diego Fishing Grounds'), subtitle = 'Lobster Fishery Center of Gravity')+
-  scale_color_viridis_d(name = "Year", option = "D") 
+  ggtitle(paste0(portcomplex, ' Fishing Grounds'), subtitle = 'Lobster Fishery Center of Gravity')+
+  scale_color_viridis_c(name = "Year", option = "D") 
+
+filename1 <- paste0('Lobster/Figures/Kernel Density/',portcomplex,'/',portcomplex,'COG.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+
+}
+
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+plot_fun('San Diego')
 
 ###############
 
@@ -256,7 +286,8 @@ distance_raster <- distance(shoreline_raster)
 #CODE THAT WILL WORK ONCE THE RASTER IS FIGURED OUT
 ###############
 #Coastwide figure with port complexes and fishing ground shifts
-
+df<-readRDS('Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds')%>%
+  dplyr:: select(-X)
 #filter for first and last year which will be actual points on the plot
 COG1<-df%>%
   filter(year=="1980" | year=="2022")%>%
@@ -293,10 +324,10 @@ p<-ggplot() +
   # points
   geom_sf(data=COG_sf,aes(shape=Year),size=2)+
   # Crop
-  coord_sf(xlim = c(-125, -118), ylim = c(33.5, 42)) +
+  coord_sf(xlim = c(-125, -116), ylim = c(32, 38)) +
   # Axes
-  scale_x_continuous(breaks=seq(-125, -118, 2)) +
-  scale_y_continuous(breaks=seq(33.5, 42, 2)) + 
+  scale_x_continuous(breaks=seq(-125, -116, 2)) +
+  scale_y_continuous(breaks=seq(32, 38, 2)) + 
   # Theme
   theme_bw() + base_theme +
   theme(
