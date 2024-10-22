@@ -126,8 +126,8 @@ cog_results <- stats_kd_sf %>%
 
 # Print or use final results as needed
 print(cog_results)
-saveRDS(cog_results, 'Dive/Data/Processed Data/COG_TrapNights_distanceway.rds')
-cog_results_2<-readRDS('Dive/Data/Processed Data/COG_TrapNights_distanceway.rds')
+saveRDS(cog_results, 'Dive/Data/Processed Data/COG_DiveHours_distanceway_seacucumber.rds')
+cog_results_2<-readRDS('Dive/Data/Processed Data/COG_DiveHours_distanceway_seacucumber.rds')
 
 
 #getting longitude from distance to shore
@@ -196,7 +196,7 @@ b<-plot_fun("Los Angeles")
 c<-plot_fun("San Diego")
 
 df<-rbind(a,b,c)
-saveRDS(df,'Dive/Data/Processed Data/COG_distance_results_traphours_final.rds')
+saveRDS(df,'Dive/Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds')
 
 ###############
 
@@ -206,7 +206,7 @@ saveRDS(df,'Dive/Data/Processed Data/COG_distance_results_traphours_final.rds')
 ###############
 #plotting COG on their own - not doing a function as I am trying to figure out what is going wrong with San Diego
 plot_fun<-function(portcomplex){
-  COG_port<-readRDS('Dive/Data/Processed Data/COG_distance_results_traphours_final.rds')%>%
+  COG_port<-readRDS('Dive/Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds')%>%
     filter(port.complex==portcomplex)%>%
     mutate(year=as.numeric(year))
   
@@ -237,7 +237,7 @@ plot_fun<-function(portcomplex){
     # Theme
     theme_bw() + base_theme +
     #theme(axis.title.x=element_blank())+
-    ggtitle(paste0(portcomplex, ' Fishing Grounds'), subtitle = 'Dive Fishery Center of Gravity')+
+    ggtitle(paste0(portcomplex, ' Fishing Grounds'), subtitle = 'Sea Cucumber Dive Fishery Center of Gravity')+
     scale_color_viridis_c(name = "Year", option = "D") 
   
   filename1 <- paste0('Dive/Figures/Cucumber/Kernel Density/',portcomplex,'/',portcomplex,'COG.jpg')
@@ -256,7 +256,7 @@ plot_fun('San Diego')
 #CODE THAT WILL WORK ONCE THE RASTER IS FIGURED OUT
 ###############
 #Coastwide figure with port complexes and fishing ground shifts
-df<-readRDS('Dive/Data/Processed Data/COG_distance_results_traphours_final.rds')%>%
+df<-readRDS('Dive/Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds')%>%
   ungroup()%>%
   mutate(year=as.numeric(year))
 
@@ -315,7 +315,7 @@ p<-ggplot() +
     plot.margin = margin(0, 0, 0, 0) # Remove margins around the plot
   ) +
   
-  ggtitle(('Dive Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
+  ggtitle(('Sea Cucumber Dive Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
 
 filename1 <- ('Dive/Figures/Cucumber/Kernel Density/AllPorts_mapped_COG_artsy.jpg')

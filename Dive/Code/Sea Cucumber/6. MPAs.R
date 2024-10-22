@@ -12,7 +12,7 @@ library(ggplot2)
 explor<-readRDS("Dive/Data/Processed Data/seacucumber_filtered.rds")
 
 #cog data
-COG<-readRDS('Dive/Data/Processed Data/COG_distance_results_traphours_final.rds')
+COG<-readRDS('Dive/Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds')
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
@@ -21,16 +21,16 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("Lobster/Data/Raw Data/Port Codes.csv")
+port<-read.csv("Dive/Data/Raw Data/Port Codes.csv")
 
 # State waters
-state_waters <- readRDS( "Lobster/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 #mpas
 mpa_blocks<-wcfish::mpas_ca
 
 # block data
-all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -38,7 +38,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -132,7 +132,6 @@ plot_fun<-function(portcomplex){
   #get unique years in dataset
   unique_years<-unique(location$year)
   
-  
   #Loop through each year and calculate kernel density
   for(year in unique_years){
     
@@ -142,7 +141,7 @@ plot_fun<-function(portcomplex){
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
     #weights
-    weights<-year_data$trap_nights
+    weights<-year_data$total_dive_hours
     
     # Create a point pattern (ppp object)
     # Create a point pattern (ppp object)
@@ -221,7 +220,7 @@ plot_fun<-function(portcomplex){
       scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
       scale_y_continuous(breaks=seq(miny-.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
       
-      ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Sea Cucumber dive Fishery: Year ', year, ', with 75% volume contour' ))+
+      ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Sea Cucumber Dive Fishery: Year ', year, ', with 75% volume contour' ))+
       theme_bw() + base_theme+ 
       theme(axis.title = element_blank())
     
@@ -258,3 +257,156 @@ m<-image_animate(m, fps=1)
 image_write(m,"Dive/Figures/Cucumber/Kernel Density/San Diego/San Diego Kernel Densities_MPA_Animation.gif")
 ############
 
+
+############
+#area within an mpa
+plot_fun<-function(portcomplex){
+  
+  location <- df_sf%>%
+    filter(port.complex==portcomplex)%>%
+    group_by(year)%>%
+    filter(n() > 1) %>%
+    ungroup()
+  
+  #get unique years in dataset
+  unique_years<-unique(location$year)
+  
+  datalist=list()
+  
+  #Loop through each year and calculate kernel density
+  for(year in unique_years){
+    
+    #subset data for the current year
+    year_data<-location[location$year==year,]
+    
+    #extracting coordinates and weights
+    coordinates<-st_coordinates(year_data)
+    
+    #weights
+    weights<-year_data$total_dive_hours
+    
+    # Create a point pattern (ppp object)
+    minx<-(min(coordinates[,1]))
+    maxx<-(max(coordinates[,1]))
+    miny<-(min(coordinates[,2]))
+    maxy<-(max(coordinates[,2]))
+    
+    points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
+    
+    # Compute kernel density estimation using raw and logcdata
+    sigma<-bw.diggle(points_ppp)
+    
+    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
+    
+    # Convert density to a raster (assuming a reasonable raster resolution)
+    density_raster <- as(raster(as.im(density)), "RasterLayer")
+    
+    # Mask the density raster with the land raster
+    density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
+    
+    # Convert density to a data frame
+    density_df <- as.data.frame(rasterToPoints(density_masked))
+    names(density_df) <- c("x", "y", "value")
+    
+    # Calculate the cumulative distribution function (CDF)
+    density_values <- sort(density_df$value, decreasing = TRUE)
+    cdf <- cumsum(density_values) / sum(density_values)
+    
+    # Find the contour level corresponding to 75% volume
+    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
+    
+    # Create a mask for values above the 75% contour
+    density_raster_masked <- density_masked
+    density_raster_masked[] <- ifelse(density_masked[] >= contour_level_75, density_masked[], NA)
+    
+    # Compute total volume of KDE
+    total_volume <- cellStats(density_raster_masked, stat = 'sum', na.rm = TRUE)
+    
+    # Mask the density raster with the MPA raster
+    density_within_mpa <- mask(density_raster_masked, mpa_blocks, inverse = FALSE)
+    
+    # Compute volume of KDE within MPAs
+    volume_within_mpa <- cellStats(density_within_mpa, stat = 'sum', na.rm = TRUE)
+    
+    # Calculate percentage
+    percentage_within_mpa <- (volume_within_mpa / total_volume) * 100
+    
+    df <- data.frame(port.complex=portcomplex,
+                     Year = year,
+                     volume_within_mpa=volume_within_mpa,
+                     percentage_within_mpa =percentage_within_mpa ,
+                     total_volume=total_volume)
+    
+    # Append current year's results to combined_df
+    datalist[[year]] <- df
+  }
+  all.data<- dplyr::bind_rows(datalist)
+  all.data
+  
+}
+
+a<-plot_fun("Santa Barbara")
+b<-plot_fun("Los Angeles")
+c<-plot_fun("San Diego")
+
+
+all.volumes<-rbind(a,b,c)
+all.volumes<-all.volumes%>%
+  left_join(mpa,by="port.complex")%>%
+  mutate(Year=as.numeric(Year))
+
+plot_fun<-function(portcomplex){
+  location <- all.volumes%>%
+    filter(port.complex==portcomplex)
+  
+  
+  p<-ggplot(data=location, aes(x=Year))+
+    geom_line(aes(y=percentage_within_mpa), color="black",size=1)+
+    labs(y ='Percent weighted effort \n within MPAs') +
+    # Theme
+    theme_bw() + 
+    base_theme  +
+    theme(legend.position="none")+
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + 
+    geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
+  
+  filename1 <- paste0('Dive/Figures/Cucumber/Kernel Density/', portcomplex, '_perc.effort within mpa.jpg')
+  ggsave(filename = filename1, plot = p, width = 6, height = 4, units = "in", dpi = 300)
+  
+  
+}
+
+plot_fun('Los Angeles')
+plot_fun('Santa Barbara')
+plot_fun("San Diego")
+############
+
+
+
+############
+all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c('Santa Barbara', 'Los Angeles', 'San Diego'))
+
+
+p<-ggplot(data=all.volumes, aes(x=Year, color=port.complex))+
+  # geom_line(aes(y=vol_50_km ,color="50% contour"),size=1)+
+  geom_line(aes(y=percentage_within_mpa),size=.5)+
+  #  geom_line(aes(y=vol_95_km ,color="95% contour"),size=1)+
+  labs(y = ('Percent weighted effort \n within MPAs'), x='Year') +
+  
+  # Theme
+  theme_bw() + 
+  base_theme  +
+  theme(legend.title = element_blank())+
+  scale_color_manual(name = "Port complex",
+                     values = c("Santa Barbara" = RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")[8],           
+                                "Los Angeles" = RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")[4],  
+                                "San Diego" = RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")[2]))+
+  scale_y_continuous(
+    limits = c(0, 16),            # Set the limits of the y-axis
+    breaks = seq(0, 16, by = 4) # Set the breaks on the y-axis
+    
+  )
+
+filename1 <- ('Dive/Figures/Cucumber/Kernel Density/All Ports_weightedefforft_MPAs.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+############

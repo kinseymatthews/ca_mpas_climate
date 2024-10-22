@@ -96,7 +96,8 @@ explor<- Lobster%>%
   filter(n_nights<=9)%>%
   filter(n_traps_pulled<=600)%>%
   filter(n_traps_pulled>0)%>%
-  filter(n_nights>0)
+  filter(n_nights>0)%>%
+  distinct()
 
 saveRDS(explor,"Lobster/Data/Processed Data/lobster_filtered.rds")
 

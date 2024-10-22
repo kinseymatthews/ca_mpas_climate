@@ -17,7 +17,7 @@ library(RColorBrewer)
 explor<-readRDS("Dive/Data/Processed Data/seacucumber_filtered.rds")
 
 #cog data
-COG<-readRDS('Dive/Data/Processed Data/COG_distance_results_traphours_final.rds')
+COG<-readRDS('Dive/Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds')
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
@@ -26,13 +26,13 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("Lobster/Data/Raw Data/Port Codes.csv")
+port<-read.csv("Dive/Data/Raw Data/Port Codes.csv")
 
 # State waters
-state_waters <- readRDS( "Lobster/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 # block data
-all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -40,7 +40,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -118,7 +118,7 @@ plot_fun<-function(portcomplex){
   
   #extracting coordinates and weights
   coordinates<-st_coordinates(location)
-  weights<-location$trap_nights
+  weights<-location$total_dive_hours
   
   # Create a point pattern (ppp object)
   minx<-(min(coordinates[,1]))
@@ -158,7 +158,7 @@ plot_fun<-function(portcomplex){
   p<-ggplot() +
     geom_raster(data = density_df, aes(x=x,y=y,fill = value)) +
     
-    scale_fill_gradientn(name = "Dive Hours: \nYears 1998 - 2022", 
+    scale_fill_gradientn(name = "Dive Hours: \nYears 1998 - 2023", 
                          colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
                          limits = c(0, max(density_df$value)),  # Adjust limits as needed
                          na.value = "white") +  # Set NA values to white
@@ -252,7 +252,7 @@ plot_fun<-function(portcomplex){
     coordinates<-st_coordinates(year_data)
     
     #weights
-    weights<-year_data$trap_nights
+    weights<-year_data$total_dive_hours
     
     # Create a point pattern (ppp object)
     # Create a point pattern (ppp object)
@@ -384,7 +384,7 @@ plot_fun<-function(portcomplex){
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    weights<-year_data$trap_nights
+    weights<-year_data$total_dive_hours
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1]))
@@ -510,7 +510,7 @@ COG_df<-COG_sf%>%
   rename(Year=year)%>%
   mutate(Year=as.double(Year))
 COG_df$COG_latitude <- st_coordinates(COG_sf)[, "Y"]  # Extracts latitude
-COG_df$COG_lonas.double()COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
+COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
 
 
 COG_vcontours<-COG_df%>%

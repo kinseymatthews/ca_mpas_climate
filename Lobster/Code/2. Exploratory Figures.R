@@ -94,7 +94,8 @@ explor<- Lobster%>%
   mutate(Depth_m=depth_ft*(-0.3048))
 
 explor<-explor%>%
-  filter(!block_id %in% block.to.remove)
+  filter(!block_id %in% block.to.remove)%>%
+  distinct()
 
 ##### which port complexes to keep?
 explor %>%
