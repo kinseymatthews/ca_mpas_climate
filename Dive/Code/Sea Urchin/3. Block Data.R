@@ -1,7 +1,7 @@
 
 #libraries
 library(gganimate)
-library(dplyr)
+library(tidyverse)
 library(sf)
 library(sp)
 
@@ -37,10 +37,10 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("CPFV/Data/Raw Data/Port Codes.csv")
+port<-read.csv("Dive/Data/Raw Data/Port Codes.csv")
 
 # State waters
-state_waters <- readRDS( "CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -79,7 +79,7 @@ mpa<-data.frame(port.complex=port.complex,mpayear=values)
 explor<-urc%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=c("port_most_reliable"="port.complex"))%>%
   #add spatial block data
-  left_join(all_blocks_df, by=c("block_most_reliable"="block_id"))%>%
+  left_join(all_blocks_df, by=c("block_id"))%>%
   #getting rid of international, offshore,  all midshore besides 897
   filter(blck_st!="International" | is.na(blck_st))%>%
   filter(blck_ty!="Offshore" | is.na(blck_ty))%>%

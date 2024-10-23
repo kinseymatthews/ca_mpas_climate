@@ -66,7 +66,7 @@ mpa<-data.frame(port.complex=port.complex,mpayear=values)
 explor<-cuc%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=c("port_most_reliable"="port.complex"))%>%
   #add spatial block data
-  left_join(all_blocks_df, by=c("block_most_reliable"="block_id"))%>%
+  left_join(all_blocks_df, by="block_id")%>%
   #getting rid of international, offshore,  all midshore besides 897
   filter(blck_st!="International" | is.na(blck_st))%>%
   filter(blck_ty!="Offshore" | is.na(blck_ty))%>%
@@ -190,7 +190,7 @@ ggsave(filename = 'Dive/Figures/Cucumber/Exploratory/Percent_Depth_Reported.jpg'
 #Depth by complexes
 # number of trips with the reported depth not in the correct bounds
 cuc.with.depth<-explor[!is.na(explor$depth_min_ft),]%>%
-  dplyr::select(port.complex, year, block_most_reliable, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)
+  dplyr::select(port.complex, year, block_id, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)
 
 inside.bounds<-cuc.with.depth%>%
   filter(
@@ -205,7 +205,7 @@ plot_fun<-function(portcomplex){
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select( year,block_most_reliable, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
+    dplyr::select( year,block_id, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
     mutate(log_depth=log(-1*Med_depth_m_recorded))
   
   # Convert `year` to a factor to ensure separate boxplots per year

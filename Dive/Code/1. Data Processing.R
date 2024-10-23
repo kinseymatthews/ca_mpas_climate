@@ -480,7 +480,7 @@ dive_logbook15<-dive_logbook14%>%
 #dive
 
 dive_logbook16<-dive_logbook15%>%
-  mutate(dive.identifier=paste(date.logbooks,port_most_reliable,vessel_id, location_orig,block_most_reliable,depth_min_ft, depth_max_ft, hours, dive_number, fisher_id, sep="_"))%>%
+  mutate(dive.identifier=paste(date.logbooks,port_most_reliable,vessel_id, location_orig,block_id,depth_min_ft, depth_max_ft, hours, dive_number, fisher_id, sep="_"))%>%
   mutate(trip.identifier=paste(date.logbooks,port_most_reliable,vessel_id, sep="_"))
 
 
@@ -571,7 +571,7 @@ df1<-dive_logbook16 %>%
 
 df2<- dive_logbook16 %>%
   filter(!dive.identifier %in% df)%>%
-  mutate(Target_species=comm_name)
+  mutate(Target_species_dive=comm_name)
 
 dive_logbook17<-rbind(df1,df2)
 #################

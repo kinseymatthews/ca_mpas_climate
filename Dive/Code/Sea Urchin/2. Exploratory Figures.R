@@ -66,7 +66,7 @@ mpa<-data.frame(port.complex=port.complex,mpayear=values)
 explor<-urch%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=c("port_most_reliable"="port.complex"))%>%
   #add spatial block data
-  left_join(all_blocks_df, by=c("block_most_reliable"="block_id"))%>%
+  left_join(all_blocks_df, by="block_id")%>%
   #getting rid of international, offshore,  all midshore besides 897
   filter(blck_st!="International" | is.na(blck_st))%>%
   filter(blck_ty!="Offshore" | is.na(blck_ty))%>%
@@ -215,12 +215,12 @@ depth.reported <- full_join(depth.year, no.depth.year, by = "year") %>%
 
 p <-ggplot(data=depth.reported, aes(x=year, y=percent.depth))+
   geom_point()+
-  ggtitle("Percent of Sea Cucumber Trips with Reported Depth")+
+  ggtitle("Percent of Urchin Trips with Reported Depth")+
   labs(x="Year", y="Percentage")+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(filename = 'Dive/Figures/Cucumber/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'Dive/Figures/Urchin/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 
@@ -229,7 +229,7 @@ ggsave(filename = 'Dive/Figures/Cucumber/Exploratory/Percent_Depth_Reported.jpg'
 #Depth by complexes
 # number of trips with the reported depth not in the correct bounds
 cuc.with.depth<-explor[!is.na(explor$depth_min_ft),]%>%
-  dplyr::select(port.complex, year, block_most_reliable, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)
+  dplyr::select(port.complex, year, block_id, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)
 
 inside.bounds<-cuc.with.depth%>%
   filter(
@@ -244,7 +244,7 @@ plot_fun<-function(portcomplex){
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select( year,block_most_reliable, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
+    dplyr::select( year,block_id, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
     mutate(log_depth=log(-1*Med_depth_m_recorded))
   
   # Convert `year` to a factor to ensure separate boxplots per year
@@ -262,15 +262,16 @@ plot_fun<-function(portcomplex){
     ) +
     geom_boxplot()+
     theme_bw() + base_theme +
-    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of Sea Cucumber Dive Trips')+
+    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of Urchin Dive Trips')+
     # theme(legend.position = "bottom")+
     ylab("Logged Depth (m)")+
     xlab("Year")+
     geom_vline(xintercept = mpayear, linetype = "dotted", color = "red",size=1)
   
-  name=paste0('Dive/Figures/Cucumber/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  name=paste0('Dive/Figures/Urchin/Exploratory/',portcomplex,' Depth Distributions.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 }
+plot_fun("Fort Bragg")
 plot_fun("Santa Barbara")
 plot_fun("Los Angeles")
 plot_fun("San Diego")
