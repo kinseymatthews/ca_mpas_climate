@@ -13,10 +13,10 @@ library(RColorBrewer)
 #Read in data
 
 #edited cpfv data from the block script
-explor<-readRDS("CPFV/Data/Processed Data/CPFV_filtered.rds")
+explor<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_filtered.rds")
 
 #cog data
-COG<-readRDS('CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
+COG<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
 COG_sf<-st_as_sf(COG, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
 st_transform(crs = 4326)
 COG_sf$year=as.factor(COG_sf$year)
@@ -28,13 +28,13 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("CPFV/Data/Raw Data/Port Codes.csv")
+port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Port Codes.csv")
 
 # State waters
-state_waters <- readRDS( "CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 # block data
-all_blocks<-st_read("CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -42,7 +42,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -180,7 +180,7 @@ plot_fun<-function(portcomplex){
           axis.title.y=element_blank())
   
   
-  name=paste0('CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
   
 }
@@ -323,7 +323,7 @@ plot_fun<-function(portcomplex){
       theme(axis.title = element_blank())
     
     
-    name=paste0('CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex, year,'.jpg')
+    name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex, year,'.jpg')
     ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }
@@ -344,10 +344,10 @@ plot_fun('Los Angeles')
 ############
 #importing images and creating an animation
 plot_fun<-function(portcomplex){
-frames<-paste0('CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,1980:2022,".jpg")
+frames<-paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,1980:2022,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,paste0('CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex, 'Kernel Densities_Animation.gif'))
+image_write(m,paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex, 'Kernel Densities_Animation.gif'))
 }
 
 plot_fun("Eureka")
@@ -463,7 +463,7 @@ all.volumes<-all.volumes%>%
   left_join(mpa,by="port.complex")
 
 
-saveRDS(all.volumes,"CPFV/Data/Processed Data/CPFV_all contour volumes.rds")
+saveRDS(all.volumes,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_all contour volumes.rds")
 
 #order from north to south
 all.volumes$Portcomplex<- factor(all.volumes$port.complex, levels = c( 'Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
@@ -495,7 +495,7 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
 for(i in 1:n_pages(p)){
   p_save <-  p + 
     facet_wrap_paginate( ~Portcomplex, ncol=3, nrow=1, page = i, scales="free_y")
-  ggsave(plot = p_save, filename = paste0('CPFV/Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 6, units = "in")
+  ggsave(plot = p_save, filename = paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 6, units = "in")
 }
 
 #can also do the above so its not facetwrap and all separate
@@ -521,7 +521,7 @@ plot_fun<-function(portcomplex){
     annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
-  filename1 <- paste0('CPFV/Figures/Kernel Density/', portcomplex,'/',portcomplex, '_75%volume contour.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/', portcomplex,'/',portcomplex, '_75%volume contour.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
   
   p
@@ -532,7 +532,6 @@ plot_fun('Eureka')
 plot_fun('Fort Bragg')
 plot_fun('Bodega Bay')
 plot_fun('San Francisco')
-
 plot_fun('Morro Bay')
 plot_fun('Los Angeles')
 plot_fun('Santa Barbara')
@@ -587,7 +586,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
   
-  filename1 <- paste0('CPFV/Figures/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 

@@ -5,10 +5,10 @@ library(sf)
 #################
 
 ###### read in Dive data
-urch<-readRDS("Dive/Data/Processed Data/redseaurchinfishery_matched.rds")
+urch<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/redseaurchinfishery_matched.rds")
 
 ###### read in block data
-all_blocks<-st_read("Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -16,7 +16,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv("Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -127,7 +127,7 @@ p <-ggplot(data=df, aes(x=year, y=percent.NA))+
     breaks = c(1980, 1990, 2000, 2010,2020),  # Specific breaks
     labels = c("1980", "1990", "2000", "2010", "2020")  # Corresponding labels
   ) 
-ggsave(plot = p, filename = ("Dive/Figures/Urchin/Exploratory/Percentage of Urchin Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
+ggsave(plot = p, filename = ("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Exploratory/Percentage of Urchin Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
 
 
 #################
@@ -171,9 +171,9 @@ plot_fun<-function(portcomplex){
       labels = c("1980", "1990", "2000", "2010", "2020")  # Corresponding labels
     ) 
   
-  filename1 <- paste0('Dive/Figures/Urchin/Exploratory/', portcomplex, '_NTrips_Year.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Exploratory/', portcomplex, '_NTrips_Year.jpg')
   ggsave(filename = filename1, plot = p, width = 8, height = 6, units = "in", dpi = 300)
-  filename2 <- paste0('Dive/Figures/Urchin/Exploratory/', portcomplex, '_NVessels_Year.jpg')
+  filename2 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Exploratory/', portcomplex, '_NVessels_Year.jpg')
   ggsave(filename = filename2, plot = p2, width = 8, height = 6, units = "in", dpi = 300)
 }
 plot_fun('Fort Bragg')
@@ -220,7 +220,7 @@ p <-ggplot(data=depth.reported, aes(x=year, y=percent.depth))+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(filename = 'Dive/Figures/Urchin/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 
@@ -268,7 +268,7 @@ plot_fun<-function(portcomplex){
     xlab("Year")+
     geom_vline(xintercept = mpayear, linetype = "dotted", color = "red",size=1)
   
-  name=paste0('Dive/Figures/Urchin/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Exploratory/',portcomplex,' Depth Distributions.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 }
 plot_fun("Fort Bragg")

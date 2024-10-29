@@ -6,10 +6,10 @@ library(ggplot2)
 #################
 
 ###### read in CPFV data
-CPFV<-readRDS("/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
+CPFV<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
 
 ###### read in block data
-all_blocks<-st_read("/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -17,7 +17,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv("/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -28,7 +28,7 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Port Codes
-port<-read.csv('/Users/kinse/Box/ca mpas climate/CPFV/Data/Raw Data/Port Codes.csv')
+port<-read.csv('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Port Codes.csv')
 
 
 # base theme
@@ -125,7 +125,7 @@ p2 <-ggplot(data=df, aes(x=year, y=percent.NA))+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(plot = p2, filename = ("CPFV/Figures/Exploratory/Percentage of CPFV Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
+ggsave(plot = p2, filename = ("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Exploratory/Percentage of CPFV Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
 #################
 
 
@@ -159,9 +159,9 @@ plot_fun<-function(portcomplex){
     base_theme
   
   
-  filename1 <- paste0('CPFV/Figures/Exploratory/', portcomplex, '_NTrips_Year.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Exploratory/', portcomplex, '_NTrips_Year.jpg')
   ggsave(filename = filename1, plot = p, width = 8, height = 6, units = "in", dpi = 300)
-  filename2 <- paste0('CPFV/Figures/Exploratory/', portcomplex, '_NVessels_Year.jpg')
+  filename2 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Exploratory/', portcomplex, '_NVessels_Year.jpg')
   ggsave(filename = filename2, plot = p2, width = 8, height = 6, units = "in", dpi = 300)
 }
 
@@ -200,7 +200,7 @@ p <-ggplot(data=na.nonna.blocks, aes(x=year, y=percent.na))+
   geom_smooth(method="lm")+
   base_theme
 
-ggsave(filename = 'CPFV/Figures/Exploratory/Percent_Incorrect_Blocks.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Exploratory/Percent_Incorrect_Blocks.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 
@@ -229,7 +229,7 @@ p <-ggplot(data=df, aes(x=year, y=percent.depth))+
   labs(x="Year", y="Percentage")+
   base_theme
 
-ggsave(filename = 'CPFV/Figures/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 
@@ -275,7 +275,7 @@ plot_fun<-function(portcomplex){
     xlab("Year")+
     geom_vline(xintercept = mpayear, linetype = "dotted", color = "red",size=1)
   
-  name=paste0('CPFV/Figures/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Exploratory/',portcomplex,' Depth Distributions.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 }
 

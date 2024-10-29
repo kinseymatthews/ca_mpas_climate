@@ -12,9 +12,9 @@ library(lubridate)
 
 #################
 #upload raw data
-lobster_logbook<-readRDS("Lobster/Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds")
-landings<-readRDS("Lobster/Data/Raw Data/1980_2022_landings_receipts.rds")
-port_info<-read.csv('Lobster/Data/Raw Data/Port Codes.csv')%>%
+lobster_logbook<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds")
+landings<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/1980_2022_landings_receipts.rds")
+port_info<-read.csv('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/Port Codes.csv')%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################
@@ -454,7 +454,7 @@ theme(axis.text=element_text(size=8),
   scale_x_continuous(breaks = seq(1, 15, 1))+
   scale_y_continuous(breaks = seq(50, 65, 5), limits = c(50, 65))
 
-filename1 <- ('Lobster/Figures/Exploratory/Matching_Buffer_15 days.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Matching_Buffer_15 days.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 #################
 
@@ -515,7 +515,7 @@ p2<-ggplot(results_df, aes(x = day, y = percent_matched)) +
   scale_x_continuous(breaks = seq(1, 15, 1))+
   scale_y_continuous(breaks = seq(50, 65, 5), limits = c(50, 65))
 
-filename1 <- ('Lobster/Figures/Exploratory/Matching_Buffer_8 days either side.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Matching_Buffer_8 days either side.jpg')
 ggsave(filename = filename1, plot = p2, width = 6, height = 3, units = "in", dpi = 300)
 
 #################
@@ -578,7 +578,7 @@ p3<-ggplot(results_df, aes(x = day, y = percent_matched)) +
   scale_x_continuous(breaks = seq(1, 15, 1))+
   scale_y_continuous(breaks = seq(50, 65, 5), limits = c(50, 65.5))
 
-filename1 <- ('Lobster/Figures/Exploratory/Matching_Buffer_15 days either side.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Matching_Buffer_15 days either side.jpg')
 ggsave(filename = filename1, plot = p3, width = 6, height = 3, units = "in", dpi = 300)
 #################
 

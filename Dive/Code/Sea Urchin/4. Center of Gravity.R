@@ -11,7 +11,7 @@ library(terra)
 #Data
 
 #distance raster from GIS
-distance_raster1<-raster('Dive/Data/Processed Data/Distance to shore/Dist_shore_rast_clip.tif')
+distance_raster1<-raster('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/Distance to shore/Dist_shore_rast_clip.tif')
 projection(distance_raster1)
 #plot(distance_raster1)
 res(distance_raster1)
@@ -23,11 +23,11 @@ res(distance_raster1)
 #distance_raster1[is.na(distance_raster1)] <- 0  # Replace NA with 0
 
 #Dive data that has been filtered already
-explor<-readRDS("Dive/Data/Processed Data/seaurchin_filtered.rds")
+explor<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seaurchin_filtered.rds")
 
 #block data 
 
-all_blocks<-st_read("Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -35,7 +35,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -46,7 +46,7 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Distances from shore of each block
-block_distances <- read.csv( "Dive/Data/Raw Data/Block_Distances_shore.csv")%>%
+block_distances <- read.csv( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Block_Distances_shore.csv")%>%
   dplyr:: select(-X)
 
 #spatial data for graphing
@@ -56,7 +56,7 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 # State waters
-state_waters <- readRDS( "Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 #adding in mpa implementation data
 port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
@@ -126,8 +126,8 @@ cog_results <- stats_kd_sf %>%
 
 # Print or use final results as needed
 
-saveRDS(cog_results, 'Dive/Data/Processed Data/COG_DiveHours_distanceway_seaurchin.rds')
-cog_results_2<-readRDS('Dive/Data/Processed Data/COG_DiveHours_distanceway_seaurchin.rds')
+saveRDS(cog_results, 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/COG_DiveHours_distanceway_seaurchin.rds')
+cog_results_2<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/COG_DiveHours_distanceway_seaurchin.rds')
 
 
 #getting longitude from distance to shore
@@ -197,7 +197,7 @@ c<-plot_fun("Los Angeles")
 d<-plot_fun("San Diego")
 
 df<-rbind(a,b,c,d)
-saveRDS(df,'Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds')
+saveRDS(df,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds')
 
 ###############
 
@@ -206,7 +206,7 @@ saveRDS(df,'Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurc
 ###############
 #plotting COG on their own - not doing a function as I am trying to figure out what is going wrong with San Diego
 plot_fun<-function(portcomplex){
-  COG_port<-readRDS('Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds')%>%
+  COG_port<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds')%>%
     filter(port.complex==portcomplex)%>%
     mutate(year=as.numeric(year))
   
@@ -240,7 +240,7 @@ plot_fun<-function(portcomplex){
     ggtitle(paste0(portcomplex, ' Fishing Grounds'), subtitle = 'Sea Urchin Dive Fishery Center of Gravity')+
     scale_color_viridis_c(name = "Year", option = "D") 
   
-  filename1 <- paste0('Dive/Figures/Urchin/Kernel Density/',portcomplex,'/',portcomplex,'COG.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Kernel Density/',portcomplex,'/',portcomplex,'COG.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -256,7 +256,7 @@ plot_fun('San Diego')
 #CODE THAT WILL WORK ONCE THE RASTER IS FIGURED OUT
 ###############
 #Coastwide figure with port complexes and fishing ground shifts
-df<-readRDS('Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds')%>%
+df<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds')%>%
   ungroup()%>%
   mutate(year=as.numeric(year))
 
@@ -318,7 +318,7 @@ p<-ggplot() +
   ggtitle(('Sea Urchin Dive Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
 
-filename1 <- ('Dive/Figures/Urchin/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ###############
 
@@ -348,7 +348,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
     xlab('Year')
   
-  filename1 <- paste0('Dive/Figures/Urchin/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
@@ -388,7 +388,7 @@ plot_fun<-function(portcomplex){
     xlab('Year')
   
   
-  filename1 <- paste0('Dive/Figures/Urchin/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 plot_fun('Fort Bragg')
@@ -415,7 +415,7 @@ p<-ggplot(data=df2, aes(x=year, color=port.complex))+
   base_theme  +
   theme(legend.title = element_blank())
 
-filename1 <- ('Dive/Figures/Urchin/Kernel Density/All Ports_COG_latitude.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Kernel Density/All Ports_COG_latitude.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############
 
@@ -431,6 +431,6 @@ p<-ggplot(data=df2, aes(x=year, color=port.complex))+
   base_theme  +
   theme(legend.title = element_blank())
 
-filename1 <- ('Dive/Figures/Urchin/Kernel Density/All Ports_COG_distanceshore.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Urchin/Kernel Density/All Ports_COG_distanceshore.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############

@@ -7,9 +7,9 @@ library(tidyverse)
 
 #################
 #upload raw data
-dive_logbook<-readRDS("Dive/Data/Raw Data/CDFW_1980_2023_dive_logbooks.rds")
-landings<-readRDS("Dive/Data/Raw Data/1980_2022_landings_receipts.rds")
-port_info<-read.csv('Dive/Data/Raw Data/Port Codes.csv')%>%
+dive_logbook<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/CDFW_1980_2023_dive_logbooks.rds")
+landings<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/1980_2022_landings_receipts.rds")
+port_info<-read.csv('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Port Codes.csv')%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################
@@ -647,7 +647,7 @@ no.ports.sc <- no.ports.sc %>%
   ))
 sc.updated<-rbind(no.ports.sc,ports.sc)
 
-saveRDS(sc.updated,"Dive/Data/Processed Data/seacucumberfishery_matched.rds")
+saveRDS(sc.updated,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumberfishery_matched.rds")
 #################
 
 #################
@@ -655,5 +655,5 @@ saveRDS(sc.updated,"Dive/Data/Processed Data/seacucumberfishery_matched.rds")
 rsu<-dive_logbook18%>%
   filter(Target_species_Trip=="Red sea urchin")
 
-saveRDS(rsu,"Dive/Data/Processed Data/redseaurchinfishery_matched.rds")
+saveRDS(rsu,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/redseaurchinfishery_matched.rds")
 

@@ -13,7 +13,7 @@ library(terra)
 #Upload Data
 
 #distance raster from GIS
-distance_raster1<-raster('CPFV/Data/Processed Data/Distance to shore/Dist_shore_rast_clip.tif')
+distance_raster1<-raster('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/Distance to shore/Dist_shore_rast_clip.tif')
 projection(distance_raster1)
 plot(distance_raster1)
 res(distance_raster1)
@@ -25,10 +25,10 @@ distance_raster1[distance_raster1 > 10000] <- NA
 distance_raster1[is.na(distance_raster1)] <- 0  # Replace NA with 0
 
 #CPFV data that has been filtered already
-explor<-readRDS("CPFV/Data/Processed Data/CPFV_filtered.rds")
+explor<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_filtered.rds")
 #block data 
 
-all_blocks<-st_read("CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -36,7 +36,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -47,7 +47,7 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Distances from shore of each block
-block_distances <- read.csv( "CPFV/Data/Raw Data/Block_Distances_shore.csv")%>%
+block_distances <- read.csv( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Block_Distances_shore.csv")%>%
   dplyr:: select(-X)
 
 #spatial data for graphing
@@ -57,7 +57,7 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 # State waters
-state_waters <- readRDS( "CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -127,8 +127,8 @@ cog_results <- stats_kd_sf %>%
 
 # Print or use final results as needed
 print(cog_results)
-saveRDS(cog_results, 'CPFV/Data/Processed Data/COG_TrapNights_distanceway.rds')
-cog_results_2<-readRDS('CPFV/Data/Processed Data/COG_TrapNights_distanceway.rds')
+saveRDS(cog_results, 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_TrapNights_distanceway.rds')
+cog_results_2<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_TrapNights_distanceway.rds')
 
 #getting longitude from distance to shore
 plot_fun<-function(portcomplex){ 
@@ -201,7 +201,7 @@ g<-plot_fun("Santa Barbara")
 h<-plot_fun("Los Angeles")
 
 df<-rbind(a,b,c,d,e,f,g,h)
-saveRDS(df,'CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
+saveRDS(df,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
 ###############
 
 
@@ -240,7 +240,7 @@ plot_fun<-function(portcomplex){
     ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle = 'CPFV Fishery Center of Gravity')+
     scale_color_viridis_c(name = "Year", option = "D") 
   
-  name=paste0('CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,' _COG.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,' _COG.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -318,7 +318,7 @@ p<-ggplot() +
   ggtitle(('CPFV Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
 
-filename1 <- ('CPFV/Figures/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ###############
 
@@ -348,7 +348,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
     xlab('Year')
   
-  filename1 <- paste0('CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
@@ -392,7 +392,7 @@ plot_fun<-function(portcomplex){
     xlab('Year')
   
 
-  filename1 <- paste0('CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
@@ -425,7 +425,7 @@ p<-ggplot(data=df2, aes(x=year, color=port.complex))+
   base_theme  +
   theme(legend.title = element_blank())
 
-filename1 <- ('CPFV/Figures/Kernel Density/All Ports_COG_latitude.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/All Ports_COG_latitude.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############
 
@@ -441,6 +441,6 @@ p<-ggplot(data=df2, aes(x=year, color=port.complex))+
   base_theme  +
   theme(legend.title = element_blank())
 
-filename1 <- ('CPFV/Figures/Kernel Density/All Ports_COG_distanceshore.jpg')
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/All Ports_COG_distanceshore.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############

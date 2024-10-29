@@ -6,11 +6,11 @@ library(sf)
 
 #################
 ###### read in lobster data
-Lobster<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
+Lobster<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
   rename(port.complex1=port_complex1, port.complex2=port_complex2)
      
 ###### read in block data
-all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -18,7 +18,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv("Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -137,7 +137,7 @@ p <-ggplot(data=df, aes(x=year, y=percent.NA))+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(plot = p, filename = ("Lobster/Figures/Exploratory/Perentage of Lobster Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
+ggsave(plot = p, filename = ("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Perentage of Lobster Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
 
 #Depth distribution of lobster trips without port codes
 #compare distribution of depth attributes to make sure that the missing data is representative of the 
@@ -174,7 +174,7 @@ p<- ggplot() +
   xlab("Depth (m)")+
   ylab("Density")
 
-ggsave(filename = 'Lobster/Figures/Exploratory/Port and No Port Depth Density Distributions less 110 m.jpg', plot = p, width = 15, height = 8, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Port and No Port Depth Density Distributions less 110 m.jpg', plot = p, width = 15, height = 8, units = "in", dpi = 300)
 #################
 
 
@@ -208,9 +208,9 @@ plot_fun<-function(portcomplex){
     base_theme
   
   
-  filename1 <- paste0('Lobster/Figures/Exploratory/', portcomplex, '_NTrips_Year.jpg')
+  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/', portcomplex, '_NTrips_Year.jpg')
   ggsave(filename = filename1, plot = p, width = 8, height = 6, units = "in", dpi = 300)
-  filename2 <- paste0('Lobster/Figures/Exploratory/', portcomplex, '_NVessels_Year.jpg')
+  filename2 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/', portcomplex, '_NVessels_Year.jpg')
   ggsave(filename = filename2, plot = p2, width = 8, height = 6, units = "in", dpi = 300)
 }
 
@@ -256,7 +256,7 @@ p <-ggplot(data=depth.reported, aes(x=year, y=percent.depth))+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(filename = 'Lobster/Figures/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 
@@ -314,7 +314,7 @@ plot_fun<-function(portcomplex){
     ) 
    # scale_x_discrete(breaks = levels(df$year)) # Use discrete scale for factor years years
   
-  name=paste0('Lobster/Figures/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/',portcomplex,' Depth Distributions.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 }
 plot_fun("Santa Barbara")

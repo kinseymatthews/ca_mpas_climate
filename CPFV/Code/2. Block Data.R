@@ -7,7 +7,7 @@ library(sp)
 
 ############ 
 # read in CPFV data
-CPFV<-readRDS("CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
+CPFV<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
@@ -16,10 +16,10 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("CPFV/Data/Raw Data/Port Codes.csv")
+port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Port Codes.csv")
 
 # State waters
-state_waters <- readRDS( "CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 # block data
 all_blocks<-st_read("CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
@@ -96,7 +96,7 @@ filter(is.na(hrs_minutes_fished_flag))%>%
   filter(!is.na(port.complex))%>%
   filter(!is.na(block_id))
 
-saveRDS(explor,"CPFV/Data/Processed Data/CPFV_filtered.rds")
+saveRDS(explor,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_filtered.rds")
 
 ############
 
@@ -158,7 +158,7 @@ plot_fun<-function(portcomplex){
   ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="CPFV Fishery" )
   
   
-  name=paste0('CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -237,7 +237,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0('CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_angler hours.gif')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_angler hours.gif')
   anim_save(name, anim)
   
 }
@@ -289,7 +289,7 @@ plot_fun<-function(portcomplex){
     
     
     
-    name=paste0('CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
+    name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
     ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }

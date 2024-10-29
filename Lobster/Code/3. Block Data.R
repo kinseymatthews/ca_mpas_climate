@@ -6,7 +6,7 @@ library(sp)
 
 ############ 
 #read in data
-Lobster<-readRDS("Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
+Lobster<-readRDS(G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/"Lobster/Data/Processed Data/lobster_logbooks_edited.rds")%>%
   rename(port.complex1=port_complex1, port.complex2=port_complex2)
 
 #spatial mapping data
@@ -16,13 +16,13 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("Lobster/Data/Raw Data/Port Codes.csv")
+port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/Port Codes.csv")
 
 # State waters
-state_waters <- readRDS( "Lobster/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/CA_state_waters_polyline.Rds")
 
 # block data
-all_blocks<-st_read("Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -30,7 +30,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/fishingblockstatistics.csv")%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -99,7 +99,7 @@ explor<- Lobster%>%
   filter(n_nights>0)%>%
   distinct()
 
-saveRDS(explor,"Lobster/Data/Processed Data/lobster_filtered.rds")
+saveRDS(explor,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Processed Data/lobster_filtered.rds")
 
 #outliers for trap nights
 p<-ggplot(explor, aes(x = port.complex, y = trap_nights)) +
@@ -113,9 +113,9 @@ p2<-ggplot() +
   xlab("Trap Nights")+
   ylab("Density") +base_theme
 
-ggsave(filename = 'Lobster/Figures/Exploratory/Boxplot_outliers_numbertrapnights.jpg', plot = p, width = 10, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Boxplot_outliers_numbertrapnights.jpg', plot = p, width = 10, height = 6, units = "in", dpi = 300)
 
-ggsave(filename = 'Lobster/Figures/Exploratory/Density_outliers_numbertrapnights.jpg', plot = p2, width = 10, height = 6, units = "in", dpi = 300)
+ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Exploratory/Density_outliers_numbertrapnights.jpg', plot = p2, width = 10, height = 6, units = "in", dpi = 300)
 ############
 
 
@@ -165,7 +165,7 @@ plot_fun<-function(portcomplex){
   ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Lobster Fishery" )
   
   
-  name=paste0('Lobster/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -221,7 +221,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0('Lobster/Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_trap nights.gif')
+  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_trap nights.gif')
   anim_save(name, anim)
   
 }
@@ -265,7 +265,7 @@ plot_fun<-function(portcomplex){
     
     
     
-    name=paste0('Lobster/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
+    name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
     ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }
