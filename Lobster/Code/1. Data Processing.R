@@ -8,10 +8,14 @@ library(lubridate)
 
 
 #################
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+lobster_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/'
+
+
 #upload raw data
-lobster_logbook<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds")
-landings<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/1980_2022_landings_receipts.rds")
-port_info<-read.csv('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Raw Data/Port Codes.csv')%>%
+lobster_logbook<-readRDS(paste0(lobster_data, "Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds"))
+landings<-readRDS(paste0(lobster_data,"Data/Raw Data/1980_2022_landings_receipts.rds"))
+port_info<-readRDS(paste0(lobster_data,'Data/Raw Data/Port Codes.csv'))%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################
@@ -210,7 +214,6 @@ no.ports<-no.ports%>%
   rename(port_complex1=port.complex)
 
 lobster.logbook5<-rbind(no.ports,ports)
-
 #################
 
 
@@ -411,13 +414,12 @@ no.ports2<-no.ports%>%
  rename(port_complex1=port.complex)
 
 lobster.logbooks10<-rbind(ports,no.ports2)
-
 #################
 
 
 
 #################
 #SAVE DATA
-saveRDS(lobster.logbooks10, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Processed Data/lobster_logbooks_edited.rds")
+saveRDS(lobster.logbooks10, pasteo(lobster_data, "Data/Processed Data/lobster_logbooks_edited.rds"))
 
 

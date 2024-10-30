@@ -6,8 +6,11 @@ library(sp)
 
 
 ############ 
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+CPFV_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/'
+
 # read in CPFV data
-CPFV<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/1980_2022_cpfv_logbooks.Rds")
+CPFV<-readRDS(paste0(CPFV_data, "Data/Raw Data/1980_2022_cpfv_logbooks.Rds"))
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
@@ -16,22 +19,21 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Port Codes.csv")
+port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS(paste0(general_data,"CA_state_waters_polyline.Rds"))
 
 # block data
-all_blocks<-st_read("CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
-
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -96,7 +98,7 @@ filter(is.na(hrs_minutes_fished_flag))%>%
   filter(!is.na(port.complex))%>%
   filter(!is.na(block_id))
 
-saveRDS(explor,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_filtered.rds")
+saveRDS(explor,paste0(CPFV_data,"Data/Processed Data/CPFV_filtered.rds"))
 
 ############
 
@@ -158,7 +160,7 @@ plot_fun<-function(portcomplex){
   ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="CPFV Fishery" )
   
   
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  name=paste0(CPFV_data,'Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -237,7 +239,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_angler hours.gif')
+  name=paste0(CPFV_data, 'Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_angler hours.gif')
   anim_save(name, anim)
   
 }
@@ -289,7 +291,7 @@ plot_fun<-function(portcomplex){
     
     
     
-    name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
+    name=paste0(CPFV_data, 'Figures/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
     ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }

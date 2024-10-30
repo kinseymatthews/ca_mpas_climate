@@ -6,10 +6,15 @@ library(data.table)
 library(tidyverse)
 
 #################
+
+#filepaths
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+dive_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/'
+
 #upload raw data
-dive_logbook<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/CDFW_1980_2023_dive_logbooks.rds")
-landings<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/1980_2022_landings_receipts.rds")
-port_info<-read.csv('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Port Codes.csv')%>%
+dive_logbook<-readRDS(paste0(dive_data,"Data/Raw Data/CDFW_1980_2023_dive_logbooks.rds"))
+landings<-readRDS(paste0(dive_data,"Data/Raw Data/1980_2022_landings_receipts.rds"))
+port_info<-read.csv(paste0(dive_data,'Data/Raw Data/Port Codes.csv'))%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################
@@ -47,16 +52,6 @@ landings2<-landings  %>%
   left_join(dplyr::select(port_info, port_id, port.complex), by="port_id")%>%
   mutate(vesselID_year_month=ifelse(is.na(vessel_id)| is.na(year)| is.na(month), NA,paste(vessel_id, year, month, sep="_" )))%>%
   mutate(vesselID_year=ifelse(is.na(vessel_id)| is.na(year), NA,paste(vessel_id, year,sep="_" )))%>%
-  #incorrectly input vesse;s
- # mutate(vessel_id=if_else(vessel_id==6990, "06990", as.character(vessel_id))) %>% #noticed this vessel_id was inputted incorrectly 
-  #mutate(vessel_id=if_else(vessel_id==943, "00943", as.character(vessel_id)))%>%
- #mutate(vessel_id=if_else(vessel_id==1163, "01163", as.character(vessel_id)))%>%
- #mutate(vessel_id=if_else(vessel_id==9334, "09334", as.character(vessel_id)))%>%
- #mutate(vessel_id=if_else(vessel_id==983, "00983", as.character(vessel_id)))%>%
- #mutate(vessel_id=if_else(vessel_id==5786, "05786", as.character(vessel_id)))%>%
- #mutate(vessel_id=if_else(vessel_id==472, "00472", as.character(vessel_id)))%>%
- #mutate(vessel_id=if_else(vessel_id==6730, "06730", as.character(vessel_id)))%>%
- #mutate(vesselID_year_month_lbs=ifelse(is.na(vessel_id)| is.na(year)| is.na(month)| is.na(landings_lbs), NA,paste(vessel_id, year, month, landings_lbs,  sep="_" )))%>%
   rename(block_id_landings=block_id)
 #################
 
@@ -609,8 +604,6 @@ df2<- dive_logbook17 %>%
   mutate(Target_species_Trip=comm_name)
 
 dive_logbook18<-rbind(df1.1,df2)
-
-
 #################
 
 
@@ -647,7 +640,7 @@ no.ports.sc <- no.ports.sc %>%
   ))
 sc.updated<-rbind(no.ports.sc,ports.sc)
 
-saveRDS(sc.updated,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumberfishery_matched.rds")
+saveRDS(sc.updated, paste0(dive_data,"Data/Processed Data/seacucumberfishery_matched.rds"))
 #################
 
 #################
@@ -655,5 +648,5 @@ saveRDS(sc.updated,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries
 rsu<-dive_logbook18%>%
   filter(Target_species_Trip=="Red sea urchin")
 
-saveRDS(rsu,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/redseaurchinfishery_matched.rds")
+saveRDS(rsu,paste0(dive_data,"Data/Processed Data/redseaurchinfishery_matched.rds")
 

@@ -7,12 +7,15 @@ library(sp)
 
 
 ############ 
+#filepaths
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+cucumber_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/'
 
 ###### read in Dive data
-cuc<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumberfishery_matched.rds")
+cuc<-readRDS(paste0(cucumber_data,"Data/Processed Data/seacucumberfishery_matched.rds"))
 
 ###### read in block data
-all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -20,7 +23,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -37,10 +40,10 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Port Codes.csv")
+port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -99,14 +102,11 @@ explor<-cuc%>%
   filter(!is.na(port.complex))%>%
   filter(!is.na(block_id))
 
-saveRDS(explor,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumber_filtered.rds")
+saveRDS(explor, paste0(cucumber_data,"Data/Processed Data/seacucumber_filtered.rds"))
 ############ 
 
 
 ############ 
-#Block Data
-#summarizing across years to see what one graph with all of the data should kinda look like
-
 #All years combined
 #summarizing across years to see what one graph with all of the data should kinda look like
 allports.acrossyears<- explor %>%
@@ -157,7 +157,7 @@ plot_fun<-function(portcomplex){
     theme_bw() + base_theme+
     ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Sea Cucumber Dive Fishery" )
   
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  name=paste0(cucumber_data,'Figures/Cucumber/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -232,7 +232,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
+  name=paste0(cucumber_data, 'Figures/Cucumber/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
   anim_save(name, anim)
 }
 plot_fun("Santa Barbara")

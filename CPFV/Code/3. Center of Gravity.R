@@ -11,24 +11,32 @@ library(terra)
 
 ###############
 #Upload Data
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+CPFV_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/'
 
 #distance raster from GIS
-distance_raster1<-raster('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/Distance to shore/Dist_shore_rast_clip.tif')
-projection(distance_raster1)
-plot(distance_raster1)
-res(distance_raster1)
+distance_raster<-raster(paste0(general_data, 'Distance to shore 2/Distanc_Shor3.tif'))
 
-# Set values above the threshold to NA
-distance_raster1[distance_raster1 > 10000] <- NA
+# Set values above the threshold to 0
+distance_raster[distance_raster== 0] <- NA
 
-# Set NA values to 0 (or any value you choose)
-distance_raster1[is.na(distance_raster1)] <- 0  # Replace NA with 0
+# Convert to SpatRaster
+spat_raster <- rast(distance_raster)
+
+# Define the target CRS using EPSG:3310
+target_crs <- "+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"
+
+#Project to California projection
+reprojected_raster <- projectRaster(distance_raster, crs=target_crs)
+
+# Set values above the threshold to 0
+reprojected_raster[reprojected_raster< 1] <- NA
 
 #CPFV data that has been filtered already
-explor<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_filtered.rds")
+explor<-readRDS(paste0(CPFV_data, "Data/Processed Data/CPFV_filtered.rds"))
 #block data 
 
-all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read(paste0(CPFV_data, "Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -36,7 +44,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv(paste0(CPFV_data,"Data/Raw Data/fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -47,7 +55,7 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Distances from shore of each block
-block_distances <- read.csv( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Block_Distances_shore.csv")%>%
+block_distances <- read.csv(paste0(CPFV_data,"Data/Raw Data/Block_Distances_shore.csv"))%>%
   dplyr:: select(-X)
 
 #spatial data for graphing
@@ -57,7 +65,8 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 # State waters
-state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS(paste0(CPFV_data,"Data/Raw Data/CA_state_waters_polyline.Rds"))
+
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -126,9 +135,8 @@ cog_results <- stats_kd_sf %>%
   sf::st_drop_geometry()
 
 # Print or use final results as needed
-print(cog_results)
-saveRDS(cog_results, 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_TrapNights_distanceway.rds')
-cog_results_2<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_TrapNights_distanceway.rds')
+saveRDS(cog_results, paste0(CPFV_data, 'Data/Processed Data/COG_TrapNights_distanceway.rds'))
+cog_results_2<-readRDS(paste0(CPFV_data,'Data/Processed Data/COG_TrapNights_distanceway.rds'))
 
 #getting longitude from distance to shore
 plot_fun<-function(portcomplex){ 
@@ -152,10 +160,10 @@ plot_fun<-function(portcomplex){
     target_distance<-year_data$cog_dist_shore
     target_longitude<-year_data$cog_longitude
     #get bounding box - if coordinate system changes have to change. longitude should cover the entire range
-    max_lat=target_lat+15
-    min_lat=target_lat-15
-    min_long=325027.4
-    max_long=1101227
+    max_lat=target_lat+200
+    min_lat=target_lat-200
+    min_long=364693.3
+    max_long=1057213
     
     # Create spatial points for the corners of the bounding box
     coords <- matrix(c(min_long, min_lat,
@@ -166,21 +174,20 @@ plot_fun<-function(portcomplex){
                      ncol = 2, byrow = TRUE)
     # Create SpatialPolygons object
     bbox <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID = "bbox")),
-                            proj4string = crs(distance_raster1))
-  
+                            proj4string = crs(reprojected_raster))%>%
+      st_as_sf()
     
     # Extract values from the raster at the specified latitude
-    values_along_latitude <- extract(distance_raster1, bbox)
+    values_along_latitude <- raster::extract(reprojected_raster, bbox)
+    
     # Convert the list of lists to a numeric vector
     values_along_latitude <- unlist(values_along_latitude)
     
     # Find which raster cell it is (index of closest value)
     closest_index <- which.min(abs(values_along_latitude - target_distance))
     
-    # Get the middle longitude of the raster cell
     # Calculate the middle longitude of the raster cell
-    #WRONG: middle_longitude <- (distance_raster@extent@xmin + ((closest_index - 1) %% ncol(distance_raster)) * res(distance_raster)[1] + res(distance_raster)[1] / 2)
-    cell_cord<-xyFromCell(distance_raster1,closest_index)
+    cell_cord<-xyFromCell(reprojected_raster,closest_index)
     longitude <- cell_cord[1]
     df <- year_data %>%
       mutate(longitude_calculated=longitude)
@@ -201,7 +208,7 @@ g<-plot_fun("Santa Barbara")
 h<-plot_fun("Los Angeles")
 
 df<-rbind(a,b,c,d,e,f,g,h)
-saveRDS(df,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
+saveRDS(df,paste0(CPFV_data,'Data/Processed Data/COG_distance_results_anglerhours_final.rds'))
 ###############
 
 
@@ -240,7 +247,7 @@ plot_fun<-function(portcomplex){
     ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle = 'CPFV Fishery Center of Gravity')+
     scale_color_viridis_c(name = "Year", option = "D") 
   
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/',portcomplex,'/',portcomplex,' _COG.jpg')
+  name=paste0(CPFV_data,'Figures/Kernel Density/',portcomplex,'/',portcomplex,' _COG.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -262,7 +269,8 @@ plot_fun('Los Angeles')
 
 #filter for first and last year which will be actual points on the plot
 COG1<-df%>%
-  filter(year=="1980" | year=="2022")%>%
+  group_by(port.complex)%>%
+  filter(year== min(year) | year== max(year))%>%
   rename(Year=year)
 
 COG_sf<-st_as_sf(COG1, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
@@ -318,7 +326,7 @@ p<-ggplot() +
   ggtitle(('CPFV Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
 
-filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
+filename1 <- paste0(CPFV_data,'Figures/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ###############
 
@@ -348,7 +356,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
     xlab('Year')
   
-  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
+  filename1 <- paste0(CPFV_data,'Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
@@ -392,7 +400,7 @@ plot_fun<-function(portcomplex){
     xlab('Year')
   
 
-  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
+  filename1 <- paste0(CPFV_data,'Figures/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
@@ -425,7 +433,7 @@ p<-ggplot(data=df2, aes(x=year, color=port.complex))+
   base_theme  +
   theme(legend.title = element_blank())
 
-filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/All Ports_COG_latitude.jpg')
+filename1 <- paste0(CPFV_data,'Figures/Kernel Density/All Ports_COG_latitude.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############
 
@@ -441,6 +449,6 @@ p<-ggplot(data=df2, aes(x=year, color=port.complex))+
   base_theme  +
   theme(legend.title = element_blank())
 
-filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/Kernel Density/All Ports_COG_distanceshore.jpg')
+filename1 <- paste0(CPFV_data,'Figures/Kernel Density/All Ports_COG_distanceshore.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 ###############

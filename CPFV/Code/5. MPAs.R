@@ -7,12 +7,14 @@ library(ggplot2)
 
 ##################
 #Read in data
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+CPFV_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/'
 
 #edited cpfv data from the block script
-explor<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_filtered.rds")
+explor<-readRDS(paste0(CPFV_data,"Data/Processed Data/CPFV_filtered.rds"))
 
 #cog data
-COG<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds')
+COG<-readRDS(paste0(CPFV_data,'Data/Processed Data/COG_distance_results_anglerhours_final.rds'))
 COG_sf<-st_as_sf(COG, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
   st_transform(crs = "+proj=longlat +datum=WGS84")
 COG_sf$year=as.factor(COG_sf$year)
@@ -22,15 +24,14 @@ usa <- rnaturalearth::ne_states(country = "United States of America", returnclas
 mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
 usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
-
 #port codes
-port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Port Codes.csv")
+port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
 
 # block data
-all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -38,7 +39,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Raw Data/fishingblockstatistics.csv")%>%
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -222,7 +223,7 @@ plot_fun<-function(portcomplex){
       theme(axis.title = element_blank())
     
     
-    filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/MPAs/',portcomplex,'/', portcomplex, year, '_MPAs_cropped.jpg')
+    filename1 <- paste0(CPFV_data,'Figures/MPAs/',portcomplex,'/', portcomplex, year, '_MPAs_cropped.jpg')
     ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }
@@ -243,10 +244,10 @@ plot_fun('Los Angeles')
 ############
 #importing images and creating an animation
 plot_fun<-function(portcomplex){
-  frames<-paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/MPAs/',portcomplex,'/',portcomplex,1980:2022,"_MPAs_cropped.jpg")
+  frames<-paste0(CPFV_data,'Figures/MPAs/',portcomplex,'/',portcomplex,1980:2022,"_MPAs_cropped.jpg")
   m<-image_read(frames)
   m<-image_animate(m, fps=1)
-  image_write(m,paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/MPAs/',portcomplex,'/',portcomplex, 'Kernel Densities_Animation.gif'))
+  image_write(m,paste0(CPFV_data,'Figures/MPAs/',portcomplex,'/',portcomplex, 'Kernel Densities_Animation.gif'))
 }
 
 plot_fun("Eureka")
@@ -378,7 +379,7 @@ plot_fun<-function(portcomplex){
     annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') +
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
-  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Figures/MPAs/', portcomplex, '/', portcomplex, '_perc.effort within mpa.jpg')
+  filename1 <- paste0(CPFV_data,'Figures/MPAs/', portcomplex, '/', portcomplex, '_perc.effort within mpa.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 4, units = "in", dpi = 300)
 }
 

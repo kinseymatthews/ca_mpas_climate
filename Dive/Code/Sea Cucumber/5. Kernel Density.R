@@ -12,12 +12,15 @@ library(RColorBrewer)
 
 ##################
 #Read in data
+#filepaths
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+cucumber_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/'
 
 #edited lobster data from the block script
-explor<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumber_filtered.rds")
+explor<-readRDS(paste0(cucumber_data,"Data/Processed Data/seacucumber_filtered.rds"))
 
 #cog data
-COG<-readRDS('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds')
+COG<-readRDS(paste0(cucumber_data,'Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds'))
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
@@ -26,21 +29,22 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Port Codes.csv")
+port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/CA_state_waters_polyline.Rds")
+state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
 
 # block data
-all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+###### read in block data
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
-#read  in bathymetry data with blocks
-bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
+##### read in bathymetry data with blocks
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -182,7 +186,7 @@ plot_fun<-function(portcomplex){
           axis.title.y=element_blank())
   
   
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
+  name=paste0(cucumber_data,'Figures/Cucumber/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
   
   
@@ -327,7 +331,7 @@ plot_fun<-function(portcomplex){
       ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Sea Cucumber Dive Fishery: Year ',year, ', with 75% volume contour') )
     
     
-    name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Density_',year,'.jpg')
+    name=paste0(cucumber_data,'Figures/Cucumber/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Density_',year,'.jpg')
     ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
     
   }
@@ -338,22 +342,22 @@ plot_fun('San Diego')
 
 #importing yearly images and creating an animation
 years<-c(1998,2003:2022)
-frames<-paste0("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/Santa Barbara/Santa Barbara Kernel Density_",years,".jpg")
+frames<-paste0(cucumber_data,"Figures/Cucumber/Kernel Density/Santa Barbara/Santa Barbara Kernel Density_",years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/Santa Barbara/Santa Barbara Kernel Densities_Animation.gif")
+image_write(m, paste0(cucumber_data,"Figures/Cucumber/Kernel Density/Santa Barbara/Santa Barbara Kernel Densities_Animation.gif"))
 
 years<-c(2003:2022)
-frames<-paste0("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/Los Angeles/Los Angeles Kernel Density_", years,".jpg")
+frames<-paste0(cucumber_data, "Figures/Cucumber/Kernel Density/Los Angeles/Los Angeles Kernel Density_", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/Los Angeles/Los Angeles Kernel Densities_Animation.gif")
+image_write(m,paste0(cucumber_data,"Figures/Cucumber/Kernel Density/Los Angeles/Los Angeles Kernel Densities_Animation.gif"))
 
 years<-c(2004,2007:2010,2012,2016, 2018,2019,2021)
-frames<-paste0("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/San Diego/San Diego Kernel Density_", years,".jpg")
+frames<-paste0(cucumber_data,"Figures/Cucumber/Kernel Density/San Diego/San Diego Kernel Density_", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/San Diego/San Diego Kernel Densities_Animation.gif")
+image_write(m,paste0(cucumber_data,"Figures/Cucumber/Kernel Density/San Diego/San Diego Kernel Densities_Animation.gif"))
 ############
 
 
@@ -459,7 +463,7 @@ all.volumes<-all.volumes%>%
   mutate(Year=as.numeric(Year))
 
 
-saveRDS(all.volumes,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumber_all contour volumes.rds")
+saveRDS(all.volumes,paste0(cucumber_data,"Data/Processed Data/seacucumber_all contour volumes.rds"))
 
 #order from north to south
 all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c( 'Santa Barbara', 'Los Angeles', 'San Diego'))
@@ -492,7 +496,7 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
 for(i in 1:n_pages(p)){
   p_save <-  p + 
     facet_wrap_paginate( ~port.complex, ncol=3, nrow=1, page = i, scales="free_y")
-  ggsave(plot = p_save, filename = paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
+  ggsave(plot = p_save, filename = paste0(cucumber_data,'Figures/Cucumber/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
 }
 
 #can also do the above so its not facetwrap and all separate
@@ -552,7 +556,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
   
-  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
+  filename1 <- paste0(cucumber_data,'Figures/Cucumber/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 

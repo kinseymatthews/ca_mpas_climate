@@ -3,26 +3,29 @@ library(tidyverse)
 library(sf)
 
 #################
+#filepaths
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+cucumber_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/'
 
 ###### read in Dive data
-cuc<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/seacucumberfishery_matched.rds")
+cuc<-readRDS(paste0(cucumber_data,"Data/Processed Data/seacucumberfishery_matched.rds"))
 
-###### read in block data
-all_blocks<-st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp")%>%
+#block data 
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
-##### read in bathymetry data with blocks
-bathy.data<-read.csv("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Raw Data/fishingblockstatistics.csv")%>%
+#read  in bathymetry data with blocks
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
 bathy.data$block_id=as.double(bathy.data$block_id)
 
-##### merge bathymetry data with block data
+# merge bathymetry data with block data
 all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
@@ -132,9 +135,9 @@ plot_fun<-function(portcomplex){
     geom_smooth(method="lm")+
     base_theme
   
-  filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Exploratory/', portcomplex, '_NTrips_Year.jpg')
+  filename1 <- paste0(cucumber_data,'Figures/Cucumber/Exploratory/', portcomplex, '_NTrips_Year.jpg')
   ggsave(filename = filename1, plot = p, width = 8, height = 6, units = "in", dpi = 300)
-  filename2 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Exploratory/', portcomplex, '_NVessels_Year.jpg')
+  filename2 <- paste0(cucumber_data,'Figures/Cucumber/Exploratory/', portcomplex, '_NVessels_Year.jpg')
   ggsave(filename = filename2, plot = p2, width = 8, height = 6, units = "in", dpi = 300)
 }
 
@@ -181,7 +184,7 @@ p <-ggplot(data=depth.reported, aes(x=year, y=percent.depth))+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(filename = 'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = paste0(cucumber_data,'Figures/Cucumber/Exploratory/Percent_Depth_Reported.jpg', plot = p, width = 8, height = 6, units = "in", dpi = 300))
 #################
 
 
@@ -229,7 +232,7 @@ plot_fun<-function(portcomplex){
     xlab("Year")+
     geom_vline(xintercept = mpayear, linetype = "dotted", color = "red",size=1)
 
-  name=paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Figures/Cucumber/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  name=paste0(cucumber_data,'Figures/Cucumber/Exploratory/',portcomplex,' Depth Distributions.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 }
 plot_fun("Santa Barbara")
