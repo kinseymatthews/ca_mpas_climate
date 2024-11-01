@@ -14,7 +14,7 @@ general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 urchin_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/'
 
 #distance raster from GIS
-distance_raster<-raster(paste0(general_data,'Distance to shore 2/Distanc_Shor3.tif')) 
+distance_raster<-raster(paste0(general_data,'Distance to shore 2/Distanc_Shor5.tif')) 
 
 # Define the target CRS using EPSG:3310
 target_crs <- "+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"
@@ -154,8 +154,8 @@ plot_fun<-function(portcomplex){
     #get bounding box - if coordinate system changes have to change. longitude should cover the entire range
     max_lat=target_lat+200
     min_lat=target_lat-200
-    min_long=364693.3
-    max_long=1057213
+    min_long=206724.6
+    max_long=1106724
     
     # Create spatial points for the corners of the bounding box
     coords <- matrix(c(min_long, min_lat,

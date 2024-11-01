@@ -13,10 +13,8 @@ general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 lobster_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/'
 
 #Data
-
-#Data
 #distance raster from GIS
-distance_raster<-raster(paste0(general_data,'Distance to shore 2/Distanc_Shor3.tif')) 
+distance_raster<-raster(paste0(general_data,'Distance to shore 2/Distanc_Shor5.tif')) 
 
 # Define the target CRS using EPSG:3310
 target_crs <- "+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"
@@ -26,7 +24,6 @@ reprojected_raster <- projectRaster(distance_raster, crs=target_crs)
 
 # Set values above the threshold to 0
 reprojected_raster[reprojected_raster< 1] <- NA
-
 
 #lobster data that has been filtered already
 explor<-readRDS(paste0(lobster_data, "Data/Processed Data/lobster_filtered.rds"))
@@ -64,8 +61,8 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
 state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
 
 #adding in mpa implementation data
-port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
-values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+port.complex=c("Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
 
@@ -92,7 +89,7 @@ base_theme <- theme(axis.text=element_text(size=7),
 
 ###############
 #spatialize
-stats<- explor %>%
+stats_kd_sf<- explor %>%
   #summarize by year, port, block
   group_by(year,port.complex,block_id)%>%
   summarize(ntrips=n(),
@@ -122,7 +119,6 @@ cog_results <- stats_kd_sf %>%
   sf::st_drop_geometry()
 
 # Print or use final results as needed
-print(cog_results)
 write.csv(cog_results, paste0(lobster_data,'Data/Processed Data/COG_TrapNights_distanceway.csv'))
 cog_results_2<-read.csv(paste0(lobster_data, 'Data/Processed Data/COG_TrapNights_distanceway.csv'))
 
@@ -142,7 +138,7 @@ plot_fun<-function(portcomplex){
   for(year in unique_years){
     
     #subset data for the current year
-    year_data<-location[location$year==2004,]
+    year_data<-location[location$year==year,]
     #get target latitude and distance
     target_lat<-year_data$cog_latitude
     target_distance<-year_data$cog_dist_shore
@@ -150,8 +146,8 @@ plot_fun<-function(portcomplex){
     #get bounding box - if coordinate system changes have to change. longitude should cover the entire range
     max_lat=target_lat+200
     min_lat=target_lat-200
-    min_long=364693.3
-    max_long=1057213
+    min_long=206724.6
+    max_long=1106724
     
     # Create spatial points for the corners of the bounding box
     coords <- matrix(c(min_long, min_lat,
@@ -163,8 +159,7 @@ plot_fun<-function(portcomplex){
     # Create SpatialPolygons object
     bbox <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID = "bbox")),
                             proj4string = crs(reprojected_raster))
-    plot(bbox)
-    
+   
     # Extract values from the raster at the specified latitude
     values_along_latitude <- raster::extract(reprojected_raster, bbox)
     # Convert the list of lists to a numeric vector
@@ -203,7 +198,7 @@ COG_port<-readRDS(paste0(lobster_data,'Data/Processed Data/COG_distance_results_
   dplyr:: select(-X)%>%
   filter(port.complex==portcomplex)
  
-location_cog<-st_as_sf(c, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
+location_cog<-st_as_sf(COG_port, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
 location_cog<-st_transform(location_cog, st_crs("+proj=longlat  +datum=WGS84 +units=m +no_defs"))
 
 #extracting coordinates 
@@ -245,46 +240,6 @@ plot_fun('San Diego')
 ###############
 
 
-
-###############
-#Alternative Distance to shore raster to create in R - this is a combination of random ideas and imcomplete code
-
-#upload shoreline data
-shoreline<-st_read(paste0(lobster_data,"Data/Raw Data/Shoreline/shoreline.shp"))%>%
-  st_transform(crs = 3310) #California Albers projection which is good for distance calculations
-
-st_geometry_type(shoreline)
-shoreline_lines <- shoreline[st_geometry_type(shoreline) == "LINESTRING", ]
-combined_shoreline <- st_union(shoreline_lines)
-combined_shoreline <- st_cast(combined_shoreline, "LINESTRING")
-plot(combined_shoreline)
-
-
-v <- terra::vect(combined_shoreline)
-r <- rast(v, res = 10)
-r <- rasterize(v, r)
-d <- distance(r)
-plot(d)
-
-
-# Define the extent (xmin, xmax, ymin, ymax)
-extent_values <- c(-126, -116, 32, 42)
-
-# Create a raster template
-raster_template <- raster(extent(extent_values), res = 10)  # Set resolution as needed
-
-# Rasterize the shoreline
-shoreline_raster <- raster::rasterize(st_geometry(shoreline_sp), raster_template, field = 1, fun = "first", background = NA)
-
-# Calculate distance from shoreline
-distance_raster <- distance(shoreline_raster)
-
-###############
-
-
-
-
-#CODE THAT WILL WORK ONCE THE RASTER IS FIGURED OUT
 ###############
 #Coastwide figure with port complexes and fishing ground shifts
 df<-readRDS(paste0(lobster_data,'Data/Processed Data/COG_distance_results_traphours_final.rds'))%>%

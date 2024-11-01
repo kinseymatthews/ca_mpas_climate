@@ -15,7 +15,7 @@ lobster_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 #upload raw data
 lobster_logbook<-readRDS(paste0(lobster_data, "Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds"))
 landings<-readRDS(paste0(lobster_data,"Data/Raw Data/1980_2022_landings_receipts.rds"))
-port_info<-readRDS(paste0(lobster_data,'Data/Raw Data/Port Codes.csv'))%>%
+port_info<-read.csv(paste0(lobster_data,'Data/Raw Data/Port Codes.csv'))%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################

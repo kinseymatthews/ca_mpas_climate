@@ -6,6 +6,7 @@ library(spatstat)
 library(raster)
 library(sf)
 library(terra)
+library(tidyverse)
 ###############
 
 
@@ -15,8 +16,8 @@ general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 CPFV_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/'
 
 #distance raster from GIS
-distance_raster<-raster(paste0(general_data, 'Distance to shore 2/Distanc_Shor3.tif'))
 
+distance_raster<-raster(paste0(general_data, 'Distance to shore 2/Distanc_Shor5.tif'))
 # Set values above the threshold to 0
 distance_raster[distance_raster== 0] <- NA
 
@@ -28,6 +29,7 @@ target_crs <- "+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"
 
 #Project to California projection
 reprojected_raster <- projectRaster(distance_raster, crs=target_crs)
+plot(reprojected_raster)
 
 # Set values above the threshold to 0
 reprojected_raster[reprojected_raster< 1] <- NA
@@ -36,7 +38,7 @@ reprojected_raster[reprojected_raster< 1] <- NA
 explor<-readRDS(paste0(CPFV_data, "Data/Processed Data/CPFV_filtered.rds"))
 #block data 
 
-all_blocks<-st_read(paste0(CPFV_data, "Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
+all_blocks<-st_read(paste0(general_data, "Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -44,7 +46,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
-bathy.data<-read.csv(paste0(CPFV_data,"Data/Raw Data/fishingblockstatistics.csv"))%>%
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -55,7 +57,7 @@ all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
 
 #Distances from shore of each block
-block_distances <- read.csv(paste0(CPFV_data,"Data/Raw Data/Block_Distances_shore.csv"))%>%
+block_distances <- read.csv(paste0(general_data,"Block_Distances_shore.csv"))%>%
   dplyr:: select(-X)
 
 #spatial data for graphing
@@ -65,7 +67,7 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 # State waters
-state_waters <- readRDS(paste0(CPFV_data,"Data/Raw Data/CA_state_waters_polyline.Rds"))
+state_waters <- readRDS(paste0(general_data,"CA_state_waters_polyline.Rds"))
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -162,8 +164,8 @@ plot_fun<-function(portcomplex){
     #get bounding box - if coordinate system changes have to change. longitude should cover the entire range
     max_lat=target_lat+200
     min_lat=target_lat-200
-    min_long=364693.3
-    max_long=1057213
+    min_long=206724.6
+    max_long=1106724
     
     # Create spatial points for the corners of the bounding box
     coords <- matrix(c(min_long, min_lat,
@@ -218,7 +220,7 @@ plot_fun<-function(portcomplex){
   COG_port<-df%>% #can update with code to read in the RDS if starting at this stage
     filter(port.complex==portcomplex)
   
-  location_cog<-st_as_sf(COG_port, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  location_cog<-st_as_sf(COG_port ,coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
                 st_transform( st_crs("+proj=longlat  +datum=WGS84 +units=m +no_defs"))
   
   #extracting coordinates 
@@ -243,10 +245,10 @@ plot_fun<-function(portcomplex){
     scale_y_continuous(breaks=seq(maxx+.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
     # Theme
     theme_bw() + base_theme +
-    #theme(axis.title.x=element_blank())+
-    ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle = 'CPFV Fishery Center of Gravity')+
+    theme(axis.title.x=element_blank())+
+   ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle = 'CPFV Fishery Center of Gravity')+
     scale_color_viridis_c(name = "Year", option = "D") 
-  
+  p
   name=paste0(CPFV_data,'Figures/Kernel Density/',portcomplex,'/',portcomplex,' _COG.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
