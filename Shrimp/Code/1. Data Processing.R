@@ -259,10 +259,156 @@ no.ports2<-no.ports%>%
 shrimp_logbook7<-rbind(ports,no.ports2)
 #################
 
-shrimp_logbook7%>%
-  filter(is.na(port_complex_landings) & is.na(port_complex_logbook))
 
 
 #################
 #SAVE DATA
 saveRDS(shrimp_logbook7 ,paste0(shrimp_data, "Data/Processed Data/shrimp_logbooks_edited.rds"))
+shrimp_logbook7<-readRDS(paste0(shrimp_data, "Data/Processed Data/shrimp_logbooks_edited.rds"))
+#################
+
+#################
+#Firuing out the trip target and the tow target
+shrimp_logbook8<-shrimp_logbook7%>%
+  mutate(trip.identifier=paste(logbook_id, vessel_id, date.tow.logbooks, sep="_"))%>%
+  mutate(tow.identifier=paste(logbook_id, vessel_id, date.tow.logbooks, block_id, lat_dd_set, long_dd_set, lat_dd_up, long_dd_up, tow_number, depth_fa_set, depth_fa_up, time_set,time_up, duration_min, sep="_"))
+
+target<-shrimp_logbook8%>%
+  group_by(tow.identifier, species)%>%
+  summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%
+  ungroup()%>%
+  group_by(tow.identifier)%>%
+  mutate(total_catch_dive=sum(total_catch_species))%>%
+  group_by(tow.identifier, species)%>%
+  mutate(percent_catch=(total_catch_species/total_catch_dive)*100)%>%
+  mutate(percent_catch_log=log(percent_catch+1))%>%
+  filter(total_catch_species>0)%>%
+  filter(species=="Ridgeback prawn" | species=="Spot prawn"| species=="Pacific pink shrimp")
+
+ggplot() + 
+  geom_density(data=target,aes(x=percent_catch,fill=species),alpha = 0.5)+
+  xlab("Percent of Catch")+
+  ylab("Density") + 
+  # theme
+  theme(axis.text=element_text(size=8),
+        axis.text.y = element_text(angle = 90, hjust = 0.5),
+        axis.title=element_text(size=10),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))
+
+#trip 
+
+#group by the identifier, species, and then retain the one with more catch_lbs, if 
+target<-shrimp_logbook8%>%
+  group_by(trip.identifier, species)%>%
+  summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%
+  ungroup()%>%
+  group_by(trip.identifier)%>%
+  mutate(total_catch_dive=sum(total_catch_species))%>%
+  group_by(trip.identifier, species)%>%
+  mutate(percent_catch=(total_catch_species/total_catch_dive)*100)%>%
+  mutate(percent_catch_log=log(percent_catch+1))%>%
+  filter(total_catch_species>0)%>%
+  filter(species=="Ridgeback prawn" | species=="Spot prawn"| species=="Pacific pink shrimp")
+
+
+ggplot() + 
+  geom_density(data=target,aes(x=percent_catch,fill=species),alpha = 0.5)+
+  xlab("Percent of Catch")+
+  ylab("Density") + 
+  # theme
+  theme(axis.text=element_text(size=8),
+        axis.text.y = element_text(angle = 90, hjust = 0.5),
+        axis.title=element_text(size=10),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))
+#################
+
+
+#################
+#Assigning a dive as a sea cucumber or urchin fishery
+
+df<-shrimp_logbook8%>%
+  group_by(tow.identifier)%>%
+  summarize(n_species= n_distinct(species))%>%
+  filter(n_species >= 2) %>%
+  pull(tow.identifier)
+
+#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+target<-shrimp_logbook8%>%
+  filter(tow.identifier%in% df)%>%
+  filter(species=="Ridgeback prawn" | species=="Spot prawn"| species=="Pacific pink shrimp")%>%
+  group_by(tow.identifier, species)%>%
+  summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
+  group_by(tow.identifier) %>%
+  mutate(Target_species_tow = species[which.max(total_catch)]) %>%  # Identify species with greatest total catch
+  ungroup() %>%# Ungroup for final output
+  dplyr::select(-species, - total_catch)%>%
+  distinct()
+
+df1<-shrimp_logbook8 %>%
+  filter(tow.identifier %in% df)%>%
+  left_join(target, by="tow.identifier")
+
+
+df2<- shrimp_logbook8%>%
+  filter(!tow.identifier %in% df)%>%
+  mutate(Target_species_tow=species)
+
+shrimp_logbook9<-rbind(df1,df2)
+#################
+
+
+
+#################
+#Assigning a trip as a sea cucumber or urchin fishery
+
+df<-shrimp_logbook9%>%
+  group_by(trip.identifier)%>%
+  summarize(n_species= n_distinct(species))%>%
+  filter(n_species >= 2) %>%
+  pull(trip.identifier)
+
+#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+target<-shrimp_logbook9%>%
+  filter(trip.identifier %in% df)%>%
+  filter(species=="Ridgeback prawn" | species=="Spot prawn"| species=="Pacific pink shrimp")%>%
+  group_by(trip.identifier, species)%>%
+  summarise(total_catch = sum(catch_lbs, na.rm=TRUE), .groups = 'drop') %>%  # Summarize total catch
+  group_by(trip.identifier) %>%
+  mutate(Target_species_Trip = species[which.max(total_catch)]) %>%  # Identify species with greatest total catch
+  ungroup() %>%# Ungroup for final output
+  dplyr::select(-species, - total_catch)%>%
+  distinct()
+
+#adding info and editing
+df1.1<-shrimp_logbook9 %>%
+  filter(trip.identifier %in% df)%>%
+  left_join(target, by="trip.identifier")
+
+df2<- shrimp_logbook9%>%
+  filter(!trip.identifier %in% df)%>%
+  mutate(Target_species_Trip=species)
+
+shrimp_logbook10<-rbind(df1.1,df2)
+#################
+
+
+#################
+#ridgepack prawn, spot prawn, pink shrimp
+rp<-shrimp_logbook10 %>%
+  filter(Target_species_Trip=="Ridgeback prawn")
+saveRDS(rp ,paste0(shrimp_data, "Data/Processed Data/ridgeback_logbooks_edited.rds"))
+
+sp<-shrimp_logbook10 %>%
+  filter(Target_species_Trip=="Spot prawn")
+saveRDS(sp ,paste0(shrimp_data, "Data/Processed Data/spot_logbooks_edited.rds"))
+
+ps<-shrimp_logbook10 %>%
+  filter(Target_species_Trip=="Pacific pink shrimp")
+saveRDS(ps ,paste0(shrimp_data, "Data/Processed Data/pink_logbooks_edited.rds"))
+

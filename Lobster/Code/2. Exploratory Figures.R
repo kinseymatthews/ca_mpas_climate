@@ -7,8 +7,11 @@ library(sf)
 #################
 general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
 lobster_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/'
+#################
 
-###### read in lobster data
+
+#################
+#read in lobster data
 Lobster<-readRDS(paste0(lobster_data,"Data/Processed Data/lobster_logbooks_edited.rds"))%>%
   rename(port.complex1=port_complex1, port.complex2=port_complex2)
      

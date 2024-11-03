@@ -479,7 +479,7 @@ dive_logbook16<-dive_logbook15%>%
   mutate(trip.identifier=paste(date.logbooks,port_most_reliable,vessel_id, sep="_"))
 
 
-#group by the identifier, common name, and then retain the one with more catch_lbs, if 
+#group by the identifier, common name, and then retain the one with more catch_lbs
 target<-dive_logbook16%>%
   group_by(dive.identifier, comm_name)%>%
   summarise(total_catch_species = sum(catch_lbs, na.rm=TRUE))%>%

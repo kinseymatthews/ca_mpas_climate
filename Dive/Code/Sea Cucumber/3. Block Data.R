@@ -170,9 +170,6 @@ plot_fun("Los Angeles")
 ############ 
 #Block Data
 #years separate
-
-#All years combined
-#summarizing across years to see what one graph with all of the data should kinda look like
 stats_blocks_sf<- explor %>%
   # Step 1: Remove duplicates within each dive.identifier and calculate distinct angler_hours
   group_by(dive.identifier, hours) %>%
@@ -198,7 +195,7 @@ stats_blocks_sf<- explor %>%
 
 #ordering
 stats_blocks_sf$port.complex<- factor(stats_blocks_sf$port.complex, levels = c('Santa Barbara', 'Los Angeles', 'San Diego'))
-
+############
 
 ############
 #Graphing
