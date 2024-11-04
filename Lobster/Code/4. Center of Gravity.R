@@ -60,12 +60,6 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
 # State waters
 state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
 
-#adding in mpa implementation data
-port.complex=c("Santa Barbara","Los Angeles","San Diego")
-values=c(2012,2012,2012)
-mpa<-data.frame(port.complex=port.complex,mpayear=values)
-
-
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     axis.text.y = element_text(angle = 90, hjust = 0.5),

@@ -119,7 +119,7 @@ p2 <-ggplot(data=df, aes(x=year, y=percent.NA))+
   # geom_smooth(method="lm")+
   base_theme
 
-ggsave(plot = p2, filename = paste0(shrimp_data, "Figures/Spot/Exploratory/Percentage of CPFV Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
+ggsave(plot = p2, filename = paste0(shrimp_data, "Figures/Spot prawn/Exploratory/Percentage of CPFV Trips without Port Codes.jpg"), width = 8, height = 5, units = "in", dpi = 300)
 #################
 
 
@@ -154,9 +154,9 @@ plot_fun<-function(portcomplex){
     base_theme
   
   
-  filename1 <- paste0(shrimp_data, 'Figures/Spot/Exploratory/', portcomplex, '_NTrips_Year.jpg')
+  filename1 <- paste0(shrimp_data, 'Figures/Spot prawn/Exploratory/', portcomplex, '_NTrips_Year.jpg')
   ggsave(filename = filename1, plot = p, width = 8, height = 6, units = "in", dpi = 300)
-  filename2 <- paste0(shrimp_data, 'Figures/Spot/Exploratory/', portcomplex, '_NVessels_Year.jpg')
+  filename2 <- paste0(shrimp_data, 'Figures/Spot prawn/Exploratory/', portcomplex, '_NVessels_Year.jpg')
   ggsave(filename = filename2, plot = p2, width = 8, height = 6, units = "in", dpi = 300)
 }
 
@@ -192,7 +192,7 @@ p <-ggplot(data=na.nonna.blocks, aes(x=year, y=percent.na))+
   geom_smooth(method="lm")+
   base_theme
 
-ggsave(filename = paste0(shrimp_data, 'Figures/Spot/Exploratory/Percent_Incorrect_Blocks.jpg'), plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = paste0(shrimp_data, 'Figures/Spot prawn/Exploratory/Percent_Incorrect_Blocks.jpg'), plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 
@@ -220,7 +220,7 @@ p <-ggplot(data=df, aes(x=year, y=percent.depth))+
   labs(x="Year", y="Percentage")+
   base_theme
 
-ggsave(filename = paste0(shrimp_data, 'Figures/Spot/Exploratory/Percent_Depth_Reported.jpg'), plot = p, width = 8, height = 6, units = "in", dpi = 300)
+ggsave(filename = paste0(shrimp_data, 'Figures/Spot prawn/Exploratory/Percent_Depth_Reported.jpg'), plot = p, width = 8, height = 6, units = "in", dpi = 300)
 #################
 
 #################
@@ -264,7 +264,7 @@ plot_fun<-function(portcomplex){
     xlab("Year")+
     geom_vline(xintercept = mpayear, linetype = "dotted", color = "red",size=1)
   
-  name=paste0(shrimp_data, 'Figures/Spot/Exploratory/',portcomplex,' Depth Distributions.jpg')
+  name=paste0(shrimp_data, 'Figures/Spot prawn/Exploratory/',portcomplex,' Depth Distributions.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 }
 

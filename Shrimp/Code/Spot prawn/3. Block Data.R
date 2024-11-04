@@ -160,7 +160,7 @@ plot_fun<-function(portcomplex){
     theme_bw() + base_theme+
     ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Spot Prawn Trawl Fishery" )
   
-  name=paste0(shrimp_data,'Figures/Spot prawn/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  name=paste0(shrimp_data,'Figures/Spot/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
@@ -234,7 +234,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0(shrimp_data, 'Figures/Spot prawn/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
+  name=paste0(shrimp_data, 'Figures/Spot/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
   anim_save(name, anim)
 }
 plot_fun('Bodega Bay')
