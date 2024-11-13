@@ -83,7 +83,7 @@ explor<- shrimp%>%
   mutate(port.complex = coalesce(port_complex_logbook , port_complex_landings))%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%
-  mutate(block_id = coalesce(block_id_logbook,block_id_landings))%>% #prefers logbook block id to gps block id
+  mutate(block_id = coalesce(block_id_logbook,block_id_landings, block_id_gps))%>%  #prefers logbook block id to gps block id
   left_join(all_blocks_df, by="block_id")%>%
   filter(!is.na(block_id))%>%
   filter(!is.na(block_lat_dd))%>%

@@ -78,6 +78,10 @@ base_theme <- theme(axis.text=element_text(size=7),
                     # Legend
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
+
+port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
+mpa<-data.frame(port.complex=port.complex,mpayear=values)
 ###############
 
 
@@ -243,3 +247,185 @@ plot_fun<-function(portcomplex){
 plot_fun('Los Angeles')
 plot_fun('Santa Barbara')
 ###############
+
+
+
+###############
+#Coastwide figure with port complexes and fishing ground shifts
+df<-readRDS(paste0(shrimp_data,'Data/Processed Data/ridgeback_COG_distance_results_towhours_final.rds'))%>%
+  ungroup()%>%
+  mutate(year=as.numeric(year))
+
+#filter for first and last year which will be actual points on the plot
+COG1<-df%>%
+  group_by(port.complex)%>%
+  filter(year== min(year) | year== max(year))%>%
+  rename(Year=year)
+
+COG_sf<-st_as_sf(COG1, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  st_transform(crs = "+proj=longlat +datum=WGS84")
+COG_sf$Year=as.factor(COG_sf$Year)
+
+COG_sf$port.complex<- factor(COG_sf$port.complex, levels = c( 'Santa Barbara', 'Los Angeles'))
+
+#get all spatial data for the path
+COG2<-st_as_sf(df, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  st_transform(crs = "+proj=longlat +datum=WGS84")
+COG2$Year=as.factor(COG2$year)
+
+# Group by port.complex and combine the geometries
+combined_geometries <- COG2 %>%
+  group_by(port.complex) %>%
+  summarise(geometry = st_union(geometry), .groups = 'drop')
+
+# Cast the combined geometries to LINESTRING
+linestring <- st_cast(combined_geometries, "LINESTRING")
+linestring $port.complex<- factor(linestring $port.complex, levels = c('Santa Barbara', 'Los Angeles'))
+cali<-usa%>%
+  filter(name=="California")
+
+p<-ggplot() +
+  # Land
+  geom_sf(data = cali, fill = "gray", col = "black", linewidth=0.2, inherit.aes = F) +
+  geom_sf(data=mexico, fill="gray", col="black", linewidth=0.2, inherit.aes = F) +
+  # Lines connecting points for the same port complex
+  geom_sf(data = linestring, aes(color = port.complex), linewidth = 0.8) +
+  # points
+  geom_sf(data=COG_sf,aes(shape=Year),size=2)+
+  # Crop
+  coord_sf(xlim = c(-125, -116), ylim = c(32, 38)) +
+  # Axes
+  scale_x_continuous(breaks=seq(-125, -116, 2)) +
+  scale_y_continuous(breaks=seq(32, 38, 2)) + 
+  # Theme
+  theme_bw() + base_theme +
+  theme(
+    axis.title.x = element_blank(),  # Remove x-axis title
+    axis.title.y = element_blank(),  # Remove y-axis title
+    axis.text.x = element_blank(),    # Remove x-axis text
+    axis.text.y = element_blank(),    # Remove y-axis text
+    axis.ticks.x = element_blank(),   # Remove x-axis ticks
+    axis.ticks.y = element_blank(),   # Remove y-axis ticks
+    panel.border = element_blank(),   # Remove the border around the plotting area
+    panel.grid = element_blank(),     # Remove grid lines
+    plot.background = element_blank(), # Remove the background color of the plot
+    plot.margin = margin(0, 0, 0, 0) # Remove margins around the plot
+  ) +
+  
+  ggtitle(('Ridgeback Prawn Trawl Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
+
+filename1 <- paste0(shrimp_data, 'Figures/Ridgeback/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+###############
+
+
+
+###############
+#Time series analyses
+
+#COG distance from shore
+COG3<-df%>%
+  mutate(distance_shore_km=cog_dist_shore/1000)%>% #might have to update if the units change with the COG calculation
+  left_join(mpa,by="port.complex")
+
+plot_fun<-function(portcomplex){
+  
+  location<-COG3%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=location, aes(x=year))+
+    geom_line(aes(y=distance_shore_km),size=1) +
+    labs(y = bquote('Distance from shore'~(km^2))) +
+    # Theme
+    theme_bw() + 
+    base_theme  +
+    theme(legend.title = element_blank())+
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
+    geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
+    xlab('Year')
+  
+  filename1 <- paste0(shrimp_data,'Figures/Ridgeback/Kernel Density/', portcomplex, '/',portcomplex,'_COG_distanceshore.jpg')
+  ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+}
+
+plot_fun('Los Angeles')
+plot_fun('Santa Barbara')
+###############
+
+###############
+#Time series analyses
+#latitude
+df1<-st_as_sf(df, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  st_transform( st_crs("+proj=longlat  +datum=WGS84 +units=m +no_defs"))%>% 
+  left_join(mpa,by="port.complex")
+
+df1$latitude <- st_coordinates(df1)[, "Y"]  # Extracts latitude
+df1$longitude <- st_coordinates(df1)[, "X"]
+df1<-df1 %>% sf::st_drop_geometry()
+
+plot_fun<-function(portcomplex){
+  
+  location<-df1%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=location, aes(x=year))+
+    geom_line(aes(y=latitude),size=1)+
+    labs(y = ('Latitude °N')) +
+    # Theme
+    theme_bw() + 
+    base_theme  +
+    theme(legend.title = element_blank())+
+    #adding heatwave information
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
+    #adding mpa implementation year
+    geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)+
+    xlab('Year')
+  
+  
+  filename1 <- paste0(shrimp_data,'Figures/Ridgeback/Kernel Density/', portcomplex, '/',portcomplex,'_COG_latitude.jpg')
+  ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+}
+plot_fun('Los Angeles')
+plot_fun('Santa Barbara')
+###############
+
+
+###############
+#time series analyses
+#graph of all COG latitudes together 
+
+df2<-df1%>%
+  mutate(distance_shore_km=cog_dist_shore/1000)
+df2$port.complex<- factor(df2$port.complex, levels = c('Los Angeles','Santa Barbara'))
+
+
+p<-ggplot(data=df2, aes(x=year, color=port.complex))+
+  geom_line(aes(y=latitude),size=.5)+
+  labs(y = ('Latitude °N'), x='Year') +
+  scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+  # Theme
+  theme_bw() + 
+  base_theme  +
+  theme(legend.title = element_blank())
+
+filename1 <- paste0(shrimp_data,'Figures/Ridgeback/Kernel Density/All Ports_COG_latitude.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+###############
+
+###############
+#time series analyses
+#graph of all distance to shore together
+p<-ggplot(data=df2, aes(x=year, color=port.complex))+
+  geom_line(aes(y=distance_shore_km),size=.5)+
+  labs(y = ('Distance from shore (km)'), x='Year') +
+  scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+  # Theme
+  theme_bw() + 
+  base_theme  +
+  theme(legend.title = element_blank())
+
+filename1 <- paste0(shrimp_data,'Figures/Ridgeback/Kernel Density/All Ports_COG_distanceshore.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+###############
+

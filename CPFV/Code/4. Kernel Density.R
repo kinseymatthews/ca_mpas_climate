@@ -182,7 +182,7 @@ plot_fun<-function(portcomplex){
           axis.title.y=element_blank())
   
   
-  name=paste0(CPFV_Data,'Figures/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
+  name=paste0(CPFV_data,'Figures/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
   
 }
@@ -324,7 +324,7 @@ plot_fun<-function(portcomplex){
       theme(axis.title = element_blank())
     
     
-    name=paste0(CPFV_Data,'Figures/Kernel Density/',portcomplex,'/',portcomplex, year,'.jpg')
+    name=paste0(CPFV_data,'Figures/Kernel Density/',portcomplex,'/',portcomplex, year,'.jpg')
     ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }

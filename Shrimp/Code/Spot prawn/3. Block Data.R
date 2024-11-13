@@ -83,7 +83,7 @@ explor<- shrimp%>%
   mutate(port.complex = coalesce(port_complex_logbook , port_complex_landings))%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%
-  mutate(block_id = coalesce(block_id_logbook,block_id_landings))%>% #prefers logbook block id to gps block id
+  mutate(block_id = coalesce(block_id_logbook,block_id_landings, block_id_gps))%>%  #prefers logbook block id to gps block id
   left_join(all_blocks_df, by="block_id")%>%
   filter(!is.na(block_id))%>%
   filter(!is.na(block_lat_dd))%>%
@@ -160,10 +160,12 @@ plot_fun<-function(portcomplex){
     theme_bw() + base_theme+
     ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Spot Prawn Trawl Fishery" )
   
-  name=paste0(shrimp_data,'Figures/Spot/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+  name=paste0(shrimp_data,'Figures/Spot prawn/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
+
+
 plot_fun('Bodega Bay')
 plot_fun('San Francisco')
 plot_fun('Monterey')
@@ -234,7 +236,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0(shrimp_data, 'Figures/Spot/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
+  name=paste0(shrimp_data, 'Figures/Spot prawn/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
   anim_save(name, anim)
 }
 plot_fun('Bodega Bay')

@@ -4,7 +4,7 @@ library(sp)
 library(spatstat)
 library(raster)
 library(ggplot2)
-
+library(magick)
 ##################
 #Read in data
 general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
@@ -108,11 +108,7 @@ stats<- explor %>%
   left_join(mpa, by="port.complex")%>%
   #remove any bad spatial blocks
   filter(!st_is_empty(.))
-
-
 ############
-
-
 
 ############
 #cog data manipulation
@@ -121,7 +117,6 @@ COG_df<-COG_sf%>%
 COG_df$COG_latitude <- st_coordinates(COG_sf)[, "Y"]  # Extracts latitude
 COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
 ############
-
 
 ############
 #plotting mpas with yearly kernel densities and COG
@@ -344,7 +339,6 @@ plot_fun<-function(portcomplex){
   }
   all.data<- dplyr::bind_rows(datalist)
   all.data
-  
 }
 
 a<-plot_fun("Eureka")

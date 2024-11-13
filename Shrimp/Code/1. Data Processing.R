@@ -16,6 +16,19 @@ shrimp_logbook<-readRDS(paste0(shrimp_data, "Data/Raw Data/CDFW_1982_2023_shrimp
 landings<-readRDS(paste0(shrimp_data,"Data/Raw Data/1980_2022_landings_receipts.rds"))
 port_info<-read.csv(paste0(general_data,'Port Codes.csv'))
 port_info$port_code<-as.double(port_info$port_code)
+
+#upload block data to be used later
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
+  st_as_sf()
+
+all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
+  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
+  rename(block_id_gps=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)%>%
+  filter(blck_st!="International")%>%
+  st_make_valid()%>%
+  select(block_id_gps)
+
+
 #################
 
 
@@ -398,17 +411,53 @@ shrimp_logbook10<-rbind(df1.1,df2)
 #################
 
 
+
+#################
+#add GPS block id
+
+
+# Filter out rows where coordinates are out of range
+gps <- shrimp_logbook10 %>% 
+  filter(long_dd_set >= -180 & long_dd_set <= 180, lat_dd_set >= -90 & lat_dd_set <= 90)
+
+no.gps <- shrimp_logbook10 %>% 
+  filter(long_dd_set < -180 | long_dd_set > 180 | lat_dd_set < -90 | lat_dd_set > 90 | is.na(lat_dd_set) |
+         is.na(long_dd_set))%>%
+  mutate(block_id_gps=NA)
+
+# Convert GPS coordinates dataframe to an sf object (assuming df_gps contains lat and long columns)
+gps2 <- st_as_sf(gps, coords = c("long_dd_set", "lat_dd_set"), crs = 4326)
+
+# Perform spatial join
+gps2_block <- st_join(gps2 , all_blocks)
+
+coords<-st_coordinates(gps2_block)
+
+# Bind the coordinates back to the original data
+gps2_block_df <- cbind(gps2_block, coords)%>%
+  rename(long_dd_set=X, lat_dd_set=Y)%>%
+  st_drop_geometry()
+
+
+#combine back with the other dataframe
+shrimp_logbook11<-rbind(no.gps,gps2_block_df)
+
+
+#################
+
+
+
 #################
 #ridgepack prawn, spot prawn, pink shrimp
-rp<-shrimp_logbook10 %>%
+rp<-shrimp_logbook11 %>%
   filter(Target_species_Trip=="Ridgeback prawn")
 saveRDS(rp ,paste0(shrimp_data, "Data/Processed Data/ridgeback_logbooks_edited.rds"))
 
-sp<-shrimp_logbook10 %>%
+sp<-shrimp_logbook11 %>%
   filter(Target_species_Trip=="Spot prawn")
 saveRDS(sp ,paste0(shrimp_data, "Data/Processed Data/spot_logbooks_edited.rds"))
 
-ps<-shrimp_logbook10 %>%
+ps<-shrimp_logbook11 %>%
   filter(Target_species_Trip=="Pacific pink shrimp")
 saveRDS(ps ,paste0(shrimp_data, "Data/Processed Data/pink_logbooks_edited.rds"))
 

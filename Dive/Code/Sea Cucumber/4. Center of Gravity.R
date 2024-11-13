@@ -251,7 +251,7 @@ plot_fun('San Diego')
 
 
 
-#CODE THAT WILL WORK ONCE THE RASTER IS FIGURED OUT
+
 ###############
 #Coastwide figure with port complexes and fishing ground shifts
 df<-readRDS(paste0(cucumber_data,'Data/Processed Data/COG_distance_results_divehours_final_cucumber.rds'))%>%

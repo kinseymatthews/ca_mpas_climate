@@ -71,7 +71,7 @@ explor<- shrimp%>%
   #filtering for only the port complexes that agree
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%
-  mutate(block_id = coalesce(block_id_logbook,block_id_landings))%>% #prefers logbook block id to gps block id
+  mutate(block_id = coalesce(block_id_logbook,block_id_landings, block_id_gps))%>%  #prefers logbook block id to gps block id
   left_join(all_blocks_df, by="block_id")%>%
   #getting rid of international, offshore,  all midshore besides 897, and all blocks that are too deep
   filter(blck_st!="International" | is.na(blck_st) )%>%
