@@ -287,7 +287,7 @@ dive_logbook7<-rbind(ports,no.ports)
 
 
 #################
-#STEP 3.5
+#STEP 5
 #Matching entries with port complexes most often seen that day
 no.ports<-dive_logbook7%>%
   filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))%>%
@@ -320,7 +320,7 @@ dive_logbook8<-rbind(ports,no.ports2)
 
 
 #################
-#STEP 5
+#STEP 6
 #Fifth we added a port complex to the logbook data if a vessel went to the same port complex 90% or more of the time during a specific year.
 
 no.ports<-dive_logbook8%>%
@@ -362,7 +362,7 @@ dive_logbook9<-rbind(ports,no.ports)
 
 
 #################
-#STEP 6
+#STEP 7
 #Six, we added a port complex to the logbook data if a vessel went to a specific port complex in over 90% of the landings data
 
 no.ports<-dive_logbook9%>%
