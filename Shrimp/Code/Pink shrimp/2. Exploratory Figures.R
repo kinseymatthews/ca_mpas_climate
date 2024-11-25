@@ -75,10 +75,11 @@ explor<- shrimp%>%
   left_join(all_blocks_df, by="block_id")%>%
   #getting rid of international, offshore,  all midshore besides 897, and all blocks that are too deep
   filter(blck_st!="International" | is.na(blck_st) )%>%
-  filter(blck_ty!="Offshore" | is.na(blck_st))%>%
+  filter(blck_ty!="Offshore" | is.na(blck_ty))%>%
   #adding column for reported depth in meters
   mutate(Depth_m=depth_fa_up*(-0.3048))%>%
   mutate(depth=depth_fa_up)
+
 
 ##### which port complexes to keep?
 explor %>%

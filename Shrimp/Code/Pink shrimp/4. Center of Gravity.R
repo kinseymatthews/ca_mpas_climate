@@ -25,7 +25,7 @@ reprojected_raster <- projectRaster(distance_raster, crs=target_crs)
 # Set values above the threshold to 0
 reprojected_raster[reprojected_raster< 1] <- NA
 
-#lobster data that has been filtered already
+# data that has been filtered already
 explor<-readRDS(paste0(shrimp_data, "Data/Processed Data/pinktrawl_filtered.rds"))
 
 #block data 
