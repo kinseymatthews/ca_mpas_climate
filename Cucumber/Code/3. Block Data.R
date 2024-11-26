@@ -61,6 +61,7 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 #################
+
 #################
 #adding in mpa implementation data
 port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
