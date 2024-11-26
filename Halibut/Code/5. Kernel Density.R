@@ -330,31 +330,38 @@ plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
 
 #importing yearly images and creating an animation
-years<-c(1995,1997:2006,2009,2010)
-frames<-paste0(halibut_data,"Figures/Kernel Density/Eureka/Eureka",years,".jpg")
+plot_fun<-function(portcomplex){
+  frames<-paste0(halibut_data,'Figures/Kernel Density/',portcomplex,'/',portcomplex,1981:2022,".jpg")
+  m<-image_read(frames)
+  m<-image_animate(m, fps=1)
+  image_write(m,paste0(halibut_data,'Figures/Kernel Density/',portcomplex,'/',portcomplex, 'Kernel Densities_Animation.gif'))
+}
+plot_fun("Eureka")
+plot_fun('Fort Bragg')
+plot_fun('San Francisco')
+plot_fun('Morro Bay')
+
+years<-c(1981:2004,2006:2010,2014)
+frames<-paste0(halibut_data, "Figures/Kernel Density/Bodega Bay/Bodega Bay", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m, paste0(halibut_data,"Figures/Kernel Density/Eureka/Eureka Kernel Densities_Animation.gif"))
+image_write(m,paste0(halibut_data,"Figures/Kernel Density/Bodega Bay/Bodega Bay Kernel Densities_Animation.gif"))
 
-years<-c(1994:1997,1999,2000:2003)
+years<-c(1981:2015,2017,2021,2022)
 frames<-paste0(halibut_data, "Figures/Kernel Density/Monterey/Monterey", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(halibut_data,"Figures/Kernel Density/Monterey/Monterey Kernel Densities_Animation.gif"))
 
-years<-c(1983:1985,1994:2002, 2004,2005)
-frames<-paste0(halibut_data,"Figures/Kernel Density/Morro Bay/Morro Bay", years,".jpg")
-m<-image_read(frames)
-m<-image_animate(m, fps=1)
-image_write(m,paste0(halibut_data,"Figures/Kernel Density/Morro Bay/Morro Bay Kernel Densities_Animation.gif"))
 
-years<-c(1982:2020)
+years<-c(1981:1982,1984:2022)
 frames<-paste0(halibut_data,"Figures/Kernel Density/Santa Barbara/Santa Barbara", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(halibut_data,"Figures/Kernel Density/Santa Barbara/Santa Barbara Kernel Densities_Animation.gif"))
 
-years<-c(1984,1986,1991,1994:2003,2009:2012,2014:2016,2020)
+
+years<-c(1981,1982,1997:2022)
 frames<-paste0(halibut_data,"Figures/Kernel Density/Los Angeles/Los Angeles", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
@@ -502,8 +509,6 @@ for(i in 1:n_pages(p)){
     facet_wrap_paginate( ~port.complex, ncol=3, nrow=1, page = i, scales="free_y")
   ggsave(plot = p_save, filename = paste0(halibut_data,'Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
 }
-
-#can also do the above so its not facetwrap and all separate
 ############
 
 ############
@@ -528,7 +533,6 @@ plot_fun<-function(portcomplex){
   
   # Define specific colors from an RColorBrewer palette
   colors <- brewer.pal(n = 11, name = "RdYlBu") 
-  
   
   location<-COG_vcontours%>%
     filter(port.complex==portcomplex)
