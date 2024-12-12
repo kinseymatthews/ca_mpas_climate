@@ -24,11 +24,10 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-#port codes
-port<-read.csv(paste0(urchin_data, "Data/Raw Data/Port Codes.csv"))
+port<-read.csv(paste0(general_data, "Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( paste0(urchin_data, "Data/Raw Data/CA_state_waters_polyline.Rds"))
+state_waters <- readRDS( paste0(general_data, "CA_state_waters_polyline.Rds"))
 
 #mpas
 mpa_blocks<-wcfish::mpas_ca
@@ -363,6 +362,8 @@ all.volumes<-rbind(a,b,c,d)
 all.volumes<-all.volumes%>%
   left_join(mpa,by="port.complex")%>%
   mutate(Year=as.numeric(Year))
+
+saveRDS(all.volumes,paste0(urchin_data,"Data/Processed Data/MPA_area.rds"))
 
 
 plot_fun<-function(portcomplex){

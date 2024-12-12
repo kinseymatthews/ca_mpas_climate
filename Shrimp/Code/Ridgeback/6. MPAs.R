@@ -334,6 +334,8 @@ all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
   left_join(mpa,by="port.complex")
 
+saveRDS(all.volumes,paste0(shrimp_data,"Data/Processed Data/ridgeMPA_area.rds"))
+
 #figure
 plot_fun<-function(portcomplex){
   location <- all.volumes%>%

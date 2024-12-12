@@ -363,10 +363,11 @@ f<-plot_fun('Los Angeles')
 
 all.volumes<-rbind(a,b,c,d,e,f)
 
-
 all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
   left_join(mpa,by="port.complex")
+
+saveRDS(all.volumes,paste0(shrimp_data,"Data/Processed Data/spotMPA_area.rds"))
 
 #figure
 plot_fun<-function(portcomplex){

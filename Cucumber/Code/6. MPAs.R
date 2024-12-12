@@ -358,6 +358,9 @@ all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
   left_join(mpa,by="port.complex")
 
+saveRDS(all.volumes,paste0(cucumber_data,"Data/Processed Data/MPA_area.rds"))
+
+
 plot_fun<-function(portcomplex){
   location <- all.volumes%>%
     filter(port.complex==portcomplex)

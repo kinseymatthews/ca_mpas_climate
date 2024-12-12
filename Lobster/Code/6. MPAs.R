@@ -72,6 +72,9 @@ base_theme <- theme(axis.text=element_text(size=7),
 port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
 values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
+
+#mpas
+mpa_blocks<-wcfish::mpas_ca
 ############
 
 
@@ -354,6 +357,7 @@ all.volumes<-rbind(a,b,c)
 all.volumes<-all.volumes%>%
   left_join(mpa,by="port.complex")
 
+saveRDS(all.volumes,paste0(lobster_data,"Data/Processed Data/MPA_area.rds"))
 
 #or not facetwrap
 plot_fun<-function(portcomplex){

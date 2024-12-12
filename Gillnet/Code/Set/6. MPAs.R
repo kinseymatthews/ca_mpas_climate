@@ -378,6 +378,8 @@ all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
   left_join(mpa,by="port.complex")
 
+saveRDS(all.volumes,paste0(gillnet_data,"Data/Processed Data/setgillnet_MPA_area.rds"))
+
 #figure
 plot_fun<-function(portcomplex){
   location <- all.volumes%>%

@@ -32,13 +32,13 @@ all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp")
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
-  dplyr::select(!c(hrs_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
+  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 #read  in bathymetry data with blocks
 bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
-  dplyr::select(BLOCK_ID,hrs, MAX, RANGE, MEAN)%>%
-  rename(block_id=BLOCK_ID, Max_Depthm=hrs, hrs_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
+  dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
+  rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
 bathy.data$block_id=as.double(bathy.data$block_id)
 
@@ -70,7 +70,7 @@ base_theme <- theme(axis.text=element_text(size=7),
                     # plot.title=element_blank(),
                     # Gridlines
                     panel.grid.major = element_blank(),
-                    panel.grid.hrsor = element_blank(),
+                    panel.grid.minor = element_blank(),
                     panel.background = element_blank(),
                     axis.line = element_line(colour = "black"),
                     # Legend
