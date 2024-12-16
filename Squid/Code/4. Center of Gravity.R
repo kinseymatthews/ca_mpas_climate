@@ -130,7 +130,7 @@ cog_results <- stats_kd_sf %>%
   ) %>%
   sf::st_drop_geometry()
 
-# Print or use final results as needed
+# Print or use as needed
 saveRDS(cog_results, paste0(squid_data,'Data/Processed Data/squid_COG_TrapNights_distanceway.rds'))
 cog_results_2<-readRDS(paste0(squid_data, 'Data/Processed Data/squid_COG_TrapNights_distanceway.rds'))
 
@@ -203,7 +203,7 @@ saveRDS(df, paste0(squid_data,'Data/Processed Data/squid_COG_distance_results_to
 ###############
 
 ###############
-#plotting COG on their own - not doing a function as I am trying to figure out what is going wrong with San Diego
+#plotting COG 
 plot_fun<-function(portcomplex){
   COG_port<-readRDS(paste0(squid_data,'Data/Processed Data/squid_COG_distance_results_towhours_final.rds'))%>%
     filter(port.complex==portcomplex)

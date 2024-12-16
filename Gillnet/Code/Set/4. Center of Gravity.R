@@ -200,7 +200,7 @@ f<-plot_fun('Los Angeles')
 g<-plot_fun('San Diego')
 
 df<-rbind(a,b,c,d,e,f,g)
-saveRDS(df, paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_results_towhours_final.rds'))
+saveRDS(df, paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_results_final.rds'))
 ###############
 
 

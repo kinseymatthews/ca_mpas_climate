@@ -127,8 +127,8 @@ cog_results <- stats_kd_sf %>%
   sf::st_drop_geometry()
 
 # Print or use final results as needed
-saveRDS(cog_results, paste0(cucumber_data,'Data/Processed Data/seacucumber_COG_TrapNights_distanceway.rds'))
-cog_results_2<-readRDS(paste0(cucumber_data, 'Data/Processed Data/seacucumber_COG_TrapNights_distanceway.rds'))
+saveRDS(cog_results, paste0(cucumber_data,'Data/Processed Data/seacucumber_COG_distanceway.rds'))
+cog_results_2<-readRDS(paste0(cucumber_data, 'Data/Processed Data/seacucumber_COG_distanceway.rds'))
 
 #getting longitude from distance to shore
 plot_fun<-function(portcomplex){ 

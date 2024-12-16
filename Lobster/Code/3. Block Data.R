@@ -100,7 +100,8 @@ explor<- Lobster%>%
   filter(n_traps_pulled<=600)%>%
   filter(n_traps_pulled>0)%>%
   filter(n_nights>0)%>%
-  distinct()
+  distinct()%>%
+  filter(port.complex=="Santa Barbara" |port.complex=="Los Angeles" | port.complex=="San Diego")
 
 saveRDS(explor, paste0(lobster_data, "Data/Processed Data/lobster_filtered.rds"))
 

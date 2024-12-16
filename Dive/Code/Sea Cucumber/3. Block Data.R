@@ -100,7 +100,8 @@ explor<-cuc%>%
   #getting rid of bad or unrealistic dive hours
   filter(hours<10 &  hours>0.10)%>%
   filter(!is.na(port.complex))%>%
-  filter(!is.na(block_id))
+  filter(!is.na(block_id))%>%
+  filter(port.complex=="Santa Barbara" |port.complex=="Los Angeles" |port.complex=="San Diego")
 
 saveRDS(explor, paste0(cucumber_data,"Data/Processed Data/seacucumber_filtered.rds"))
 ############ 
