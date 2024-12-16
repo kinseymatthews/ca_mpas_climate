@@ -204,8 +204,8 @@ ggsave(filename = paste0(squid_data, 'Figures/Exploratory/Percent_Depth_Reported
 
 #################
 squid.with.depth<-explor[!is.na(explor$depth),]%>%
-  dplyr::select(port.complex, trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-  filter(!duplicated(trip.identifier)) # trips with depth
+  dplyr::select(port.complex, tow.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+  filter(!duplicated(tow.identifier)) # trips with depth
 
 inside.bounds<- squid.with.depth%>%
   filter(
@@ -214,6 +214,9 @@ inside.bounds<- squid.with.depth%>%
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
 
+saveRDS(inside.bounds, paste0(squid_data, "Data/Processed Data/depth.rds"))
+
+
 outside.bounds<- squid.with.depth%>%
   filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) #outside bounds
 
@@ -221,8 +224,8 @@ plot_fun<-function(portcomplex){
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select(trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-    filter(!duplicated(trip.identifier))%>%
+    dplyr::select(tow.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+    filter(!duplicated(tow.identifier))%>%
     filter(depth>15)%>%
     mutate(log_depth=log(-1*Depth_m))
   
@@ -237,7 +240,7 @@ plot_fun<-function(portcomplex){
       fill = "gray80", alpha = 0.1, inherit.aes = FALSE)+
     geom_boxplot()+
     theme_bw() + base_theme +
-    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of Sea squid Trips')+
+    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of squid tows')+
     # theme(legend.position = "bottom")+
     ylab("Logged Depth (m)")+
     xlab("Year")+

@@ -11,7 +11,7 @@ urchin_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mp
 urch<-readRDS(paste0(urchin_data, "Data/Processed Data/redseaurchinfishery_matched.rds"))
 
 ###### read in block data
-all_blocks<-st_read(paste0(urchin_data, "Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
+all_blocks<-st_read(paste0(general_data, "Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -19,7 +19,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv(paste0(urchin_data,"Data/Raw Data/fishingblockstatistics.csv"))%>%
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -83,7 +83,6 @@ explor<-urch%>%
   #rename port complex so we can reuse code
   rename(port.complex=port_most_reliable)
 
-#removing block IDs north of monterey bay where fishing shouldnt occur
 
 
 ##### which port complexes to keep?
@@ -193,8 +192,6 @@ explor%>%
 #################
 
 
-
-
 #################
 ##Depth
 #Depth being reported through time
@@ -225,28 +222,30 @@ ggsave(filename = paste0(urchin_data,'Figures/Urchin/Exploratory/Percent_Depth_R
 #################
 
 
-
 #################
 #Depth by complexes
 # number of trips with the reported depth not in the correct bounds
-cuc.with.depth<-explor[!is.na(explor$depth_min_ft),]%>%
-  dplyr::select(port.complex, year, block_id, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)
+urch.with.depth<-explor[!is.na(explor$depth_min_ft),]%>%
+  dplyr::select(port.complex, dive.identifier,year, block_id, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)%>%
+  filter(!duplicated(dive.identifier))
 
-inside.bounds<-cuc.with.depth%>%
+inside.bounds<-urch.with.depth%>%
   filter(
     (is.na(Max_Depthm) |Max_depth_m_recorded >=  Max_Depthm) & 
       (is.na(Min_Depthm) | Min_depth_m_recorded  <= Min_Depthm) #opposite cause negative numbers
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
 
+saveRDS(inside.bounds, paste0(urchin_data, "Data/Processed Data/urchin_depth.rds"))
 
 #boxplots function
 plot_fun<-function(portcomplex){ 
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select( year,block_id, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
-    mutate(log_depth=log(-1*Med_depth_m_recorded))
+    dplyr::select( dive.identifier, year,block_id, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
+    mutate(log_depth=log(-1*Med_depth_m_recorded))%>%
+    filter(!duplicated(dive.identifier))
   
   # Convert `year` to a factor to ensure separate boxplots per year
   df <- df %>%

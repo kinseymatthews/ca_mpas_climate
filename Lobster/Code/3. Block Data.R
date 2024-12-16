@@ -1,6 +1,6 @@
 #libraries
 library(gganimate)
-library(dplyr)
+library(tidyverse)
 library(sf)
 library(sp)
 

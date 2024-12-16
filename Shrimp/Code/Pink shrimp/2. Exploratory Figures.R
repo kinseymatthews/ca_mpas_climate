@@ -225,8 +225,8 @@ ggsave(filename = paste0(shrimp_data, 'Figures/Pink Shrimp/Exploratory/Percent_D
 
 #################
 shrimp.with.depth<-explor[!is.na(explor$depth),]%>%
-  dplyr::select(port.complex, trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-  filter(!duplicated(trip.identifier)) #444,559 trips with depth
+  dplyr::select(port.complex, tow.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+  filter(!duplicated(tow.identifier)) #444,559 trips with depth
 
 inside.bounds<- shrimp.with.depth%>%
   filter(
@@ -235,6 +235,8 @@ inside.bounds<- shrimp.with.depth%>%
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
 
+saveRDS(inside.bounds, paste0(shrimp_data, "Data/Processed Data/pink_depth.rds"))
+
 outside.bounds<- shrimp.with.depth%>%
   filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) #31792 outside bounds
 
@@ -242,8 +244,8 @@ plot_fun<-function(portcomplex){
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select(trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-    filter(!duplicated(trip.identifier))%>%
+    dplyr::select(tow.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+    filter(!duplicated(tow.identifier))%>%
     filter(depth>15)%>%
     mutate(log_depth=log(-1*Depth_m))
   
@@ -258,7 +260,7 @@ plot_fun<-function(portcomplex){
       fill = "gray80", alpha = 0.1, inherit.aes = FALSE)+
     geom_boxplot()+
     theme_bw() + base_theme +
-    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of Pink Shrimp Trips')+
+    ggtitle(paste0(portcomplex,' Port Complex'), subtitle = 'Depth Distributions of Pink Shrimp Tows')+
     # theme(legend.position = "bottom")+
     ylab("Logged Depth (m)")+
     xlab("Year")+

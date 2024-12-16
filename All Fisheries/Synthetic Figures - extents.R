@@ -136,7 +136,7 @@ k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
-results$port_complex<- factor(results$port_complex, levels = c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego'))
+results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
 ############
 
 ############

@@ -280,9 +280,11 @@ inside.bounds<-lobster.with.depth%>%
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
 
+saveRDS(inside.bounds, paste0(lobster_data, "Data/Processed Data/depth.rds"))
+
+
 outside.bounds<-lobster.with.depth%>%
   filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) # 4516 rows out of bounds
-inside.bounds$year<-as.factor(inside.bounds$year)
 
 #boxplots function
 plot_fun<-function(portcomplex){ 

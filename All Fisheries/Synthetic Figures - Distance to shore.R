@@ -126,7 +126,7 @@ k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
 distance.results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
-distance.results$port.complex<- factor(distance.results$port.complex, levels = c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego'))
+distance.results$port_complex<- factor(distance.results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
 ############
 
 ############

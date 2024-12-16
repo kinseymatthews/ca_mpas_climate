@@ -28,6 +28,8 @@ squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca
   mutate(fishery="Squid seine",Year=as.numeric(Year))
 
 fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)
+
+
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     # axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -125,7 +127,7 @@ k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
-results$port_complex<- factor(results$port_complex, levels = c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego'))
+results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
 ############
 
 ############

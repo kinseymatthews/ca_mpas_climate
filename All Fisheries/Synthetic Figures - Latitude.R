@@ -148,7 +148,7 @@ p<-ggplot(data=latitude.results, aes(x= slope.latitude, y=fishery2, color=port_c
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
-    x = "Slope of Latitude over Time",
+    x = "Slope of latitude over time",
     y = "Fishery",
     color = "Port Complex"
   )+
@@ -169,7 +169,7 @@ p<-ggplot(data=latitude.results, aes(x= slope.latitude, y=port_complex, color=fi
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
-    x = "Slope of Latitude over Time",
+    x = "Slope of latitude over time",
     y = "Fishery",
     color = "Fishery"
   )+

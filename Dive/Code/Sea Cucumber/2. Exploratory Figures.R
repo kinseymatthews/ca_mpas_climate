@@ -193,7 +193,8 @@ ggsave(filename = paste0(cucumber_data,'Figures/Cucumber/Exploratory/Percent_Dep
 #Depth by complexes
 # number of trips with the reported depth not in the correct bounds
 cuc.with.depth<-explor[!is.na(explor$depth_min_ft),]%>%
-  dplyr::select(port.complex, year, block_id, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)
+  dplyr::select(port.complex, dive.identifier,year, block_id, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded,Max_Depthm, Min_Depthm, mpayear)%>%
+filter(!duplicated(dive.identifier))
 
 inside.bounds<-cuc.with.depth%>%
   filter(
@@ -202,14 +203,17 @@ inside.bounds<-cuc.with.depth%>%
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
 
+saveRDS(inside.bounds, paste0(cucumber_data, "Data/Processed Data/cucumber_depth.rds"))
+
 
 #boxplots function
 plot_fun<-function(portcomplex){ 
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select( year,block_id, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
-    mutate(log_depth=log(-1*Med_depth_m_recorded))
+    dplyr::select( dive.identifier, year,block_id, Max_Depthm,Min_Depthm, Min_depth_m_recorded,Max_depth_m_recorded, Med_depth_m_recorded, mpayear)%>%
+    mutate(log_depth=log(-1*Med_depth_m_recorded))%>%
+  filter(!duplicated(dive.identifier))
   
   # Convert `year` to a factor to ensure separate boxplots per year
   df <- df %>%

@@ -220,8 +220,8 @@ ggsave(filename = paste0(shrimp_data, 'Figures/Ridgeback/Exploratory/Percent_Dep
 
 #################
 shrimp.with.depth<-explor[!is.na(explor$depth),]%>%
-  dplyr::select(port.complex, trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-  filter(!duplicated(trip.identifier)) #444,559 trips with depth
+  dplyr::select(port.complex, tow.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+  filter(!duplicated(tow.identifier)) #444,559 trips with depth
 
 inside.bounds<- shrimp.with.depth%>%
   filter(
@@ -229,6 +229,8 @@ inside.bounds<- shrimp.with.depth%>%
       (is.na(Min_Depthm) | Depth_m <= Min_Depthm)#opposite cause negative numbers
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
+saveRDS(inside.bounds, paste0(shrimp_data, "Data/Processed Data/ridge_depth.rds"))
+
 
 outside.bounds<- shrimp.with.depth%>%
   filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) #31792 outside bounds
@@ -237,8 +239,8 @@ plot_fun<-function(portcomplex){
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select(trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-    filter(!duplicated(trip.identifier))%>%
+    dplyr::select(tow.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+    filter(!duplicated(tow.identifier))%>%
     filter(depth>15)%>%
     mutate(log_depth=log(-1*Depth_m))
   

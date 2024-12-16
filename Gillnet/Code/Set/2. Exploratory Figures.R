@@ -220,8 +220,8 @@ ggsave(filename = paste0(gillnet_data, 'Figures/Set/Exploratory/Percent_Depth_Re
 
 #################
 gillnet.with.depth<-explor[!is.na(explor$depth),]%>%
-  dplyr::select(port.complex, trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-  filter(!duplicated(trip.identifier)) #444,559 trips with depth
+  dplyr::select(port.complex, set.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+  filter(!duplicated(set.identifier)) 
 
 inside.bounds<- gillnet.with.depth%>%
   filter(
@@ -230,15 +230,17 @@ inside.bounds<- gillnet.with.depth%>%
   )
 inside.bounds$year<-as.factor(inside.bounds$year)
 
+saveRDS(inside.bounds, paste0(gillnet_data, "Data/Processed Data/set_depth.rds"))
+
 outside.bounds<- gillnet.with.depth%>%
-  filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) #31792 outside bounds
+  filter(!(Depth_m >= Max_Depthm & Depth_m <= Min_Depthm)) 
 
 plot_fun<-function(portcomplex){ 
   
   df<-inside.bounds%>%
     filter(port.complex==portcomplex)%>%
-    dplyr::select(trip.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
-    filter(!duplicated(trip.identifier))%>%
+    dplyr::select(set.identifier, year,depth,block_id,Max_Depthm,Min_Depthm, Depth_m,mpayear)%>%
+    filter(!duplicated(set.identifier))%>%
     filter(depth>15)%>%
     mutate(log_depth=log(-1*Depth_m))
   
