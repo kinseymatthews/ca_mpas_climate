@@ -17,7 +17,7 @@ set<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 hal_trawl<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/Data/Processed Data/halibut_COG_distance_results_towhours_final.rds")%>%
   mutate(fishery="Halibut trawl",year=as.numeric(year))
 lobster<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Processed Data/COG_distance_results_traphours_final.rds")%>%
-  mutate(fishery="Lobster",year=as.numeric(year))
+  mutate(fishery="Lobster trap",year=as.numeric(year))
 pink_shrimp<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Shrimp/Data/Processed Data/pinkshrimp_COG_distance_results_towhours_final.rds")%>%
   mutate(fishery="Pink shrimp trawl",year=as.numeric(year))
 ridge_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Shrimp/Data/Processed Data/ridgeback_COG_distance_results_towhours_final.rds")%>%
@@ -29,7 +29,28 @@ squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca
 
 fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)%>%
   dplyr::select(-X, -cog_longitude)
+# base theme
+base_theme <- theme(axis.text=element_text(size=7),
+                   # axis.text.y = element_text(angle = 90, hjust = 0.5),
+                    axis.title=element_text(size=8),
+                    legend.text=element_text(size=8),
+                    legend.title=element_text(size=9),
+                    strip.text = element_text(size=10),
+                    plot.tag =element_text(size=9),
+                    # plot.title=element_blank(),
+                    # Gridlines
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.background = element_blank(),
+                    axis.line = element_line(colour = "black"),
+                    # Legend
+                    legend.key = element_rect(fill = NA, color=NA),
+                    legend.background = element_rect(fill=alpha('blue', 0)))
+#################
 
+
+
+############
 # Convert to sf object and transform to new CRS (WGS84 - longlat)
 fisheries_sf <- st_as_sf(fisheries, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
 fisheries_transformed <- st_transform(fisheries_sf, st_crs("+proj=longlat +datum=WGS84 +units=m +no_defs"))
@@ -38,7 +59,11 @@ fisheries_transformed <- st_transform(fisheries_sf, st_crs("+proj=longlat +datum
 fisheries_transformed$latitude <- st_coordinates(fisheries_transformed)[, "Y"]  # Extracts latitude
 fisheries_transformed$longitude <- st_coordinates(fisheries_transformed)[, "X"]
 fisheries_transformed<-fisheries_transformed %>% sf::st_drop_geometry()
+############
 
+
+############
+#Latitude data manipulation
 
 #get list of each fishery
 distinct_fishery<-unique(fisheries$fishery)
@@ -107,10 +132,56 @@ d<-plot_fun("Urchin dive")
 e<-plot_fun("Drift gillnet")
 f<-plot_fun("Set gillnet")
 g<-plot_fun("Halibut trawl")
-h<-plot_fun("Lobster")
+h<-plot_fun("Lobster trap")
 i<-plot_fun("Pink shrimp trawl")
 j<-plot_fun("Spot prawn trawl")
 k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
-results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
+latitude.results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
+latitude.results$port_complex<- factor(latitude.results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+############
+
+############
+#Latitude fishery Figure
+p<-ggplot(data=latitude.results, aes(x= slope.latitude, y=fishery2, color=port_complex))+
+  geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
+  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  labs(
+    x = "Slope of Latitude over Time",
+    y = "Fishery",
+    color = "Port Complex"
+  )+
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
+  #base_theme+
+  theme(  panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = "lightgray"))+
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
+
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Latitude__fishery_synthetic figure.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+############
+
+############
+#Latitude complex Figure
+p<-ggplot(data=latitude.results, aes(x= slope.latitude, y=port_complex, color=fishery2))+
+  geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
+  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  labs(
+    x = "Slope of Latitude over Time",
+    y = "Fishery",
+    color = "Fishery"
+  )+
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
+  #base_theme+
+  theme(  panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = "lightgray"))
+  #scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
+
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Latitude__complex_synthetic figure.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+############
+
+

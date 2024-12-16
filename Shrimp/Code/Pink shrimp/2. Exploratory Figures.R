@@ -78,7 +78,8 @@ explor<- shrimp%>%
   filter(blck_ty!="Offshore" | is.na(blck_ty))%>%
   #adding column for reported depth in meters
   mutate(Depth_m=depth_fa_up*(-0.3048))%>%
-  mutate(depth=depth_fa_up)
+  mutate(depth=depth_fa_up)%>%  
+  filter(duration_min<300)
 
 
 ##### which port complexes to keep?
