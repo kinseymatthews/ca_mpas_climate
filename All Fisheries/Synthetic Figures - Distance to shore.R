@@ -144,8 +144,8 @@ p<-ggplot(data=distance.results, aes(x= slope.distance, y=fishery2, color=port_c
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Distance2shore_fishery_synthetic figure.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ############
@@ -316,8 +316,8 @@ p<-ggplot(data=results, aes(x= CV, y=fishery2, color=port_complex))+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CV_shore_fishery_synthetic figure.jpg')

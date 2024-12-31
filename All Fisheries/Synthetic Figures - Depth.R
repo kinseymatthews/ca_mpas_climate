@@ -158,9 +158,47 @@ results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
 ############
 
+
+############
+#calculating lower and upper fences and truncating 
+lower_quartile_lower <- quantile(results$CI_lower_bound, 0.25, na.rm = TRUE)
+upper_quartile_lower <- quantile(results$CI_lower_bound, 0.75, na.rm = TRUE)
+iqr_lower <- upper_quartile_lower - lower_quartile_lower
+lower_fence_lower <- lower_quartile_lower - 1.5 * iqr_lower
+upper_fence_lower <- upper_quartile_lower + 1.5 * iqr_lower
+
+# Calculate IQR fences for upper confidence intervals
+lower_quartile_upper <- quantile(results$CI_upper_bound, 0.25, na.rm = TRUE)
+upper_quartile_upper <- quantile(results$CI_upper_bound, 0.75, na.rm = TRUE)
+iqr_upper <- upper_quartile_upper - lower_quartile_upper
+lower_fence_upper <- lower_quartile_upper - 1.5 * iqr_upper
+upper_fence_upper <- upper_quartile_upper + 1.5 * iqr_upper
+############
+
+
+############
+#truncating values
+results2 <- results %>%
+  mutate(
+    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_lower,
+    CI_upper_clipped = CI_upper_bound < lower_fence_upper | CI_upper_bound > upper_fence_upper,
+    CI_length = CI_upper_bound - CI_lower_bound,  # Original interval length
+    midpoint = (CI_upper_bound + CI_lower_bound) / 2,  # Midpoint of the interval
+    CI_adjusted_length = pmin(upper_fence_upper - lower_fence_lower, CI_length),  # Maximum allowed length
+    CI_lower_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
+                            midpoint - CI_adjusted_length / 2, 
+                            CI_lower_bound),
+    CI_upper_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
+                            midpoint + CI_adjusted_length / 2, 
+                            CI_upper_bound),
+    CI_clipped = CI_lower_clipped | CI_upper_clipped  # Combined clipping indicator
+  )
+############
+
+
 ############
 #depthFigure by fishery
-p<-ggplot(data=results, aes(x= slope.depth, y=fishery2, color=port_complex))+
+p<-ggplot(data=results2, aes(x= slope.depth, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
@@ -168,13 +206,22 @@ p<-ggplot(data=results, aes(x= slope.depth, y=fishery2, color=port_complex))+
     y = "Fishery",
     color = "Port Complex"
   )+
+  geom_text(
+    aes(
+      x = ifelse(CI_clipped, CI_upper_bound, NA),  # Position at CI_upper_bound
+      label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
+    ),
+    #hjust = -0.5,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5), 
+    color = "black", size = 3
+  ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/depth_fishery_synthetic figure.jpg')
@@ -183,7 +230,7 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #Distance to shore Figure by complex
-p<-ggplot(data=results, aes(x= slope.depth, y=port_complex, color=fishery2))+
+p<-ggplot(data=results2, aes(x= slope.depth, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
@@ -191,6 +238,16 @@ p<-ggplot(data=results, aes(x= slope.depth, y=port_complex, color=fishery2))+
     y = "Fishery",
     color = "Fishery"
   )+
+  geom_text(
+    aes(
+      x = CI_upper_bound,                     # Position at CI_upper_bound
+      y = as.numeric(port_complex) +          # Adjust position by port_complex
+          ifelse(CI_clipped, 0.1, 0),         # Offset for clarity
+      label = ifelse(CI_clipped, "*", "")     # Label only for clipped intervals
+    ),
+    position = position_dodge(width = 0.5),  # Align with error bars
+    color = "black", size = 3
+  ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
   theme(  panel.grid.major = element_blank(),
@@ -347,8 +404,8 @@ p<-ggplot(data=results, aes(x= CV, y=fishery2, color=port_complex))+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CV_Depth_fishery_synthetic figure.jpg')

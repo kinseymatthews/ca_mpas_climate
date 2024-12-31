@@ -139,11 +139,95 @@ results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
 ############
 
+
+
+############
+#calculating lower and upper fences and truncating 
+lower_quartile_lower_north <- quantile(results$CI_lower_bound_north, 0.25, na.rm = TRUE)
+upper_quartile_lower_north <- quantile(results$CI_lower_bound_north, 0.75, na.rm = TRUE)
+iqr_lower_north <- upper_quartile_lower_north - lower_quartile_lower_north
+lower_fence_lower_north <- lower_quartile_lower_north - 1.5 * iqr_lower_north
+upper_fence_lower_north <- upper_quartile_lower_north + 1.5 * iqr_lower_north
+
+# Calculate IQR fences for upper confidence intervals
+lower_quartile_upper_north <- quantile(results$CI_upper_bound_north, 0.25, na.rm = TRUE)
+upper_quartile_upper_north <- quantile(results$CI_upper_bound_north, 0.75, na.rm = TRUE)
+iqr_upper_north <- upper_quartile_upper_north - lower_quartile_upper_north
+lower_fence_upper_north <- lower_quartile_upper_north - 1.5 * iqr_upper_north
+upper_fence_upper_north <- upper_quartile_upper_north + 1.5 * iqr_upper_north
+############
+
+
+############
+#calculating lower and upper fences and truncating 
+lower_quartile_lower_south <- quantile(results$CI_lower_bound_south, 0.25, na.rm = TRUE)
+upper_quartile_lower_south <- quantile(results$CI_lower_bound_south, 0.75, na.rm = TRUE)
+iqr_lower_south <- upper_quartile_lower_south - lower_quartile_lower_south
+lower_fence_lower_south <- lower_quartile_lower_south - 1.5 * iqr_lower_south
+upper_fence_lower_south <- upper_quartile_lower_south + 1.5 * iqr_lower_south
+
+# Calculate IQR fences for upper confidence intervals
+lower_quartile_upper_south <- quantile(results$CI_upper_bound_south, 0.25, na.rm = TRUE)
+upper_quartile_upper_south <- quantile(results$CI_upper_bound_south, 0.75, na.rm = TRUE)
+iqr_upper_south <- upper_quartile_upper_south - lower_quartile_upper_south
+lower_fence_upper_south <- lower_quartile_upper_south - 1.5 * iqr_upper_south
+upper_fence_upper_south <- upper_quartile_upper_south + 1.5 * iqr_upper_south
+############
+
+############
+#truncating values
+results2 <- results %>%
+  mutate(
+    CI_lower_clipped_north = CI_lower_bound_north < lower_fence_lower_north | CI_lower_bound_north > upper_fence_lower_north,
+    CI_upper_clipped_north = CI_upper_bound_north < lower_fence_upper_north | CI_upper_bound_north > upper_fence_upper_north,
+    CI_length_north = CI_upper_bound_north - CI_lower_bound_north,  # Original interval length
+    midpoint_north = (CI_upper_bound_north + CI_lower_bound_north) / 2,  # Midpoint of the interval
+    CI_adjusted_length_north = pmin(upper_fence_upper_north - lower_fence_lower_north, CI_length_north),  # Maximum allowed length
+    CI_lower_bound_north = ifelse(CI_lower_clipped_north | CI_upper_clipped_north, 
+                            midpoint_north - CI_adjusted_length_north / 2, 
+                            CI_lower_bound_north),
+    CI_upper_bound_north = ifelse(CI_lower_clipped_north | CI_upper_clipped_north, 
+                            midpoint_north + CI_adjusted_length_north / 2, 
+                            CI_upper_bound_north),
+    CI_clipped_north = CI_lower_clipped_north | CI_upper_clipped_north  # Combined clipping indicator
+  )
+############
+
+
+############
+#truncating values
+results3 <- results2 %>%
+  mutate(
+    CI_lower_clipped_south = CI_lower_bound_south < lower_fence_lower_south | CI_lower_bound_south > upper_fence_lower_south,
+    CI_upper_clipped_south = CI_upper_bound_south < lower_fence_upper_south | CI_upper_bound_south > upper_fence_upper_south,
+    CI_length_south = CI_upper_bound_south - CI_lower_bound_south,  # Original interval length
+    midpoint_south = (CI_upper_bound_south + CI_lower_bound_south) / 2,  # Midpoint of the interval
+    CI_adjusted_length_south = pmin(upper_fence_upper_south - lower_fence_lower_south, CI_length_south),  # Maximum allowed length
+    CI_lower_bound_south = ifelse(CI_lower_clipped_south | CI_upper_clipped_south, 
+                                  midpoint_south - CI_adjusted_length_south / 2, 
+                                  CI_lower_bound_south),
+    CI_upper_bound_south = ifelse(CI_lower_clipped_south | CI_upper_clipped_south, 
+                                  midpoint_south + CI_adjusted_length_south / 2, 
+                                  CI_upper_bound_south),
+    CI_clipped_south = CI_lower_clipped_south | CI_upper_clipped_south  # Combined clipping indicator
+  )
+############
+
+
 ############
 #northern extent by fishery
-p<-ggplot(data=results, aes(x= slope.north, y=fishery2, color=port_complex))+
+p<-ggplot(data=results3, aes(x= slope.north, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound_north, xmax = CI_upper_bound_north), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_text(
+    aes(
+      x = ifelse(CI_clipped_north, CI_upper_bound_north, NA),  # Position at CI_upper_bound
+      label = ifelse(CI_clipped_north, "*", "")          # Label only for clipped intervals
+    ),
+    #hjust = -0.5,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5), 
+    color = "black", size = 3
+  ) +
   labs(
     x = "Slope of northern extent over time",
     y = "Fishery",
@@ -154,8 +238,8 @@ p<-ggplot(data=results, aes(x= slope.north, y=fishery2, color=port_complex))+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Nextent_fishery_synthetic figure.jpg')
@@ -163,10 +247,19 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 ############
 
 ############
-#Distance to shore Figure by complex
-p<-ggplot(data=results, aes(x= slope.north, y=port_complex, color=fishery2))+
+#extesnts by complex
+p<-ggplot(data=results3, aes(x= slope.north, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound_north, xmax = CI_upper_bound_north), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_text(
+    aes(
+      x = ifelse(CI_clipped_north, CI_upper_bound_north, NA),  # Position at CI_upper_bound
+      label = ifelse(CI_clipped_north, "*", "")          # Label only for clipped intervals
+    ),
+    #hjust = -0.5,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5), 
+    color = "black", size = 3
+  ) +
   labs(
     x = "Slope of northern extent over time",
     y = "Fishery",
@@ -186,9 +279,18 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #southern extent by fishery
-p<-ggplot(data=results, aes(x= slope.south, y=fishery2, color=port_complex))+
+p<-ggplot(data=results3, aes(x= slope.south, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound_south, xmax = CI_upper_bound_south), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_text(
+    aes(
+      x = ifelse(CI_clipped_south, CI_upper_bound_south, NA),  # Position at CI_upper_bound
+      label = ifelse(CI_clipped_south, "*", "")          # Label only for clipped intervals
+    ),
+    #hjust = -0.5,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5), 
+    color = "black", size = 3
+  ) +
   labs(
     x = "Slope of southern extent over time",
     y = "Fishery",
@@ -199,8 +301,8 @@ p<-ggplot(data=results, aes(x= slope.south, y=fishery2, color=port_complex))+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Sextent_fishery_synthetic figure.jpg')
@@ -209,9 +311,18 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #southern extent Figure by complex
-p<-ggplot(data=results, aes(x= slope.south, y=port_complex, color=fishery2))+
+p<-ggplot(data=results3, aes(x= slope.south, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound_south, xmax = CI_upper_bound_south), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_text(
+    aes(
+      x = ifelse(CI_clipped_south, CI_upper_bound_south, NA),  # Position at CI_upper_bound
+      label = ifelse(CI_clipped_south, "*", "")          # Label only for clipped intervals
+    ),
+    #hjust = -0.5,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5), 
+    color = "black", size = 3
+  ) +
   labs(
     x = "Slope of southern extent over time",
     y = "Fishery",
@@ -390,8 +501,8 @@ p<-ggplot(data=results, aes(x= CV, y=fishery2, color=port_complex))+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CV_Nextent_fishery_synthetic figure.jpg')
@@ -437,8 +548,8 @@ p<-ggplot(data=results, aes(x= CV2, y=fishery2, color=port_complex))+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))+
-  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CV_Sextent_fishery_synthetic figure.jpg')
