@@ -128,24 +128,33 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 
 
 
 ############
-#calculating lower and upper fences and truncating 
+# Calculate IQR fences for upper confidence intervals
 lower_quartile_lower <- quantile(results$CI_lower_bound, 0.25, na.rm = TRUE)
 upper_quartile_lower <- quantile(results$CI_lower_bound, 0.75, na.rm = TRUE)
 iqr_lower <- upper_quartile_lower - lower_quartile_lower
+#fences for truncating
 lower_fence_lower <- lower_quartile_lower - 1.5 * iqr_lower
 upper_fence_lower <- upper_quartile_lower + 1.5 * iqr_lower
+#minimum and maximum for truncating
+lower_bound_lower <- max(min(results$CI_lower_bound, na.rm = TRUE), lower_quartile_lower)
+upper_bound_lower <- min(max(results$CI_lower_bound, na.rm = TRUE), upper_quartile_lower)
 
 # Calculate IQR fences for upper confidence intervals
 lower_quartile_upper <- quantile(results$CI_upper_bound, 0.25, na.rm = TRUE)
 upper_quartile_upper <- quantile(results$CI_upper_bound, 0.75, na.rm = TRUE)
 iqr_upper <- upper_quartile_upper - lower_quartile_upper
+#fences for truncating
 lower_fence_upper <- lower_quartile_upper - 1.5 * iqr_upper
 upper_fence_upper <- upper_quartile_upper + 1.5 * iqr_upper
+#minimum and maximum for truncating
+lower_bound_upper <- max(min(results$CI_upper_bound, na.rm = TRUE), lower_quartile_upper)
+upper_bound_upper <- min(max(results$CI_upper_bound, na.rm = TRUE), upper_quartile_upper)
 ############
 
 
@@ -153,25 +162,27 @@ upper_fence_upper <- upper_quartile_upper + 1.5 * iqr_upper
 #truncating values
 results2 <- results %>%
   mutate(
-    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_lower,
-    CI_upper_clipped = CI_upper_bound < lower_fence_upper | CI_upper_bound > upper_fence_upper,
+    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_upper,
+    CI_upper_clipped = CI_upper_bound < lower_fence_lower | CI_upper_bound > upper_fence_upper,
     CI_length = CI_upper_bound - CI_lower_bound,  # Original interval length
     midpoint = (CI_upper_bound + CI_lower_bound) / 2,  # Midpoint of the interval
     CI_adjusted_length = pmin(upper_fence_upper - lower_fence_lower, CI_length),  # Maximum allowed length
-    CI_lower_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
-                            midpoint - CI_adjusted_length / 2, 
+    CI_lower_bound = ifelse(CI_lower_clipped , 
+                            lower_fence_lower , 
                             CI_lower_bound),
-    CI_upper_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
-                            midpoint + CI_adjusted_length / 2, 
-                            CI_upper_bound),
+    CI_upper_bound = ifelse( CI_upper_clipped, 
+                             upper_fence_upper, 
+                             CI_upper_bound),
     CI_clipped = CI_lower_clipped | CI_upper_clipped  # Combined clipping indicator
   )
+
+
 ############
 
 
 
 ############
-#Distance to shore Figure by fishery
+#Area Figure by fishery
 p<-ggplot(data=results2, aes(x= slope.area, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
@@ -209,7 +220,7 @@ p<-ggplot(data=results2, aes(x= slope.area, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
-    x = "Slope of distance to shore over time",
+    x = "Slope of 75% KD area over time",
     y = "Port Complex",
     color = "Fishery"
   )+
@@ -235,28 +246,83 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 ############
 
 ############
-#without morro bay
+#wmaking morro bay, los angeles spot prawl, los anngeles ridgeback, and santa barbara pink shrimp all truncated
+
+#find pmax of slope.area without these 
+
+#filter out problematic entries
 results3<-results2%>%
-  filter(!(port_complex == "Morro Bay" & fishery2 == "Pink shrimp trawl"))
+  filter(!(port_complex == "Morro Bay" & fishery2 == "Pink shrimp trawl"))%>%
+filter(!(port_complex == "Los Angeles" & fishery2 == "Spot prawn trawl"))%>%
+filter(!(port_complex == "Los Angeles" & fishery2 == "Ridgeback prawn trawl"))%>%
+filter(!(port_complex == "Santa Barbara" & fishery2 == "Pink shrimp trawl"))%>%
+  filter(!(port_complex == "Santa Barbara" & fishery2 == "Ridgeback prawn trawl"))%>%
+  filter(!(port_complex == "Eureka" & fishery2 == "Pink shrimp trawl"))%>%
+  filter(!(port_complex == "Monterey" & fishery2 == "Pink shrimp trawl"))%>%
+  filter(!(port_complex == "Los Angeles" & fishery2 == "Cucumber trawl"))
+
+
+
+#replace the original slopes of the ones above with the new values
+#find max and min of confidence intervals
+x=max(results3$CI_upper_bound) 
+y=min(results3$CI_lower_bound) 
+
+results3<- results2 %>%
+  mutate(
+    slope.area2 = case_when(
+      slope.area >x ~ x,
+      slope.area < y ~ y,
+      TRUE ~ slope.area ),
+    
+    CI_lower_bound_2 = case_when(
+      slope.area > x~ 0,
+      slope.area < y ~ 0,
+      TRUE ~ CI_lower_bound),
+    
+    CI_upper_bound_2 = case_when(
+      slope.area > x ~ 0,
+      slope.area < y ~ 0,
+      TRUE ~ CI_upper_bound),
+    
+    CI_clipped = case_when(
+      slope.area > x  ~ TRUE,
+      slope.area < y~ TRUE,
+      TRUE ~ CI_clipped)
+    
+  )
+
+
 ############
 
 ############
-p<-ggplot(data=results3, aes(x= slope.area, y=fishery2, color=port_complex))+
+p<-ggplot(data=results3, aes(x= slope.area2, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+ geom_errorbarh(aes(xmin = CI_lower_bound_2, xmax = CI_upper_bound_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
     x = "Slope of 75% KD area over time",
     y = "Fishery",
     color = "Port Complex"
   )+
+  #astericks for clipped confidence intervals
+   geom_text(
+   aes(
+      x = ifelse(CI_clipped, slope.area2, NA),  # Position at main point
+       label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
+     ),
+     hjust = -0.6,  # Offset slightly to the right of the CI
+     position = position_dodge(width = 0.5)
+   # color = "black", size = 3
+    ) +
+   #astericks for changed slope values
   geom_text(
     aes(
-      x = ifelse(CI_clipped, CI_upper_bound, NA),  # Position at CI_upper_bound
-      label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
+      x = (slope.area2),  # Position at point
+      label = ifelse(CI_lower_bound_2==0, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
@@ -273,22 +339,32 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #Distance to shore Figure by complex
-p<-ggplot(data=results3, aes(x= slope.area, y=port_complex, color=fishery2))+
+p<-ggplot(data=results3, aes(x= slope.area2, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_2, xmax = CI_upper_bound_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
-    x = "Slope of distance to shore over time",
+    x = "Slope of 75% KD area over time",
     y = "Port Complex",
     color = "Fishery"
   )+
   geom_text(
     aes(
-      x = ifelse(CI_clipped, CI_upper_bound, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped, slope.area2, NA),  # Position at main point
       label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    # color = "black", size = 3
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.area2),  # Position at point
+      label = ifelse(CI_lower_bound_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
@@ -434,7 +510,7 @@ results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fo
 p<-ggplot(data=results, aes(x= CV, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = lower.CI, xmax = upper.CI), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
-  geom_errorbarh(aes(xmin = lower.CI.2, xmax = upper.CI.2), height = 0.3, position = position_dodge(width = 0.6)) +
+#  geom_errorbarh(aes(xmin = lower.CI.2, xmax = upper.CI.2), height = 0.3, position = position_dodge(width = 0.6)) +
   labs(
     x = "CV of Area",
     y = "Fishery",

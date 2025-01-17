@@ -57,10 +57,13 @@ base_theme <- theme(axis.text=element_text(size=7),
 
 #################
 #which ports to include
-df<- CPFV %>%
+CPFV %>%
   mutate(logbookID_vesselID_date=paste(logbook_id, vessel_id, date, sep="_"))%>%
   #attach information from port codes
   left_join(port, by="port_code") %>%
+  #remove ports we wont want to include such as Oregon and San Dieg
+  filter(port.complex!= "San Diego" & port.complex!= "Oregon" )%>%
+  #grouping and calculating number of trips
   group_by(port.complex) %>%
   summarize(ntrips = n_distinct(logbookID_vesselID_date))%>%
   ungroup()%>%
