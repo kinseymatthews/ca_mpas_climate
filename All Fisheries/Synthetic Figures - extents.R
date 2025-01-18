@@ -137,6 +137,8 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+
 ############
 
 
@@ -178,16 +180,16 @@ upper_fence_upper_south <- upper_quartile_upper_south + 1.5 * iqr_upper_south
 #truncating values
 results2 <- results %>%
   mutate(
-    CI_lower_clipped_north = CI_lower_bound_north < lower_fence_lower_north | CI_lower_bound_north > upper_fence_lower_north,
-    CI_upper_clipped_north = CI_upper_bound_north < lower_fence_upper_north | CI_upper_bound_north > upper_fence_upper_north,
+    CI_lower_clipped_north = CI_lower_bound_north < lower_fence_lower_north | CI_lower_bound_north > upper_fence_upper_north,
+    CI_upper_clipped_north = CI_upper_bound_north < lower_fence_lower_north | CI_upper_bound_north > upper_fence_upper_north,
     CI_length_north = CI_upper_bound_north - CI_lower_bound_north,  # Original interval length
     midpoint_north = (CI_upper_bound_north + CI_lower_bound_north) / 2,  # Midpoint of the interval
     CI_adjusted_length_north = pmin(upper_fence_upper_north - lower_fence_lower_north, CI_length_north),  # Maximum allowed length
-    CI_lower_bound_north = ifelse(CI_lower_clipped_north | CI_upper_clipped_north, 
-                            midpoint_north - CI_adjusted_length_north / 2, 
+    CI_lower_bound_north = ifelse(CI_lower_clipped_north , 
+                                  lower_fence_lower_north,
                             CI_lower_bound_north),
-    CI_upper_bound_north = ifelse(CI_lower_clipped_north | CI_upper_clipped_north, 
-                            midpoint_north + CI_adjusted_length_north / 2, 
+    CI_upper_bound_north = ifelse(CI_upper_clipped_north, 
+                                  upper_fence_upper_north,
                             CI_upper_bound_north),
     CI_clipped_north = CI_lower_clipped_north | CI_upper_clipped_north  # Combined clipping indicator
   )
@@ -197,36 +199,81 @@ results2 <- results %>%
 ############
 #truncating values
 results3 <- results2 %>%
-  mutate(
-    CI_lower_clipped_south = CI_lower_bound_south < lower_fence_lower_south | CI_lower_bound_south > upper_fence_lower_south,
-    CI_upper_clipped_south = CI_upper_bound_south < lower_fence_upper_south | CI_upper_bound_south > upper_fence_upper_south,
-    CI_length_south = CI_upper_bound_south - CI_lower_bound_south,  # Original interval length
-    midpoint_south = (CI_upper_bound_south + CI_lower_bound_south) / 2,  # Midpoint of the interval
-    CI_adjusted_length_south = pmin(upper_fence_upper_south - lower_fence_lower_south, CI_length_south),  # Maximum allowed length
-    CI_lower_bound_south = ifelse(CI_lower_clipped_south | CI_upper_clipped_south, 
-                                  midpoint_south - CI_adjusted_length_south / 2, 
-                                  CI_lower_bound_south),
-    CI_upper_bound_south = ifelse(CI_lower_clipped_south | CI_upper_clipped_south, 
-                                  midpoint_south + CI_adjusted_length_south / 2, 
-                                  CI_upper_bound_south),
-    CI_clipped_south = CI_lower_clipped_south | CI_upper_clipped_south  # Combined clipping indicator
-  )
+    mutate(
+      CI_lower_clipped_south = CI_lower_bound_south < lower_fence_lower_south | CI_lower_bound_south > upper_fence_upper_south,
+      CI_upper_clipped_south = CI_upper_bound_south < lower_fence_lower_south | CI_upper_bound_south > upper_fence_upper_south,
+      CI_length_south = CI_upper_bound_south - CI_lower_bound_south,  # Original interval length
+      midpoint_south = (CI_upper_bound_south + CI_lower_bound_south) / 2,  # Midpoint of the interval
+      CI_adjusted_length_south = pmin(upper_fence_upper_south - lower_fence_lower_south, CI_length_south),  # Maximum allowed length
+      CI_lower_bound_south = ifelse(CI_lower_clipped_south , 
+                                    lower_fence_lower_south,
+                                    CI_lower_bound_south),
+      CI_upper_bound_south = ifelse(CI_upper_clipped_south, 
+                                    upper_fence_upper_south,
+                                    CI_upper_bound_south),
+      CI_clipped_south = CI_lower_clipped_south | CI_upper_clipped_south  # Combined clipping indicator
+    )
 ############
 
+############
+results4<-results3%>%
+  filter(!(port_complex == "Monterey" & fishery2 == "Pink shrimp trawl"))
+ # filter(!(port_complex == "Eureka" & fishery2 == "Drift gillnet"))
+
+#replace the original slopes of the ones above with the new values
+#find max and min of confidence intervals
+x=max(results4$CI_upper_bound_north) 
+y=min(results4$CI_lower_bound_north) 
+
+results4<- results3 %>%
+  mutate(
+    slope.north2 = case_when(
+      slope.north >x ~ x ,
+      slope.north < y ~ y ,
+      TRUE ~ slope.north ),
+    
+    CI_lower_bound_north_2 = case_when(
+      slope.north > x~ 0,
+      slope.north < y ~ 0,
+      TRUE ~ CI_lower_bound_north),
+    
+    CI_upper_bound_north_2 = case_when(
+      slope.north > x ~ 0,
+      slope.north < y ~ 0,
+      TRUE ~ CI_upper_bound_north),
+    
+    CI_clipped_north = case_when(
+      slope.north > x  ~ TRUE,
+      slope.north < y~ TRUE,
+      TRUE ~ CI_clipped_north)
+    
+  )
+
+
+############
 
 ############
 #northern extent by fishery
-p<-ggplot(data=results3, aes(x= slope.north, y=fishery2, color=port_complex))+
+p<-ggplot(data=results4, aes(x= slope.north2, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound_north, xmax = CI_upper_bound_north), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_north_2, xmax = CI_upper_bound_north_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
     aes(
-      x = ifelse(CI_clipped_north, CI_upper_bound_north, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped_north, slope.north2, NA),  # Position at CI_upper_bound
       label = ifelse(CI_clipped_north, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.north2),  # Position at point
+      label = ifelse(CI_lower_bound_north_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   labs(
     x = "Slope of northern extent over time",
@@ -248,17 +295,26 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #extesnts by complex
-p<-ggplot(data=results3, aes(x= slope.north, y=port_complex, color=fishery2))+
+p<-ggplot(data=results4, aes(x= slope.north2, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound_north, xmax = CI_upper_bound_north), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_north_2, xmax = CI_upper_bound_north_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
     aes(
-      x = ifelse(CI_clipped_north, CI_upper_bound_north, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped_north, slope.north2, NA),  # Position at CI_upper_bound
       label = ifelse(CI_clipped_north, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.north2),  # Position at point
+      label = ifelse(CI_lower_bound_north_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   labs(
     x = "Slope of northern extent over time",
@@ -277,19 +333,68 @@ filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ############
 
+
+############
+results5<-results4%>%
+  filter(!(port_complex == "Monterey" & fishery2 == "Pink shrimp trawl"))
+# filter(!(port_complex == "Eureka" & fishery2 == "Drift gillnet"))
+
+#replace the original slopes of the ones above with the new values
+#find max and min of confidence intervals
+x=max(results5$CI_upper_bound_south) 
+y=min(results5$CI_lower_bound_south) 
+
+results5<- results4 %>%
+  mutate(
+    slope.south2 = case_when(
+      slope.south >x ~ x ,
+      slope.south < y ~ y ,
+      TRUE ~ slope.south ),
+    
+    CI_lower_bound_south_2 = case_when(
+      slope.south > x~ 0,
+      slope.south < y ~ 0,
+      TRUE ~ CI_lower_bound_south),
+    
+    CI_upper_bound_south_2 = case_when(
+      slope.south > x ~ 0,
+      slope.south < y ~ 0,
+      TRUE ~ CI_upper_bound_south),
+    
+    CI_clipped_south = case_when(
+      slope.south > x  ~ TRUE,
+      slope.south < y~ TRUE,
+      TRUE ~ CI_clipped_south)
+    
+  )
+
+saveRDS(results5,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/extents_slope.rds')
+
+############
+
+
 ############
 #southern extent by fishery
-p<-ggplot(data=results3, aes(x= slope.south, y=fishery2, color=port_complex))+
+p<-ggplot(data=results4, aes(x= slope.south2, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound_south, xmax = CI_upper_bound_south), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_south_2, xmax = CI_upper_bound_south_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
     aes(
-      x = ifelse(CI_clipped_south, CI_upper_bound_south, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped_south, slope.south2, NA),  # Position at CI_upper_bound
       label = ifelse(CI_clipped_south, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.south2),  # Position at point
+      label = ifelse(CI_lower_bound_south_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   labs(
     x = "Slope of southern extent over time",
@@ -311,17 +416,26 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #southern extent Figure by complex
-p<-ggplot(data=results3, aes(x= slope.south, y=port_complex, color=fishery2))+
+p<-ggplot(data=results4, aes(x= slope.south2, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound_south, xmax = CI_upper_bound_south), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_south_2, xmax = CI_upper_bound_south_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
     aes(
-      x = ifelse(CI_clipped_south, CI_upper_bound_south, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped_south, slope.south2, NA),  # Position at CI_upper_bound
       label = ifelse(CI_clipped_south, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.south2),  # Position at point
+      label = ifelse(CI_lower_bound_south_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   labs(
     x = "Slope of southern extent over time",
@@ -483,6 +597,10 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+
+saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/extents_cv.rds')
+
 ############
 
 ############
