@@ -29,6 +29,7 @@ squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca
 
 fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)%>%
   dplyr::select(-X, -cog_longitude)
+
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     # axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -125,13 +126,16 @@ j<-plot_fun("Spot prawn trawl")
 k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
-distance.results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
-distance.results$port_complex<- factor(distance.results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
+results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/distance_slope.rds')
+
 ############
 
 ############
 #Distance to shore Figure by fishery
-p<-ggplot(data=distance.results, aes(x= slope.distance, y=fishery2, color=port_complex))+
+p<-ggplot(data=results, aes(x= slope.distance, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
@@ -146,6 +150,8 @@ p<-ggplot(data=distance.results, aes(x= slope.distance, y=fishery2, color=port_c
           panel.background = element_rect(fill = "lightgray"))+
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
                      guide = guide_legend(reverse = TRUE) )
+p
+
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Distance2shore_fishery_synthetic figure.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ############
@@ -153,7 +159,7 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #Distance to shore Figure by complex
-p<-ggplot(data=distance.results, aes(x= slope.distance, y=port_complex, color=fishery2))+
+p<-ggplot(data=results, aes(x= slope.distance, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
@@ -167,6 +173,8 @@ p<-ggplot(data=distance.results, aes(x= slope.distance, y=port_complex, color=fi
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))
   #scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
+
+p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Distance2shore_complex_synthetic figure.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
@@ -298,6 +306,9 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/distance_cv.rds')
+
 ############
 
 ############

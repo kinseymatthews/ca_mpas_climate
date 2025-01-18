@@ -1,6 +1,7 @@
 library(tidyverse)
 library(sf)
 ############
+
 #Upload data for each fishery
 cpfv<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds")%>%
   mutate(fishery="CPFV",year=as.numeric(year))
@@ -139,7 +140,8 @@ k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
-results$port_complex<- factor(latitude.results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 
 
@@ -164,36 +166,81 @@ upper_fence_upper <- upper_quartile_upper + 1.5 * iqr_upper
 #truncating values
 results2 <- results %>%
   mutate(
-    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_lower,
-    CI_upper_clipped = CI_upper_bound < lower_fence_upper | CI_upper_bound > upper_fence_upper,
+    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_upper,
+    CI_upper_clipped = CI_upper_bound < lower_fence_lower | CI_upper_bound > upper_fence_upper,
     CI_length = CI_upper_bound - CI_lower_bound,  # Original interval length
     midpoint = (CI_upper_bound + CI_lower_bound) / 2,  # Midpoint of the interval
     CI_adjusted_length = pmin(upper_fence_upper - lower_fence_lower, CI_length),  # Maximum allowed length
-    CI_lower_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
-                            midpoint - CI_adjusted_length / 2, 
+    CI_lower_bound = ifelse(CI_lower_clipped , 
+                            lower_fence_lower , 
                             CI_lower_bound),
-    CI_upper_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
-                            midpoint + CI_adjusted_length / 2, 
-                            CI_upper_bound),
+    CI_upper_bound = ifelse( CI_upper_clipped, 
+                             upper_fence_upper, 
+                             CI_upper_bound),
     CI_clipped = CI_lower_clipped | CI_upper_clipped  # Combined clipping indicator
   )
 ############
 
+############
+results3<-results2%>%
+  filter(!(port_complex == "Monterey" & fishery2 == "Pink shrimp trawl"))%>%
+  filter(!(port_complex == "Eureka" & fishery2 == "Drift gillnet"))
 
+#replace the original slopes of the ones above with the new values
+#find max and min of confidence intervals
+x=max(results3$CI_upper_bound) 
+y=min(results3$CI_lower_bound) 
+
+results3<- results2 %>%
+  mutate(
+    slope.latitude2 = case_when(
+      slope.latitude >x ~ x ,
+      slope.latitude < y ~ y ,
+      TRUE ~ slope.latitude ),
+    
+    CI_lower_bound_2 = case_when(
+      slope.latitude > x~ 0,
+      slope.latitude < y ~ 0,
+      TRUE ~ CI_lower_bound),
+    
+    CI_upper_bound_2 = case_when(
+      slope.latitude > x ~ 0,
+      slope.latitude < y ~ 0,
+      TRUE ~ CI_upper_bound),
+    
+    CI_clipped = case_when(
+      slope.latitude > x  ~ TRUE,
+      slope.latitude < y~ TRUE,
+      TRUE ~ CI_clipped)
+    
+  )
+
+saveRDS(results3,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/latitude_slope.rds')
+
+############
 
 ############
 #Latitude fishery Figure
-p<-ggplot(data=results2, aes(x= slope.latitude, y=fishery2, color=port_complex))+
+p<-ggplot(data=results3, aes(x= slope.latitude2, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_2, xmax = CI_upper_bound_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
     aes(
-      x = ifelse(CI_clipped, CI_upper_bound, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped, slope.latitude2, NA),  # Position at CI_upper_bound
       label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.latitude2),  # Position at point
+      label = ifelse(CI_lower_bound_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   labs(
     x = "Slope of latitude over time",
@@ -208,6 +255,7 @@ p<-ggplot(data=results2, aes(x= slope.latitude, y=fishery2, color=port_complex))
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
                      guide = guide_legend(reverse = TRUE) )
 
+p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Latitude__fishery_synthetic figure.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
@@ -215,17 +263,26 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #Latitude complex Figure
-p<-ggplot(data=results2, aes(x= slope.latitude, y=port_complex, color=fishery2))+
+p<-ggplot(data=results3, aes(x= slope.latitude2, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_2, xmax = CI_upper_bound_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
     aes(
-      x = ifelse(CI_clipped, CI_upper_bound, NA),  # Position at CI_upper_bound
+      x = ifelse(CI_clipped, slope.latitude2, NA),  # Position at CI_upper_bound
       label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.latitude2),  # Position at point
+      label = ifelse(CI_lower_bound_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   labs(
     x = "Slope of latitude over time",
@@ -238,7 +295,7 @@ p<-ggplot(data=results2, aes(x= slope.latitude, y=port_complex, color=fishery2))
           panel.grid.minor = element_blank(),
           panel.background = element_rect(fill = "lightgray"))
   #scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+p
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Latitude__complex_synthetic figure.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ############
@@ -368,6 +425,9 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+
+saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/latitude_cv.rds')
 ############
 
 ############

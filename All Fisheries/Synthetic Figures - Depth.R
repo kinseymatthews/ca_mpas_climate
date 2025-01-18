@@ -154,53 +154,102 @@ j<-plot_fun("Spot prawn trawl")
 k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
-results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
+results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)%>%
+  mutate(CI_lower_bound = case_when(
+    is.na(CI_lower_bound)~0,
+    TRUE ~ CI_lower_bound),
+    CI_upper_bound = case_when(
+      is.na(CI_upper_bound)~0,
+      TRUE ~ CI_upper_bound)
+  )
+
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 
 
 ############
-#calculating lower and upper fences and truncating 
+# Calculate IQR fences for lower confidence intervals
 lower_quartile_lower <- quantile(results$CI_lower_bound, 0.25, na.rm = TRUE)
 upper_quartile_lower <- quantile(results$CI_lower_bound, 0.75, na.rm = TRUE)
 iqr_lower <- upper_quartile_lower - lower_quartile_lower
-lower_fence_lower <- lower_quartile_lower - 1.5 * iqr_lower
+#fences for truncating
+lower_fence_lower <- lower_quartile_lower - (1.5 * iqr_lower)
 upper_fence_lower <- upper_quartile_lower + 1.5 * iqr_lower
 
 # Calculate IQR fences for upper confidence intervals
 lower_quartile_upper <- quantile(results$CI_upper_bound, 0.25, na.rm = TRUE)
 upper_quartile_upper <- quantile(results$CI_upper_bound, 0.75, na.rm = TRUE)
 iqr_upper <- upper_quartile_upper - lower_quartile_upper
+#fences for truncating
 lower_fence_upper <- lower_quartile_upper - 1.5 * iqr_upper
 upper_fence_upper <- upper_quartile_upper + 1.5 * iqr_upper
+
 ############
+
 
 
 ############
 #truncating values
 results2 <- results %>%
   mutate(
-    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_lower,
-    CI_upper_clipped = CI_upper_bound < lower_fence_upper | CI_upper_bound > upper_fence_upper,
+    CI_lower_clipped = CI_lower_bound < lower_fence_lower | CI_lower_bound > upper_fence_upper,
+    CI_upper_clipped = CI_upper_bound < lower_fence_lower | CI_upper_bound > upper_fence_upper,
     CI_length = CI_upper_bound - CI_lower_bound,  # Original interval length
     midpoint = (CI_upper_bound + CI_lower_bound) / 2,  # Midpoint of the interval
     CI_adjusted_length = pmin(upper_fence_upper - lower_fence_lower, CI_length),  # Maximum allowed length
-    CI_lower_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
-                            midpoint - CI_adjusted_length / 2, 
+    CI_lower_bound = ifelse(CI_lower_clipped , 
+                            lower_fence_lower , 
                             CI_lower_bound),
-    CI_upper_bound = ifelse(CI_lower_clipped | CI_upper_clipped, 
-                            midpoint + CI_adjusted_length / 2, 
-                            CI_upper_bound),
+    CI_upper_bound = ifelse( CI_upper_clipped, 
+                             upper_fence_upper, 
+                             CI_upper_bound),
     CI_clipped = CI_lower_clipped | CI_upper_clipped  # Combined clipping indicator
   )
+############
+############
+results3<-results2%>%
+  filter(!(port_complex == "San Francisco" & fishery2 == "Drift gillnet"))
+
+#replace the original slopes of the ones above with the new values
+#find max and min of confidence intervals
+x=max(results3$CI_upper_bound) 
+y=min(results3$CI_lower_bound) 
+
+results3<- results2 %>%
+  mutate(
+    slope.depth2 = case_when(
+      slope.depth >x ~ x +1,
+      slope.depth < y ~ y -1,
+      TRUE ~ slope.depth ),
+    
+    CI_lower_bound_2 = case_when(
+      slope.depth > x~ 0,
+      slope.depth < y ~ 0,
+      TRUE ~ CI_lower_bound),
+    
+    CI_upper_bound_2 = case_when(
+      slope.depth > x ~ 0,
+      slope.depth < y ~ 0,
+      TRUE ~ CI_upper_bound),
+    
+    CI_clipped = case_when(
+      slope.depth > x  ~ TRUE,
+      slope.depth < y~ TRUE,
+      TRUE ~ CI_clipped)
+    
+  )
+
+saveRDS(results3,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/depth_slope.rds')
+
 ############
 
 
 ############
 #depthFigure by fishery
-p<-ggplot(data=results2, aes(x= slope.depth, y=fishery2, color=port_complex))+
+p<-ggplot(data=results3, aes(x= slope.depth2, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_2, xmax = CI_upper_bound_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
     x = "Slope of depth over time",
     y = "Fishery",
@@ -208,12 +257,21 @@ p<-ggplot(data=results2, aes(x= slope.depth, y=fishery2, color=port_complex))+
   )+
   geom_text(
     aes(
-      x = ifelse(CI_clipped, CI_upper_bound, NA),  # Position at CI_upper_bound
-      label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
+       x = ifelse(CI_clipped, slope.depth2, NA),  # Position at CI_upper_bound
+       label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
+      ),
+     hjust = -0.6,  # Offset slightly to the right of the CI
+     position = position_dodge(width = 0.5)
+    ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.depth2),  # Position at point
+      label = ifelse(CI_lower_bound_2==0, "*", "")          # Label only for clipped intervals
     ),
-    #hjust = -0.5,  # Offset slightly to the right of the CI
-    position = position_dodge(width = 0.5), 
-    color = "black", size = 3
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
@@ -230,9 +288,9 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #Distance to shore Figure by complex
-p<-ggplot(data=results2, aes(x= slope.depth, y=port_complex, color=fishery2))+
+p<-ggplot(data=results3, aes(x= slope.depth2, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
-  geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
+  geom_errorbarh(aes(xmin = CI_lower_bound_2, xmax = CI_upper_bound_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
     x = "Slope of distance to shore over time",
     y = "Fishery",
@@ -240,13 +298,21 @@ p<-ggplot(data=results2, aes(x= slope.depth, y=port_complex, color=fishery2))+
   )+
   geom_text(
     aes(
-      x = CI_upper_bound,                     # Position at CI_upper_bound
-      y = as.numeric(port_complex) +          # Adjust position by port_complex
-          ifelse(CI_clipped, 0.1, 0),         # Offset for clarity
-      label = ifelse(CI_clipped, "*", "")     # Label only for clipped intervals
+      x = ifelse(CI_clipped, slope.depth2, NA),  # Position at CI_upper_bound
+      label = ifelse(CI_clipped, "*", "")          # Label only for clipped intervals
     ),
-    position = position_dodge(width = 0.5),  # Align with error bars
-    color = "black", size = 3
+    hjust = -0.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+  ) +
+  #astericks for changed slope values
+  geom_text(
+    aes(
+      x = (slope.depth2),  # Position at point
+      label = ifelse(CI_lower_bound_2==0, "*", "")          # Label only for clipped intervals
+    ),
+    hjust = -1.6,  # Offset slightly to the right of the CI
+    position = position_dodge(width = 0.5)
+    
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
@@ -386,6 +452,10 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+
+saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/depth_cv.rds')
+
 ############
 
 ############

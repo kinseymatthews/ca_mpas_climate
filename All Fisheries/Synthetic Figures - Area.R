@@ -134,7 +134,7 @@ results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl',
 
 
 ############
-# Calculate IQR fences for upper confidence intervals
+# Calculate IQR fences for lower confidence intervals
 lower_quartile_lower <- quantile(results$CI_lower_bound, 0.25, na.rm = TRUE)
 upper_quartile_lower <- quantile(results$CI_lower_bound, 0.75, na.rm = TRUE)
 iqr_lower <- upper_quartile_lower - lower_quartile_lower
@@ -292,7 +292,7 @@ results3<- results2 %>%
     
   )
 
-
+saveRDS(results3,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/area_slope.rds')
 ############
 
 ############
@@ -503,6 +503,10 @@ l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+
+saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/area_cv.rds')
+
 ############
 
 ############
