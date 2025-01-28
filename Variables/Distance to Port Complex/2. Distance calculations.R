@@ -6,16 +6,16 @@ library(sf)
 ############
 general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
 
-#upload port complex data for each fishery
-cog_ports<- st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Distance to Port Complex/Data/Processed/COG_complex_fishery.shp")%>%
+#upload port complex data for each fishery - decided against this
+#cog_ports<- st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Distance to Port Complex/Data/Processed/COG_complex_fishery.shp")%>%
   #add "_COG" to ends of names to represent the COG for fisheries and port complexes without specific ports
-  mutate(port_complex = port_compl) %>%
-    rename(port=port_compl, long=cog_longit , lat=cog_latitu)%>%
-  mutate(port = paste0(port, "_COG"))%>%
-  mutate(port = str_to_title(port),port_complex = str_to_title(port_complex))%>%
-  mutate(port=ifelse(is.na(port)| is.na(fishery), NA,paste(port, fishery, sep="_" )))%>%
-  st_as_sf()
-cog_ports<- st_transform(cog_ports, crs = 4326)
+ # mutate(port_complex = port_compl) %>%
+  #  rename(port=port_compl, long=cog_longit , lat=cog_latitu)%>%
+  #mutate(port = paste0(port, "_COG"))%>%
+  #mutate(port = str_to_title(port),port_complex = str_to_title(port_complex))%>%
+  #mutate(port=ifelse(is.na(port)| is.na(fishery), NA,paste(port, fishery, sep="_" )))%>%
+  #st_as_sf()
+#cog_ports<- st_transform(cog_ports, crs = 4326)
 
 
 all_ports<- st_read("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Distance to Port Complex/Data/Processed/all ports.shp")%>%
