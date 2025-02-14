@@ -9,56 +9,76 @@ filepath<-('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas
 
 area_slope<-readRDS(paste0(filepath, 'area_slope.rds'))%>%
   rename(slope=slope.area, slope2=slope.area2)%>%
-  mutate(metric="(a) Area")
+  mutate(metric="(a) Area")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 area_cv<-readRDS(paste0(filepath, 'area_cv.rds'))%>%
-  mutate(metric="(a) Area")
+  mutate(metric="(a) Area")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 latitude_slope<-readRDS(paste0(filepath, 'latitude_slope.rds'))%>%
   rename(slope=slope.latitude, slope2=slope.latitude2)%>%
-  mutate(metric="(b) Latitude")
+  mutate(metric="(b) Latitude")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 latitude_cv<-readRDS(paste0(filepath, 'latitude_cv.rds'))%>%
-  mutate(metric="(b) Latitude")
+  mutate(metric="(b) Latitude")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 depth_slope<-readRDS(paste0(filepath, 'depth_slope.rds'))%>%
   rename(slope=slope.depth, slope2=slope.depth)%>%
-  mutate(metric="(e) Depth")
+  mutate(metric="(e) Depth")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 depth_cv<-readRDS(paste0(filepath, 'depth_cv.rds'))%>%
-  mutate(metric="(e) Depth")
+  mutate(metric="(e) Depth")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
+mpa_slope<-readRDS(paste0(filepath, 'mpa_slope.rds'))%>%
+  rename(slope=slope.mpa, slope2=slope.mpa2)%>%
+  mutate(metric="(e) MPA")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
+
+mpa_cv<-readRDS(paste0(filepath, 'mpa_cv.rds'))%>%
+  mutate(metric="(e) MPA")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 distance_slope<-readRDS(paste0(filepath, 'distance_slope.rds'))%>%
   rename(slope=slope.distance)%>%
-  mutate(metric="(f) Distance")
+  mutate(metric="(e) Distance to shore")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 
 distance_cv<-readRDS(paste0(filepath, 'distance_cv.rds'))%>%
-  mutate(metric="(f) Distance")
+  mutate(metric="(e) Distance to shore")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 extent_north_slope<-readRDS(paste0(filepath, 'extents_slope.rds'))%>%
-  select(-c(slope.south, CI_lower_bound_south,CI_upper_bound_south, CI_lower_clipped_south, CI_upper_clipped_south, CI_length_south,midpoint_south,CI_adjusted_length_south,CI_clipped_south, slope.south2,CI_lower_bound_south_2,CI_upper_bound_south_2))%>%
+  dplyr::select(-c(slope.south, CI_lower_bound_south,CI_upper_bound_south, CI_lower_clipped_south, CI_upper_clipped_south, CI_length_south,midpoint_south,CI_adjusted_length_south,CI_clipped_south, slope.south2,CI_lower_bound_south_2,CI_upper_bound_south_2))%>%
   rename(slope=slope.north, slope2=slope.north2, CI_lower_bound_2=CI_lower_bound_north_2, CI_upper_bound_2=CI_upper_bound_north_2)%>%
-  mutate(metric="(c) Northern extent")
+  mutate(metric="(c) Northern extent")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 # Rename columns
 colnames(extent_north_slope) <- gsub("_north$", "", colnames(extent_north_slope))
 
 extent_south_slope<-readRDS(paste0(filepath, 'extents_slope.rds'))%>%
-  select(-c(slope.north, CI_lower_bound_north,CI_upper_bound_north, CI_lower_clipped_north, CI_upper_clipped_north, CI_length_north,midpoint_north,CI_adjusted_length_north,CI_clipped_north, slope.north2,CI_lower_bound_north_2,CI_upper_bound_north_2))%>%
+  dplyr::select(-c(slope.north, CI_lower_bound_north,CI_upper_bound_north, CI_lower_clipped_north, CI_upper_clipped_north, CI_length_north,midpoint_north,CI_adjusted_length_north,CI_clipped_north, slope.north2,CI_lower_bound_north_2,CI_upper_bound_north_2))%>%
   rename(slope=slope.south, slope2=slope.south2, CI_lower_bound_2=CI_lower_bound_south_2, CI_upper_bound_2=CI_upper_bound_south_2)%>%
-  mutate(metric="(d) Southern extent")
+  mutate(metric="(d) Southern extent")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 # Rename columns
 colnames(extent_south_slope) <- gsub("_south$", "", colnames(extent_south_slope))
 
 extent_north_cv<-readRDS(paste0(filepath, 'extents_cv.rds'))%>%
-select(-c(CV2, lower.CI2, upper.CI2,lower.CI2.2, upper.CI2.2))%>%
-  mutate(metric="(c) Northern extent")
+  dplyr::select(-c(CV2, lower.CI2, upper.CI2,lower.CI2.2, upper.CI2.2))%>%
+  mutate(metric="(c) Northern extent")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 extent_south_cv<-readRDS(paste0(filepath, 'extents_cv.rds'))%>%
-  select(-c(CV, lower.CI, upper.CI,lower.CI.2, upper.CI.2))%>%
+  dplyr::select(-c(CV, lower.CI, upper.CI,lower.CI.2, upper.CI.2))%>%
   mutate(metric="(c) Northern extent")%>%
-  rename(CV=CV2, lower.CI=lower.CI2, upper.CI=upper.CI2,lower.CI.2=lower.CI2.2, upper.CI.2=upper.CI2.2)
+  rename(CV=CV2, lower.CI=lower.CI2, upper.CI=upper.CI2,lower.CI.2=lower.CI2.2, upper.CI.2=upper.CI2.2)%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 ############
 
 ############
@@ -113,7 +133,7 @@ a<-plot_fun(area_slope)
 b<-plot_fun(latitude_slope)
 c<-plot_fun(extent_north_slope)
 d<-plot_fun(extent_south_slope)
-e<-plot_fun(depth_slope)
+#e<-plot_fun(mpa_slope)
 
 f<-ggplot(data=distance_slope, aes(x= slope, y=fishery2, color=port_complex))+
   geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -123,7 +143,7 @@ f<-ggplot(data=distance_slope, aes(x= slope, y=fishery2, color=port_complex))+
     y = "Fishery",
     color = "Port Complex"
   )+
-  ggtitle('(f) Distance')+
+  ggtitle('(e) Distance to shore')+
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
   theme(  panel.grid.major = element_blank(),
@@ -166,15 +186,15 @@ a2<-plot_fun(area_cv)
 b2<-plot_fun(latitude_cv)
 c2<-plot_fun(extent_north_cv)
 d2<-plot_fun(extent_south_cv)
-e2<-plot_fun(depth_cv)
+#e2<-plot_fun(mpa_cv)
 f2<-plot_fun(distance_cv)
 ############
 
 
 ############
 
-  combined_plot <- a+b+c+d+e+f+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+  combined_plot <- a+b+c+d+f+
+    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
     theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -183,8 +203,8 @@ f2<-plot_fun(distance_cv)
           plot.margin=margin(0,0,0,0)
     )      
   
-    combined_plot2 <- a2+b2+c2+d2+e2+f2+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+    combined_plot2 <- a2+b2+c2+d2+f2+
+    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
       theme(axis.text.y = element_blank(),  # Remove y-axis text
             axis.title.x = element_blank(),# Remove x-axis text
             axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -205,15 +225,15 @@ f2<-plot_fun(distance_cv)
   )
   
   # Increase the margin only for plot 6 and plot 12 (the last column)
-  combined_plot[[6]] <- combined_plot[[6]] + theme(
+  combined_plot[[5]] <- combined_plot[[5]] + theme(
     plot.margin = margin(0, 15, 0, 0)  # Increase space on the right for plot 6
   )
   
-  combined_plot2[[6]] <- combined_plot2[[6]] + theme(
+  combined_plot2[[5]] <- combined_plot2[[5]] + theme(
     plot.margin = margin(15, 15, 0, 0)  # Increase space on the right for plot 12
   )
   
-  combined_plot[[6]] <- combined_plot[[6]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
+  combined_plot[[5]] <- combined_plot[[5]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
                                                    legend.title = element_text(size = 9),  # Smaller font size for legend title
                                                    legend.text = element_text(size = 8) ) 
 
@@ -297,7 +317,7 @@ f2<-plot_fun(distance_cv)
   b<-plot_fun(latitude_slope)
   c<-plot_fun(extent_north_slope)
   d<-plot_fun(extent_south_slope)
-  e<-plot_fun(depth_slope)
+ # e<-plot_fun(mpa_slope)
   
   f<-ggplot(data=distance_slope, aes(x= slope, y=port_complex, color=fishery2))+
     geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -307,7 +327,7 @@ f2<-plot_fun(distance_cv)
       y = "Port Complex",
       color = "Fishery"
     )+
-    ggtitle('(f) Distance')+
+    ggtitle('(e) Distance to shore')+
     geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
     #base_theme+
     theme(  panel.grid.major = element_blank(),
@@ -350,15 +370,15 @@ f2<-plot_fun(distance_cv)
   b2<-plot_fun(latitude_cv)
   c2<-plot_fun(extent_north_cv)
   d2<-plot_fun(extent_south_cv)
-  e2<-plot_fun(depth_cv)
+  #e2<-plot_fun(mpa_cv)
   f2<-plot_fun(distance_cv)
   ############
   
   
   ############
   
-  combined_plot <- a+b+c+d+e+f+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+  combined_plot <- a+b+c+d+f+
+    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
     theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -367,8 +387,8 @@ f2<-plot_fun(distance_cv)
           plot.margin=margin(0,0,0,0)
     )      
   
-  combined_plot2 <- a2+b2+c2+d2+e2+f2+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+  combined_plot2 <- a2+b2+c2+d2+f2+
+    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
     theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -389,15 +409,15 @@ f2<-plot_fun(distance_cv)
   )
   
   # Increase the margin only for plot 6 and plot 12 (the last column)
-  combined_plot[[6]] <- combined_plot[[6]] + theme(
+  combined_plot[[5]] <- combined_plot[[5]] + theme(
     plot.margin = margin(0, 15, 0, 0)  # Increase space on the right for plot 6
   )
   
-  combined_plot2[[6]] <- combined_plot2[[6]] + theme(
+  combined_plot2[[5]] <- combined_plot2[[5]] + theme(
     plot.margin = margin(15, 15, 0, 0)  # Increase space on the right for plot 12
   )
   
-  combined_plot[[6]] <- combined_plot[[6]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
+  combined_plot[[5]] <- combined_plot[[5]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
                                                    legend.title = element_text(size = 9),  # Smaller font size for legend title
                                                    legend.text = element_text(size = 8) ) 
   

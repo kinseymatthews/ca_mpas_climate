@@ -60,7 +60,7 @@ distinct_fishery<-unique(fisheries$fishery)
 plot_fun <- function(fishery2) {
   # Filter data for the selected fishery
   fish <- fisheries %>%
-    filter(fishery == fishery2)
+    filter(fishery == "Pink shrimp trawl")
   
   # Get list of distinct port complexes
   distinct_complexes <- unique(fish$port.complex)
@@ -109,6 +109,7 @@ plot_fun <- function(fishery2) {
   
   # Combine all results into a single dataframe
   all.data <- dplyr::bind_rows(datalist)
+  
   return(all.data)
 }
 
@@ -127,7 +128,7 @@ k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
 results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
-results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
+results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego', 'All')))
 results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 

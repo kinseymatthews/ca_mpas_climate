@@ -122,7 +122,7 @@ COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
 #plotting mpas with yearly kernel densities and COG
 plot_fun<-function(portcomplex){ 
   
-  location <- sf_df%>%
+  location <- stats%>%
     filter(port.complex== portcomplex)
   
   #get unique years in dataset
@@ -357,7 +357,7 @@ all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
   left_join(mpa,by="port.complex")
 
-saveRDS(all.volumes,paste0(CPFV_data,"Data/Processed Data/CPFV_MPA_area.rds"))
+saveRDS(all.volumes,paste0(CPFV_data,"Data/Processed Data/MPA_area.rds"))
 
 #figure
 plot_fun<-function(portcomplex){

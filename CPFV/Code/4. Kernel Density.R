@@ -601,3 +601,22 @@ plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
 
 ############
+
+
+
+p<-ggplot() +
+
+  # Land
+  geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+  # State waters
+ geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+  # Crop
+  coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+  # Axes
+  scale_x_continuous(breaks=seq(-125, -117, 2)) +
+  scale_y_continuous(breaks=seq(32, 44, 2)) +
+  theme_bw() + base_theme+ 
+  theme(axis.title = element_blank())
+filename1 <- ('C:/Users/kinse/Downloads/Statemap.jpg')
+ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
+  

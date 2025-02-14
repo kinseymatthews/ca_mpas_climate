@@ -18,7 +18,7 @@ explor<-readRDS(paste0(shrimp_data,"Data/Processed Data/pinktrawl_filtered.rds")
 #cog data
 COG<-readRDS(paste0(shrimp_data, 'Data/Processed Data/pinkshrimp_COG_distance_results_towhours_final.rds'))
 COG_sf<-st_as_sf(COG, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
-  st_transform(crs = 4326)
+  st_transform(crs = 3310)
 COG_sf$year=as.factor(COG_sf$year)
 
 #spatial mapping data
@@ -26,12 +26,14 @@ usa <- rnaturalearth::ne_states(country = "United States of America", returnclas
 mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
 usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
+usa_mexico_sf<- st_transform(usa_mexico_sf, crs = 3310)
 
 #port codes
 port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 # State waters
 state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
+state_waters <- st_transform(state_waters, crs = 3310)
 
 # block data
 all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
@@ -103,10 +105,14 @@ sf_df<- explor %>%
   filter(!st_is_empty(.))
 
 
+# Reproject to Albers Equal Area Conic (EPSG: 3310)
+sf_df_projected <- st_transform(sf_df, crs = 3310)
+
+
 plot_fun<-function(portcomplex){ 
   
   #filtering for location
-  location<-sf_df %>%
+  location<-sf_df_projected%>%
     filter(port.complex==portcomplex)
   
   #extracting coordinates and weights
@@ -123,7 +129,7 @@ plot_fun<-function(portcomplex){
   
   # Compute kernel density estimation using raw and logcdata
   sigma<-bw.diggle(points_ppp)
-  density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, eps=0.05)
+  density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
   
   # Convert density to a raster (assuming a reasonable raster resolution)
   density_raster <- as(raster(as.im(density)), "RasterLayer")
@@ -162,10 +168,10 @@ plot_fun<-function(portcomplex){
     # State waters
     geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
     # Crop
-    coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+    #coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
     # Axes
-    scale_x_continuous(breaks=seq(-125, -117, 2)) +
-    scale_y_continuous(breaks=seq(32, 44, 2)) + 
+    #scale_x_continuous(breaks=seq(-125, -117, 2)) +
+    #scale_y_continuous(breaks=seq(32, 44, 2)) + 
     # Theme
     theme_bw() + base_theme +
     ggtitle(paste0( portcomplex, ' Fishing Grounds') , subtitle="Pink shrimp Trawl Fishery With 75% volume contour")+
@@ -173,7 +179,7 @@ plot_fun<-function(portcomplex){
           axis.title.y=element_blank())
   
   
-  name=paste0(shrimp_data,'Figures/Pink Shrimp/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test.jpg')
+  name=paste0(shrimp_data,'Figures/Pink Shrimp/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Densiy_All Years_test2.jpg')
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
   
 }
@@ -209,10 +215,13 @@ sf_df<- explor %>%
   #remove any bad spatial blocks
   filter(!st_is_empty(.))
 
+sf_df_projected <- st_transform(sf_df, crs = 3310)
+
+
 
 plot_fun<-function(portcomplex){ 
   
-  location <- sf_df%>%
+  location <- sf_df_projected%>%
     filter(port.complex==portcomplex)%>%
     group_by(year)%>%
     filter(n() > 1) %>% #kernel densities need more than one block in a year to run.
@@ -223,7 +232,7 @@ plot_fun<-function(portcomplex){
   
   #Loop through each year and calculate kernel density
   for(year in unique_years){
-    
+    tryCatch({ #used to catch any errors
     #subset data for the current year
     year_data<-location[location$year==year,]
     
@@ -234,55 +243,90 @@ plot_fun<-function(portcomplex){
     
     # Create a point pattern (ppp object)
     # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
+    minx<-(min(coordinates[,1], na.rm = TRUE))
+    maxx<-(max(coordinates[,1], na.rm = TRUE))
+    miny<-(min(coordinates[,2], na.rm = TRUE))
+    maxy<-(max(coordinates[,2], na.rm = TRUE))
+    
+    # Define the tolerance
+    tolerance <- 0.0000001
+    
+    if (abs(minx - maxx) < tolerance) {
+      minx <- minx - 0.025
+      maxx <- maxx + 0.025
+    }
+    
+  
+    if (abs( miny - maxy)< tolerance) {
+      miny <- miny - 0.025
+      maxy <- maxy + 0.025
+    }
+    # Convert meters to degrees
+   # lat_expansion <- 20000 / 111320  # ~0.0898 degrees
+    #lon_expansion <- 20000 / (111320 * cos(mean(coordinates[,2]) * pi / 180))  # Adjusted for latitude
+    
+    # Expand bounding box
+    minx <- minx - 20000
+    maxx <- maxx + 20000
+    miny <- miny - 20000
+    maxy <- maxy + 20000
     
     points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
     
     # Compute kernel density estimation using raw and logcdata
     sigma<-bw.diggle(points_ppp)
     
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE5)
+    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
     
-    # Convert density to a raster (assuming a reasonable raster resolution)
+    # Convert density to a raster (assuming a reasonable raster resolution). as.im converts data into a pixel image which is then converted to a raster
     density_raster <- as(raster(as.im(density)), "RasterLayer")
     
     # Mask the density raster with the land raster
-    density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
+   density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
     names(density_df) <- c("x", "y", "value")
     
-    # Normalize density values to the range 0-1
-    density_df$value <- scales::rescale(density_df$value)
-    
+
     # Calculate the cumulative distribution function (CDF)
     density_values <- sort(density_df$value, decreasing = TRUE)
     cdf <- cumsum(density_values) / sum(density_values)
     
     # Find the contour level corresponding to 75% volume
-    contour_level <- density_values[which.min(abs(cdf - 0.75))]
+    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
     
+    # Create contour lines from the density raster
+    contour_level_75_lines <- rasterToContour(density_masked, levels = c(contour_level_75))
+
+
+    # Convert contour lines to sf polygons
+    contour_75_sf <- st_as_sf(contour_level_75_lines)
     
+    st_crs(contour_75_sf) <-  3310
+      
+    # Normalize density values to the range 0-1
+    density_df$value <- scales::rescale(density_df$value)
+
     a<-COG_sf%>%
       filter(port.complex==portcomplex)%>%
       filter(year %in% unique_years)
     
     #subset data for the current year
     b<-a[a$year==year,]
-    
+
     #extracting coordinates and weights
     coordinates<-st_coordinates(a)
-    # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
+    # Create bounding block for plot
+    minx<-(min(coordinates[,1], na.rm = TRUE))
+    maxx<-(max(coordinates[,1], na.rm = TRUE))
+    miny<-(min(coordinates[,2], na.rm = TRUE))
+    maxy<-(max(coordinates[,2], na.rm = TRUE))
     
-    p<-ggplot() +
+    # Extract the bounding box of the 75% contour
+    contour_bbox <- st_bbox(contour_75_sf)
+ 
+   p<- ggplot() +
       geom_raster(data = density_df, aes(x = x, y = y, fill = value)) +
       
       scale_fill_gradientn(name = "Tow minutes", 
@@ -290,9 +334,11 @@ plot_fun<-function(portcomplex){
                            limits = c(0, max(density_df$value)),  # Adjust limits as needed
                            na.value = "white") +  # Set NA values to white
       # Add contour lines at 75% volume boundary
-      geom_contour(data = density_df, aes(x = x, y = y, z = value), 
-                   breaks = contour_level, color = "black", size = 0.5) +
+     # geom_contour(data = density_df, aes(x = x, y = y, z = value), 
+      #             breaks = contour_level_75, color = "black", size = 0.5) +
       
+      geom_sf(data = contour_75_sf, color = "black", linewidth = 1)  +
+    
       # Land
       geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
       # State waters
@@ -300,27 +346,39 @@ plot_fun<-function(portcomplex){
       #points COG
       geom_sf(data=b,size=5, fill="white",color="black",pch=21)+
       # Crop
-      coord_sf(xlim = c(minx-.5, maxx+.5), ylim = c(miny-.5, maxy+.5)) +
+      # Crop the plot using the bounding box of the contour
+     coord_sf(xlim = c(minx-20000, maxx+20000), ylim = c(miny-20000, maxy+20000)) +
+     # coord_sf(xlim = c(contour_bbox["xmin"]-100000, contour_bbox["xmax"]+100000), 
+      #         ylim = c(contour_bbox["ymin"]-100000, contour_bbox["ymax"]+100000),
+       #        expand = FALSE) + # No extra space beyond the bounding box
       # Axes
-      scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
-      scale_y_continuous(breaks=seq(miny-.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
+     # scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
+      #scale_y_continuous(breaks=seq(miny-.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
       
       ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Pink shrimp Trawl Fishery: Year ', year, ', with 75% volume contour' ))+
       theme_bw() + base_theme+ 
       theme(axis.title = element_blank())
     
     
-    name=paste0(shrimp_data,'Figures/Pink Shrimp/Kernel Density/',portcomplex,'/',portcomplex, year,'.jpg')
+    name=paste0(shrimp_data,'Figures/Pink Shrimp/Kernel Density/',portcomplex,'/',portcomplex, year,'TEST.jpg')
     ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
+ 
+    }, error = function(e) {
+      message("Error in port complex: ", portcomplex, ", Year: ", year, " - ", e$message)
+    })
   }
 }
+plot_fun('Morro Bay')
+
+
+
 plot_fun('Eureka')
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 
-
+############
 #importing yearly images and creating an animation
 years<-c(1995:1997,1999:2006,2010,2013:2020)
 frames<-paste0(shrimp_data,"Figures/Pink Shrimp/Kernel Density/Eureka/Eureka",years,".jpg")
@@ -352,11 +410,10 @@ image_write(m,paste0(shrimp_data,"Figures/Pink Shrimp/Kernel Density/Santa Barba
 ############
 #time series analyses
 #volume contours through time
-
 plot_fun<-function(portcomplex){ 
   
-  location <- sf_df%>%
-    filter(port.complex==portcomplex)%>%
+  location <- sf_df_projected%>%
+    filter(port.complex=="Morro Bay")%>%
     group_by(year)%>%
     filter(n() > 1) %>%
     ungroup()
@@ -371,23 +428,42 @@ plot_fun<-function(portcomplex){
   for(year in unique_years){
     
     #subset data for the current year
-    year_data<-location[location$year==year,]
+    year_data<-location[location$year==1996,]
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
     weights<-year_data$total_tow_min
     
     # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
+    minx<-(min(coordinates[,1], na.rm = TRUE))
+    maxx<-(max(coordinates[,1], na.rm = TRUE))
+    miny<-(min(coordinates[,2], na.rm = TRUE))
+    maxy<-(max(coordinates[,2], na.rm = TRUE))
+  
+    # Define the tolerance
+    tolerance <- 0.0000001
+    
+    if (abs(minx - maxx) < tolerance) {
+      minx <- minx - 0.025
+      maxx <- maxx + 0.025
+    }
+    
+    if (abs( miny - maxy)< tolerance) {
+      miny <- miny - 0.025
+      maxy <- maxy + 0.025
+    }
+    
+    # Expand bounding box
+    minx <- minx - 20000
+    maxx <- maxx + 20000
+    miny <- miny - 20000
+    maxy <- maxy + 20000
     
     points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
     
     # Compute kernel density estimation using raw data
-    sigma<-bw.diggle(points_ppp)
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
+    sigma<-bw.diggle(points_ppp) #increasing bandwidth
+    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
     
     # Convert density to a raster 
     density_raster <- as(raster(as.im(density)), "RasterLayer")
@@ -404,14 +480,59 @@ plot_fun<-function(portcomplex){
     cdf <- cumsum(density_values) / sum(density_values)
     
     # Find the contour level corresponding to,50 75, and 95% volume and then save the corresponding volumes
-    contour_level_50 <- density_values[which.min(abs(cdf - 0.50))]
+
     contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
-    contour_level_95 <- density_values[which.min(abs(cdf - 0.95))]
     
+    # Create contour lines from the density raster
+    contours <- rasterToContour(density_masked, levels = c(contour_level_75))
+    
+    # Convert contours to SpatialPolygons
+    #contour_polygons <- rasterToPolygons(density_raster, fun = function(x) x >= contour_level_75, dissolve = TRUE)
+    
+    # Convert contour line to sf polygons
+    contour_sf <- st_as_sf(contours)
+    
+                    
+    # Convert contour lines (LINESTRING) to MULTILINESTRING first
+    contour_sf_multiline <- st_cast(contour_sf, "MULTILINESTRING")
+    
+
+    # Extract the coordinates
+    coords <- st_coordinates(contour_sf_multiline)
+    
+    # Create a new LINESTRING connecting the end of the first to the start of the second
+    new_line <- st_linestring(rbind(coords[1, ], coords[nrow(coords), ]))
+    
+    # Combine the original MULTILINESTRING with the new LINESTRING
+    combined <- st_sfc(st_multilinestring(list(
+      matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE),
+      matrix(c(1, 1, 2, 0), ncol = 2, byrow = TRUE),
+      matrix(c(coords[1, 1], coords[1, 2], coords[nrow(coords), 1], coords[nrow(coords), 2]), ncol = 2, byrow = TRUE)
+    )), crs = 3310)
+    
+    # Plot the result
+    plot(combined, col = 'blue', lwd = 2)
+    
+    
+    
+    
+    
+    # Convert to polygons by polygonizing
+    contour_sf_75_poly <- st_polygonize(contour_sf_75_multiline)
+    
+    # Ensure the geometry is valid
+    contour_sf_75_poly <- st_make_valid(contour_sf_75_poly)
+    
+
+    # Compute area
+    volume_75 <- sum(st_area(contour_sf_75_poly))
+    
+
+
     #Find area
-    volume_50 <- sum(density_df$value[density_df$value >= contour_level_50])
-    volume_75 <- sum(density_df$value[density_df$value >= contour_level_75])
-    volume_95 <- sum(density_df$value[density_df$value >= contour_level_95])
+    #volume_50 <- sum(density_df$value[density_df$value >= contour_level_50])
+    #volume_75 <- sum(density_df$value[density_df$value >= contour_level_75])
+    #volume_95 <- sum(density_df$value[density_df$value >= contour_level_95])
     
     # Find the most northern and southern latitudes for the 75% volume contour
     filtered_df_75 <- density_df[density_df$value >= contour_level_75, ]
@@ -421,9 +542,7 @@ plot_fun<-function(portcomplex){
     #save in new dataframe with year so it can be in the animations. NEed to save density_df, contour_level, year
     df <- data.frame(port.complex=portcomplex,
                      Year = year,
-                     volume_50=volume_50,
                      volume_75=volume_75,
-                     volume_95=volume_95,
                      northernmost_latitude_75=northernmost_latitude_75,
                      southernmost_latitude_75=southernmost_latitude_75 )
     
