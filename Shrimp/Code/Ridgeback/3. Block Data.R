@@ -237,3 +237,51 @@ plot_fun('Los Angeles')
 plot_fun('Santa Barbara')
 
 ############
+
+############
+#years separately - non animation
+plot_fun<-function(portcomplex){ 
+  
+  location <- stats_blocks_sf %>%
+    filter(port.complex== portcomplex)
+  
+  # Get unique years to loop through
+  unique_years <- unique(location$year)
+  
+  for(year in unique_years){
+    #subset data for the current year
+    year_data<-location[location$year==year,]
+    
+    p<-ggplot(data=year_data, mapping=aes(fill=total_tow_min)) +
+      # Blocks
+      geom_sf(color="grey50", linewidth=0.1)+
+      # Land
+      geom_sf(data = usa, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+      geom_sf(data=mexico, fill="grey85", col="white", linewidth=0.2, inherit.aes = F) +
+      # State waters
+      geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+      # Set the limits for the coordinate system
+      coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+      # Axes
+      scale_x_continuous(breaks=seq(-126, -118, 2)) +
+      scale_y_continuous(breaks=seq(31, 42, 2)) + 
+      scale_fill_gradientn(name="Trawl Minutes",  trans="log", 
+                           colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev(),
+                           labels = scales::label_comma(accuracy = 100))+
+      
+      ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle=paste0('Ridgeback Prawn Trawl Fishery: Year ', year))+
+      # Theme
+      theme_bw() + base_theme
+    
+    
+    
+    name=paste0(shrimp_data, 'Figures/Ridgeback/Block Data/',portcomplex,'/',portcomplex,' Blocks_',year,'.jpg')
+    ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+    
+  }
+}
+
+
+plot_fun('Los Angeles')
+plot_fun('Santa Barbara')
+############

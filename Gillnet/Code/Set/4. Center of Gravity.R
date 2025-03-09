@@ -130,8 +130,8 @@ cog_results <- stats_kd_sf %>%
   sf::st_drop_geometry()
 
 # Print or use final results as needed
-saveRDS(cog_results, paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_TrapNights_distanceway.rds'))
-cog_results_2<-readRDS(paste0(gillnet_data, 'Data/Processed Data/setgillnet_COG_TrapNights_distanceway.rds'))
+saveRDS(cog_results, paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distanceway.rds'))
+cog_results_2<-readRDS(paste0(gillnet_data, 'Data/Processed Data/setgillnet_COG_distanceway.rds'))
 
 #getting longitude from distance to shore
 plot_fun<-function(portcomplex){ 
@@ -145,6 +145,9 @@ plot_fun<-function(portcomplex){
   #create empty dataframe to add to after each year
   datalist=list()
   
+  # Define a range of latitude offsets to try
+  latitude_offsets <- seq(200, 1000, by = 20)  # Example range from 100 to 550 in steps of 50
+  
   #Loop through each year 
   for(year in unique_years){
     
@@ -154,36 +157,61 @@ plot_fun<-function(portcomplex){
     target_lat<-year_data$cog_latitude
     target_distance<-year_data$cog_dist_shore
     target_longitude<-year_data$cog_longitude
-    #get bounding box - if coordinate system changes have to change. longitude should cover the entire range
-    max_lat=target_lat+200
-    min_lat=target_lat-200
-    min_long=206724.6
-    max_long=1106724
     
-    # Create spatial points for the corners of the bounding box
-    coords <- matrix(c(min_long, min_lat,
-                       max_long, min_lat,
-                       max_long, max_lat,
-                       min_long, max_lat,
-                       min_long, min_lat), 
-                     ncol = 2, byrow = TRUE)
-    # Create SpatialPolygons object
-    bbox <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID = "bbox")),
-                            proj4string = crs(reprojected_raster))
+    # Initialize variables to store the best match
+    best_longitude <- NA
+    best_offset <- NA
+    min_longitude_diff <- Inf
     
-    # Extract values from the raster at the specified latitude
-    values_along_latitude <- raster::extract(reprojected_raster, bbox)
-    # Convert the list of lists to a numeric vector
-    values_along_latitude <- unlist(values_along_latitude)
+    # Loop through each latitude offset
+    for (offset in latitude_offsets) {
+      # Get bounding box
+      max_lat <- target_lat + offset
+      min_lat <- target_lat - offset
+      min_long <- 206724.6
+      max_long <- 1106724
+      
+      
+      
+      # Create spatial points for the corners of the bounding box
+      coords <- matrix(c(min_long, min_lat,
+                         max_long, min_lat,
+                         max_long, max_lat,
+                         min_long, max_lat,
+                         min_long, min_lat), 
+                       ncol = 2, byrow = TRUE)
+      # Create SpatialPolygons object
+      bbox <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID = "bbox")),
+                              proj4string = crs(reprojected_raster))
+      
+      # Extract values from the raster at the specified latitude
+      values_along_latitude <- raster::extract(reprojected_raster, bbox)
+      # Convert the list of lists to a numeric vector
+      values_along_latitude <- unlist(values_along_latitude)
+      
+      # Find which raster cell it is (index of closest value)
+      closest_index <- which.min(abs(values_along_latitude - target_distance))
+      
+      # Calculate the middle longitude of the raster cell
+      cell_cord<-xyFromCell(reprojected_raster,closest_index)
+      calculated_longitude <- cell_cord[1]
+      
+      # Calculate the difference between the calculated longitude and the target longitude
+      longitude_diff <- abs(calculated_longitude - target_longitude)
+      
+      # Check if this offset gives a better match
+      if (longitude_diff < min_longitude_diff) {
+        min_longitude_diff <- longitude_diff
+        best_longitude <- calculated_longitude
+        best_offset <- offset
+      }
+    }
     
-    # Find which raster cell it is (index of closest value)
-    closest_index <- which.min(abs(values_along_latitude - target_distance))
-    
-    # Calculate the middle longitude of the raster cell
-    cell_cord<-xyFromCell(reprojected_raster,closest_index)
-    longitude <- cell_cord[1]
+    # Add the best match to the dataframe
     df <- year_data %>%
-      mutate(longitude_calculated=longitude)
+      mutate(longitude_calculated = best_longitude,
+             best_offset = best_offset)
+    
     
     # Append current year's results to combined_df
     datalist[[year]] <- df
@@ -205,9 +233,9 @@ saveRDS(df, paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_res
 
 
 ###############
-#plotting COG on their own - not doing a function as I am trying to figure out what is going wrong with San Diego
+#plotting COG on their own 
 plot_fun<-function(portcomplex){
-  COG_port<-readRDS(paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_results_towhours_final.rds'))%>%
+  COG_port<-readRDS(paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_results_final.rds'))%>%
     filter(port.complex==portcomplex)
   
   location_cog<-st_as_sf(COG_port, coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
@@ -257,7 +285,7 @@ plot_fun('San Diego')
 
 ###############
 #Coastwide figure with port complexes and fishing ground shifts
-df<-readRDS(paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_results_towhours_final.rds'))%>%
+df<-readRDS(paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_results_final.rds'))%>%
   ungroup()%>%
   mutate(year=as.numeric(year))
 
@@ -265,11 +293,8 @@ df<-readRDS(paste0(gillnet_data,'Data/Processed Data/setgillnet_COG_distance_res
 COG1<-df%>%
   group_by(port.complex)%>%
   filter(year== min(year) | year== max(year))%>%
-  mutate(
-    year_label = if_else(year == min(year), "first", "last")
-  ) %>%
-  rename(Year = year) %>%
-  ungroup()
+  mutate(Year_Type = ifelse(year == min(year), "First", "Last")) %>%
+  rename(Year=year)
 
 COG_sf<-st_as_sf(COG1, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
   st_transform(crs = "+proj=longlat +datum=WGS84")
@@ -289,7 +314,7 @@ combined_geometries <- COG2 %>%
 
 # Cast the combined geometries to LINESTRING
 linestring <- st_cast(combined_geometries, "LINESTRING")
-linestring $port.complex<- factor(linestring $port.complex, levels = c( 'Bodega Bay','San Francisco','Monterey', 'Morro Bay','Santa Barbara', 'Los Angeles', 'San Diego')))
+linestring $port.complex<- factor(linestring $port.complex, levels = c( 'Bodega Bay','San Francisco','Monterey', 'Morro Bay','Santa Barbara', 'Los Angeles', 'San Diego'))
 cali<-usa%>%
   filter(name=="California")
 
@@ -300,7 +325,7 @@ p<-ggplot() +
   # Lines connecting points for the same port complex
   geom_sf(data = linestring, aes(color = port.complex), linewidth = 0.8) +
   # points
-  geom_sf(data=COG_sf,aes(shape=year_label),size=2)+
+  geom_sf(data=COG_sf,aes(shape=Year_Type),size=2)+
   # Crop
   coord_sf(xlim = c(-125, -116), ylim = c(33, 42)) +
   # Axes
@@ -323,7 +348,7 @@ p<-ggplot() +
   
   ggtitle(('Set Gillnet Fishing Grounds'), subtitle = 'Shifts in Center of Gravity')+
   scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=-1)
-
+p
 filename1 <- paste0(gillnet_data, 'Figures/Set/Kernel Density/AllPorts_mapped_COG_artsy.jpg')
 ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
 ###############

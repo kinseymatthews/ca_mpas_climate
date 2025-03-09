@@ -1,10 +1,9 @@
-
 library(dplyr)
 library(sf)
 library(sp)
 library(spatstat)
 library(raster)
-library(ggplot2)
+library(tidyverse)
 library(magick)
 library(ggforce)
 library(RColorBrewer)
@@ -21,29 +20,34 @@ explor<-readRDS(paste0(urchin_data,"Data/Processed Data/seaurchin_filtered.rds")
 
 #cog data
 COG<-readRDS(paste0(urchin_data, 'Data/Processed Data/COG_distance_results_divehours_final_seaurchin.rds'))
+COG_sf<-st_as_sf(COG, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
+  st_transform(crs = 3310)
+COG_sf$year=as.factor(COG_sf$year)
 
 #spatial mapping data
 usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
 mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
 usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
+usa_mexico_sf_proj<- st_transform(usa_mexico_sf, crs = 3310)
 
 #port codes
-port<-read.csv(paste0(urchin_data, "Data/Raw Data/Port Codes.csv"))
+port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( paste0(urchin_data, "Data/Raw Data/CA_state_waters_polyline.Rds"))
+state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
+state_waters <- st_transform(state_waters, crs = 3310)
 
 # block data
-all_blocks<-st_read(paste0(urchin_data,"Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
-##### read in bathymetry data with blocks
-bathy.data<-read.csv(paste0("Data/Raw Data/fishingblockstatistics.csv"))%>%
+#read  in bathymetry data with blocks
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -72,10 +76,11 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 
 #adding in mpa implementation data
-port.complex=c("Fort Bragg", "Santa Barbara","Los Angeles","San Diego")
-values=c(2012, 2012,2012,2012)
+port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
+values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 ############
+
 
 
 
@@ -202,7 +207,7 @@ plot_fun("San Diego")
 #Kernel Densities - years separated 
 
 #yearly data
-df<- explor %>%
+sf_df<- explor %>%
   # Step 1: Remove duplicates within each dive.identifier and calculate distinct angler_hours
   group_by(dive.identifier, hours) %>%
   summarize(count = n(), .groups = 'drop') %>%
@@ -215,36 +220,33 @@ df<- explor %>%
   # Step 4: Group by year, port, and block to aggregate results
   group_by( port.complex, year,block_id) %>%
   summarize(total_dive_hours = sum(total_hours, na.rm = TRUE),
-            .groups = 'drop')
-
-df<-merge(x =df, y = all_blocks_df, by = "block_id", all.x = TRUE)
-
-#remove block IDs of NA
-df<-df[!is.na(df$block_long_dd),] 
-
-df_sf<- df%>%
+            .groups = 'drop')%>%
+  #get block data
+  left_join(all_blocks, by = "block_id") %>% 
+  #remove block IDs of NA
+  filter(!is.na(block_long_dd))%>%
   as.data.frame()%>%
-  st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = "+proj=longlat +datum=WGS84")
+  st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = "+proj=longlat +datum=WGS84 +no_defs")%>%
+  #remove any bad spatial blocks
+  filter(!st_is_empty(.))
+
+sf_df_projected <- st_transform(sf_df, crs = 3310)
+
 
 #order from north to south
-df_sf$port.complex<- factor(df_sf$port.complex, levels = c('Fort Bragg','Santa Barbara', 'Los Angeles', 'San Diego'))
+sf_df_projected$port.complex<- factor(sf_df_projected$port.complex, levels = c('Fort Bragg','Santa Barbara', 'Los Angeles', 'San Diego'))
 
-df_sf<- df_sf%>% filter(!st_is_empty(.))
-
-#Kernel density figure with COG
-COG_sf<-st_as_sf(COG, coords = c("longitude_calculated", "cog_latitude"), crs=("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))
-COG_sf<-st_transform(COG_sf, crs=("+proj=longlat +datum=WGS84"))
-COG_sf$year=as.factor(COG_sf$year)
 
 plot_fun<-function(portcomplex){ 
   
-  location <- df_sf%>%
+  location <- sf_df_projected%>%
     filter(port.complex==portcomplex)%>%
     group_by(year)%>%
     filter(n() > 1) %>% #kernel densities need more than one block in a year to run.
     ungroup()
+  
   #get unique years in dataset
-  unique_years<-sort(unique(location$year))
+  unique_years<-unique(location$year)
   
   #Loop through each year and calculate kernel density
   for(year in unique_years){
@@ -254,80 +256,119 @@ plot_fun<-function(portcomplex){
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    
     #weights
     weights<-year_data$total_dive_hours
     
     # Create a point pattern (ppp object)
-    # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
+    minx<-(min(coordinates[,1], na.rm = TRUE))
+    maxx<-(max(coordinates[,1], na.rm = TRUE))
+    miny<-(min(coordinates[,2], na.rm = TRUE))
+    maxy<-(max(coordinates[,2], na.rm = TRUE))
+    
+    # Define the tolerance
+    tolerance <- 0.0000001
+    
+    if (abs(minx - maxx) < tolerance) {
+      minx <- minx - 0.025
+      maxx <- maxx + 0.025
+    }
+    
+    
+    if (abs( miny - maxy)< tolerance) {
+      miny <- miny - 0.025
+      maxy <- maxy + 0.025
+    }
+    
+    # Expand bounding box
+    minx <- minx - 20000
+    maxx <- maxx + 20000
+    miny <- miny - 20000
+    maxy <- maxy + 20000
     
     points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
+    
     # Compute kernel density estimation using raw and logcdata
     sigma<-bw.diggle(points_ppp)
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
+    
+    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE , edge=TRUE)
     
     # Convert density to a raster (assuming a reasonable raster resolution)
     density_raster <- as(raster(as.im(density)), "RasterLayer")
+    
+    
+    # Extend the extent of the density raster by 200 meters
+    buffer_distance <- 20000  # 200 meters
+    extended_extent <- extend(extent(density_raster), buffer_distance)
+    
+    # Create a new raster with the extended extent
+    extended_raster <- extend(density_raster, extended_extent, value = 0)
+    
     # Mask the density raster with the land raster
-    density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
+    density_masked <- mask(extended_raster, usa_mexico_sf, inverse=TRUE)
     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
     names(density_df) <- c("x", "y", "value")
     
-    # Normalize density values to the range 0-1
-    density_df$value <- scales::rescale(density_df$value)
-    
     # Calculate the cumulative distribution function (CDF)
     density_values <- sort(density_df$value, decreasing = TRUE)
     cdf <- cumsum(density_values) / sum(density_values)
     
-    # Find the contour level corresponding to volume
-    contour_level2 <- density_values[which.min(abs(cdf - 0.75))]
-    contour_level1 <- density_values[which.min(abs(cdf - 0.50))]
-    contour_level3 <- density_values[which.min(abs(cdf - 0.95))]
+    # Find the contour level corresponding to 75% volume
+    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
+    
+    # Create contour lines from the density raster
+    contour_level_75_lines <- rasterToContour(density_masked, levels = c(contour_level_75))
+    
+    
+    # Convert contour lines to sf polygons
+    contour_75_sf <- st_as_sf(contour_level_75_lines)
+    
+    st_crs(contour_75_sf) <-  3310
+    
+    # Normalize density values to the range 0-1
+    density_df$value <- scales::rescale(density_df$value)
     
     a<-COG_sf%>%
-      filter(port.complex==portcomplex)
+      filter(port.complex==portcomplex)%>%
+      filter(year %in% unique_years)
+    
     #subset data for the current year
     b<-a[a$year==year,]
-    
     #extracting coordinates and weights
     coordinates<-st_coordinates(a)
-    # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
+    # Create bounding block for plot
+    minx<-(min(coordinates[,1], na.rm = TRUE))
+    maxx<-(max(coordinates[,1], na.rm = TRUE))
+    miny<-(min(coordinates[,2], na.rm = TRUE))
+    maxy<-(max(coordinates[,2], na.rm = TRUE))
+    
+    # Extract the bounding box of the 75% contour
+    contour_bbox <- st_bbox(contour_75_sf)
+    
     
     p<-ggplot() +
       geom_raster(data = density_df, aes(x = x, y = y, fill = value)) +
       
-      scale_fill_gradientn(name = "Dive Hours", 
+      scale_fill_gradientn(name = "Tow minutes", 
                            colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
                            limits = c(0, max(density_df$value)),  # Adjust limits as needed
                            na.value = "white") +  # Set NA values to white
-      
       # Add contour lines at 75% volume boundary
-      geom_contour(data = density_df, aes(x = x, y = y, z = value), 
-                   breaks = contour_level2, color = "black", size = 0.5, show.legend = TRUE) +
+      geom_sf(data = contour_75_sf, color = "black", linewidth = 1)  +
+      
       # Land
       geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
       # State waters
       geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
       #points COG
-      geom_sf(data=b,size=5, fill="white",color="black",pch=21)+
-      # Crop
-      coord_sf(xlim = c(minx-.5, maxx+.5), ylim = c(miny-.5, maxy+.5)) +
+      # geom_sf(data=b,size=5, fill="white",color="black",pch=21)+
+      # Crop the plot using the bounding box of the contour
+      coord_sf(xlim = c(minx-50000, maxx+50000), ylim = c(miny-50000, maxy+50000)) +
       # Axes
-      scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
-      scale_y_continuous(breaks=seq(miny-.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
-      # Theme
-      theme_bw() + base_theme +
+      #  scale_x_continuous(breaks=seq(minx-20000, maxx+20000, 20000),labels=scales::number_format(accuracy=20000)) +
+      #  scale_y_continuous(breaks=seq(miny-20000, maxy+20000, 20000),labels=scales::number_format(accuracy=20000)) + 
+      theme_bw() + base_theme+ 
       ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Sea urchin Dive Fishery: Year ',year, ', with 75% volume contour') )
     
     
@@ -376,7 +417,7 @@ image_write(m,paste0(urchin_data,"Figures/Urchin/Kernel Density/San Diego/San Di
 
 plot_fun<-function(portcomplex){ 
   
-  location <- df_sf%>%
+  location <- sf_df_projected%>%
     filter(port.complex==portcomplex)%>%
     group_by(year)%>%
     filter(n() > 1) %>%
@@ -399,22 +440,52 @@ plot_fun<-function(portcomplex){
     weights<-year_data$total_dive_hours
     
     # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
+    minx<-(min(coordinates[,1], na.rm = TRUE))
+    maxx<-(max(coordinates[,1], na.rm = TRUE))
+    miny<-(min(coordinates[,2], na.rm = TRUE))
+    maxy<-(max(coordinates[,2], na.rm = TRUE))
+    
+    # Define the tolerance
+    tolerance <- 0.0000001
+    
+    if (abs(minx - maxx) < tolerance) {
+      minx <- minx - 0.025
+      maxx <- maxx + 0.025
+    }
+    
+    if (abs( miny - maxy)< tolerance) {
+      miny <- miny - 0.025
+      maxy <- maxy + 0.025
+    }
+    
+    # Expand bounding box
+    minx <- minx - 20000
+    maxx <- maxx + 20000
+    miny <- miny - 20000
+    maxy <- maxy + 20000
     
     points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
     
     # Compute kernel density estimation using raw data
-    sigma<-bw.diggle(points_ppp)
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
+    sigma<-bw.diggle(points_ppp) #increasing bandwidth
+    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
     
     # Convert density to a raster 
     density_raster <- as(raster(as.im(density)), "RasterLayer")
     
+    # Extend the extent of the density raster by 200 meters
+    buffer_distance <- 20000  # 200 meters
+    extended_extent <- extend(extent(density_raster), buffer_distance)
+    
+    # Create a new raster with the extended extent
+    extended_raster <- extend(density_raster, extended_extent, value = 0)
+    
+    
     # Mask the density raster with the land raster
-    density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
+    density_masked <- mask( extended_raster, usa_mexico_sf_proj, inverse=TRUE)
+    
+    
+    crs(density_masked) <- CRS("+init=EPSG:3310")
     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
@@ -425,28 +496,88 @@ plot_fun<-function(portcomplex){
     cdf <- cumsum(density_values) / sum(density_values)
     
     # Find the contour level corresponding to,50 75, and 95% volume and then save the corresponding volumes
-    contour_level_50 <- density_values[which.min(abs(cdf - 0.50))]
-    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
-    contour_level_95 <- density_values[which.min(abs(cdf - 0.95))]
     
-    #Find area
-    volume_50 <- sum(density_df$value[density_df$value >= contour_level_50])
-    volume_75 <- sum(density_df$value[density_df$value >= contour_level_75])
-    volume_95 <- sum(density_df$value[density_df$value >= contour_level_95])
+    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
+    
+    # Create contour lines from the density raster
+    contours <- rasterToContour(extended_raster, levels = c(contour_level_75))
+    
+    #convert to sf object
+    contours_sf <- st_as_sf(contours)
+    #set crs
+    contours_sf <- st_set_crs(contours_sf , 3310)
+    
+    # Convert the LINESTRING to POLYGON if needed
+    # Attempt to cast to POLYGON
+    closed_poly <- tryCatch(
+      st_cast(contours_sf, "POLYGON"),
+      error = function(e) {
+        message("st_cast failed, using st_polygonize instead")
+        st_polygonize(contours_sf)
+      }
+    )
+    
+    # Ensure valid geometry
+    closed_poly <- st_make_valid(closed_poly)
+    
+    # Ensure valid geometry
+    closed_poly <- st_make_valid(closed_poly)
+    
+    # Plot the closed polygon to verify the closure
+    plot(closed_poly)
+    
+    # Extract only the geometry of the USA/Mexico shapefile
+    usa_geometry <- st_geometry(usa_mexico_sf_proj)
+    
+    # First calculate the intersection (land area)
+    intersection <- st_intersection(closed_poly, usa_geometry)
+    
+    # Check if there is an intersection
+    if (nrow(intersection) > 0) {
+      # If there is an intersection, manually subtract the land portion from the ocean using st_difference
+      closed_poly_no_land <- st_difference(closed_poly, intersection)
+      plot(closed_poly_no_land)
+      
+      # Compute the 75% volume area (land portion removed)
+      area_75_m2 <- sum(st_area(closed_poly_no_land))
+    } else {
+      # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+      area_75_m2 <- sum(st_area(closed_poly))
+    }
+    
+    # Convert area from square meters to square kilometers
+    area_75_km2 <- as.numeric(area_75_m2) / 1e6  # Convert units object to numeric and divide by 1e6
+    
     
     # Find the most northern and southern latitudes for the 75% volume contour
     filtered_df_75 <- density_df[density_df$value >= contour_level_75, ]
     northernmost_latitude_75 <- max(filtered_df_75$y, na.rm = TRUE)
     southernmost_latitude_75 <- min(filtered_df_75$y, na.rm = TRUE)
     
+    # Transform northernmost and southernmost latitudes to WGS 84 (EPSG:4326)
+    # Create an sf object with the coordinates in EPSG:3310
+    coords_3310 <- data.frame(
+      x = rep(0, 2),  # Dummy longitude (not used)
+      y = c(northernmost_latitude_75, southernmost_latitude_75)
+    )
+    sf_coords_3310 <- st_as_sf(coords_3310, coords = c("x", "y"), crs = 3310)
+    
+    # Transform to WGS 84 (EPSG:4326)
+    sf_coords_4326 <- st_transform(sf_coords_3310, crs = 4326)
+    
+    # Extract transformed coordinates
+    transformed_coords <- st_coordinates(sf_coords_4326)
+    northernmost_latitude_wgs84 <- transformed_coords[1, "Y"]
+    southernmost_latitude_wgs84 <- transformed_coords[2, "Y"]
+    
+    
     #save in new dataframe with year so it can be in the animations. NEed to save density_df, contour_level, year
     df <- data.frame(port.complex=portcomplex,
                      Year = year,
-                     volume_50=volume_50,
-                     volume_75=volume_75,
-                     volume_95=volume_95,
-                     northernmost_latitude_75=northernmost_latitude_75,
-                     southernmost_latitude_75=southernmost_latitude_75 )
+                     area_75_m2=area_75_m2,
+                     area_75_km2= area_75_km2,
+                     northernmost_latitude_75=northernmost_latitude_wgs84,
+                     southernmost_latitude_75=southernmost_latitude_wgs84 )
     
     
     # Append current year's results to combined_df
@@ -461,12 +592,7 @@ b<-plot_fun("Santa Barbara")
 c<-plot_fun("Los Angeles")
 d<-plot_fun("San Diego")
 
-all.volumes<-rbind(a,b,c,d)
-
-all.volumes<-all.volumes%>%
-  mutate(vol_50_km=volume_50/1000)%>%
-  mutate(vol_75_km=volume_75/1000)%>%
-  mutate(vol_95_km=volume_95/1000)%>%
+all.volumes<-rbind(a,b,c,d)%>%
   left_join(mpa,by="port.complex")%>%
   mutate(Year=as.numeric(Year))
 
@@ -477,18 +603,18 @@ saveRDS(all.volumes,paste0(urchin_data,"Data/Processed Data/seaurchin_all contou
 all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c( 'Fort Bragg','Santa Barbara', 'Los Angeles', 'San Diego'))
 
 
-p<-ggplot(data=all.volumes, aes(x=Year))+
-  facet_wrap_paginate(~port.complex, ncol=3, nrow=1, scales="free_y")+
+p<-ggplot(data=all.volumes, aes(x=Year, y=area_75_km2))+
+  facet_wrap(~port.complex)+
   
-  geom_line(aes(y=vol_50_km ,color="50% contour"),size=1)+
-  geom_line(aes(y=vol_75_km ,color="75% contour"),size=1)+
-  geom_line(aes(y=vol_95_km ,color="95% contour"),size=1)+
+  #geom_line(aes(y=vol_50_km ,color="50% contour"),size=1)+
+  geom_line(aes(y=area_75_km2 ,color="75% contour"),size=1)+
+  #geom_line(aes(y=vol_95_km ,color="95% contour"),size=1)+
   ylab("Area (km^2)")+
-  #legened
+  #legend
   scale_color_manual(name = "Volume Contours",
-                     values = c("50% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[2],  # Red from RdYlBu palette
-                                "75% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[8],  # Green from RdYlBu palette
-                                "95% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[10])) +  # Blue from RdYlBu palette
+                     values = c(#"50% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[2],  # Red from RdYlBu palette
+                       "75% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[10])) + # Green from RdYlBu palette
+  # "95% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[10])) +  # Blue from RdYlBu palette
   # Theme
   theme_bw() + 
   base_theme  +
@@ -501,10 +627,11 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
   annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
   geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "black",size=1)
 
+p
 for(i in 1:n_pages(p)){
   p_save <-  p + 
     facet_wrap_paginate( ~port.complex, ncol=3, nrow=1, page = i, scales="free_y")
-  ggsave(plot = p_save, filename = paste0(urchin_data,'Figures/urchin/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
+  ggsave(plot = p, filename = paste0(urchin_data,'Figures/urchin/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
 }
 
 #can also do the above so its not facetwrap and all separate
@@ -521,6 +648,7 @@ COG_df<-COG_sf%>%
   sf::st_drop_geometry()%>%
   rename(Year=year)%>%
   mutate(Year=as.double(Year))
+
 COG_df$COG_latitude <- st_coordinates(COG_sf)[, "Y"]  # Extracts latitude
 COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
 

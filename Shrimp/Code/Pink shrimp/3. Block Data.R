@@ -288,10 +288,7 @@ plot_fun<-function(portcomplex){
 
 
 plot_fun('Morro Bay')
-
-
 plot_fun('Eureka')
 plot_fun('Monterey')
-plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 ############

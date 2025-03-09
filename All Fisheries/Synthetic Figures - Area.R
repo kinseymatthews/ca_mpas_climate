@@ -27,8 +27,9 @@ spot_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheri
 squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Squid/Data/Processed Data/squid_all contour volumes.rds")%>%
   mutate(fishery="Squid seine",Year=as.numeric(Year))
 
-fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)
-
+fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster,spot_prawn, ridge_prawn,squid)%>%
+  dplyr::select(-vol_95_km,-vol_50_km,-volume_50,-volume_95)
+fisheries<-rbind(fisheries, pink_shrimp)
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -60,7 +61,7 @@ distinct_fishery<-unique(fisheries$fishery)
 plot_fun <- function(fishery2) {
   # Filter data for the selected fishery
   fish <- fisheries %>%
-    filter(fishery == "Pink shrimp trawl")
+    filter(fishery == fishery)
   
   # Get list of distinct port complexes
   distinct_complexes <- unique(fish$port.complex)
