@@ -28,7 +28,7 @@ spot_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheri
 squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Squid/Data/Processed Data/squid_COG_distance_results_towhours_final.rds")%>%
   mutate(fishery="Squid seine",year=as.numeric(year))
 
-fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)%>%
+fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp, ridge_prawn,squid)%>%
   dplyr::select(-X, -cog_longitude)
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),

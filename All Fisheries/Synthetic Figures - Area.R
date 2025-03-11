@@ -27,9 +27,9 @@ spot_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheri
 squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Squid/Data/Processed Data/squid_all contour volumes.rds")%>%
   mutate(fishery="Squid seine",Year=as.numeric(Year))
 
-fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster,spot_prawn, ridge_prawn,squid)%>%
-  dplyr::select(-vol_95_km,-vol_50_km,-volume_50,-volume_95)
-fisheries<-rbind(fisheries, pink_shrimp)
+fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster,pink_shrimp, ridge_prawn,squid)%>%
+  mutate(port.complex=as.factor(port.complex))
+
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -61,7 +61,7 @@ distinct_fishery<-unique(fisheries$fishery)
 plot_fun <- function(fishery2) {
   # Filter data for the selected fishery
   fish <- fisheries %>%
-    filter(fishery == fishery)
+    filter(fishery == fishery2)
   
   # Get list of distinct port complexes
   distinct_complexes <- unique(fish$port.complex)
@@ -76,7 +76,7 @@ plot_fun <- function(fishery2) {
     # Check if the subset data is not empty
     if (nrow(complex_data) > 0) {
       # Run linear regression
-      model <- lm(vol_75_km~ Year, data = complex_data)
+      model <- lm(area_75_km2~ Year, data = complex_data)
       
       # Save slope and confidence interval
       cf <- coef(model)
@@ -124,13 +124,12 @@ f<-plot_fun("Set gillnet")
 g<-plot_fun("Halibut trawl")
 h<-plot_fun("Lobster trap")
 i<-plot_fun("Pink shrimp trawl")
-j<-plot_fun("Spot prawn trawl")
 k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
-results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i, j, k, l)
+results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i,  k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego', 'All')))
-results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 
 
@@ -457,15 +456,15 @@ plot_fun <- function(fishery2) {
     # Subset data for the current port complex
     complex_data <- fish[fish$port.complex == port.complex, ]
     
-   sigma=sd(complex_data$vol_75_km)
-    mu=mean(complex_data$vol_75_km)  
+   sigma=sd(complex_data$area_75_km2)
+    mu=mean(complex_data$area_75_km2)  
      cv=sigma/abs(mu)
      n=nrow(complex_data) #n
      se_cv <- sqrt(1 / (2 * n))  # Standard error of CV
      upper.ci <- cv * (1 + z * se_cv)
      lower.ci <- cv * (1 - z * se_cv)
      
-    results<- gpq_ci_cv(complex_data$vol_75_km)
+    results<- gpq_ci_cv(complex_data$area_75_km2)
     # Extract the lower and upper bounds from the result
    upper.ci.2 <- results$Upper_CI
     lower.ci.2 <- results$Lower_CI

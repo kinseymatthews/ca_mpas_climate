@@ -83,7 +83,12 @@ mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
 #mpas
 mpa_blocks<-wcfish::mpas_ca
-mpa_blocks<- st_transform(mpa_blocks, crs = 3310)
+mpa_blocks<- st_transform(mpa_blocks, crs = 3310)%>%
+st_make_valid()
+mpa_blocks <- st_cast(mpa_blocks, "POLYGON")
+# Union the MPAs so they are treated as a single shape
+mpa_blocks <- st_union(mpa_blocks)
+mpa_blocks <- st_make_valid(mpa_blocks)
 ############
 
 ############
@@ -223,9 +228,7 @@ plot_fun<-function(portcomplex){
     maxx<-(max(coordinates[,1], na.rm = TRUE))
     miny<-(min(coordinates[,2], na.rm = TRUE))
     maxy<-(max(coordinates[,2], na.rm = TRUE))
-    
-    
-    
+  
     
     p<-ggplot() +
       geom_raster(data = density_df, aes(x = x, y = y, fill = value)) +
@@ -283,7 +286,7 @@ image_write(m,paste0(shrimp_data,"Figures/Ridgeback/MPAs/Santa Barbara/Santa Bar
 #area within an mpa
 plot_fun<-function(portcomplex){
   
-  location <- sf_df%>%
+  location <- sf_df_projected%>%
     filter(port.complex==portcomplex)%>%
     group_by(year)%>%
     filter(n() > 1) %>%
@@ -296,7 +299,6 @@ plot_fun<-function(portcomplex){
   
   #Loop through each year and calculate kernel density
   for(year in unique_years){
-    
     
     #subset data for the current year
     year_data<-location[location$year==year,]
@@ -312,21 +314,47 @@ plot_fun<-function(portcomplex){
     miny<-(min(coordinates[,2]))
     maxy<-(max(coordinates[,2]))
     
+    # Define the tolerance
+    tolerance <- 0.0000001
+    
+    if (abs(minx - maxx) < tolerance) {
+      minx <- minx - 0.025
+      maxx <- maxx + 0.025
+    }
+    
+    if (abs( miny - maxy)< tolerance) {
+      miny <- miny - 0.025
+      maxy <- maxy + 0.025
+    }
+    
+    # Expand bounding box
+    minx <- minx - 20000
+    maxx <- maxx + 20000
+    miny <- miny - 20000
+    maxy <- maxy + 20000
+    
     points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
     
     # Compute kernel density estimation using raw and logcdata
     sigma<-bw.diggle(points_ppp)
     
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
+    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
     
     # Convert density to a raster (assuming a reasonable raster resolution)
     density_raster <- as(raster(as.im(density)), "RasterLayer")
     
+    # Extend the extent of the density raster by 200 meters
+    buffer_distance <- 20000  # 200 meters
+    extended_extent <- extend(extent(density_raster), buffer_distance)
+    
+    # Create a new raster with the extended extent
+    extended_raster <- extend(density_raster, extended_extent, value = 0)
+    
     # Mask the density raster with the land raster
-    density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
-    
-    ##delete those things outside of 8=75%
-    
+    density_masked <- mask( extended_raster, usa_mexico_sf_proj, inverse=TRUE)
+   
+     crs(density_masked) <- CRS("+init=EPSG:3310")
+     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
     names(density_df) <- c("x", "y", "value")
@@ -342,28 +370,101 @@ plot_fun<-function(portcomplex){
     density_raster_masked <- density_masked
     density_raster_masked[] <- ifelse(density_masked[] >= contour_level_75, density_masked[], NA)
     
-    # Compute total volume of KDE
-    total_volume <- cellStats(density_raster_masked, stat = 'sum', na.rm = TRUE)
+    # Mask the density raster with the land raster
+    density_raster_masked <- mask(density_raster_masked, usa_mexico_sf_proj, inverse=TRUE)
     
-    # Mask the density raster with the MPA raster
-    density_within_mpa <- mask(density_raster_masked, mpa_blocks, inverse = FALSE)
-    
-    # Compute volume of KDE within MPAs
-    volume_within_mpa <- cellStats(density_within_mpa, stat = 'sum', na.rm = TRUE)
-    
-    # Calculate percentage
-    percentage_within_mpa <- (volume_within_mpa / total_volume) * 100
-    
+    # Compute total area of 75% KDE - will need to polygonize and calculate area
+
+             # Create contour lines from the density raster
+              contours <- rasterToContour(extended_raster, levels = c(contour_level_75))
+              
+              #convert to sf object
+              contours_sf <- st_as_sf(contours)
+              #set crs
+              contours_sf <- st_set_crs(contours_sf , 3310)
+              
+              # Convert the LINESTRING to POLYGON if needed
+              # Attempt to cast to POLYGON
+              closed_poly <- tryCatch(
+                st_cast(contours_sf, "POLYGON"),
+                error = function(e) {
+                  message("st_cast failed, using st_polygonize instead")
+                  st_polygonize(contours_sf)
+                }
+              )
+              
+              # Ensure valid geometry
+              closed_poly <- st_make_valid(closed_poly)
+              
+              # Ensure valid geometry
+              closed_poly <- st_make_valid(closed_poly)
+              
+              # Plot the closed polygon to verify the closure
+              plot(closed_poly)
+              
+              # Extract only the geometry of the USA/Mexico shapefile
+              usa_geometry <- st_geometry(usa_mexico_sf_proj)
+              
+              # First calculate the intersection (land area)
+              intersection <- st_intersection(closed_poly, usa_geometry)
+              
+              # Check if there is an intersection
+              if (nrow(intersection) > 0) {
+                # If there is an intersection, manually subtract the land portion from the ocean using st_difference
+                closed_poly_no_land <- st_difference(closed_poly, intersection)
+                plot(closed_poly_no_land)
+                
+                # Compute the 75% volume area (land portion removed)
+                area_75_m2 <- sum(st_area(closed_poly_no_land))
+              } else {
+                closed_poly_no_land <- closed_poly
+                plot(closed_poly_no_land)
+                # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+                area_75_m2 <- sum(st_area(closed_poly))
+              }
+              # Convert area from square meters to square kilometers
+              area_75_km2 <- as.numeric(area_75_m2) / 1e6  # Convert units object to numeric and divide by 1e6
+              
+    #compute area of mpas within 75%
+              #turn mpas into polygons and calculate interactions between the two
+              
+              # Extract only the geometry of the USA/Mexico shapefile
+              block_geometry <- st_geometry(mpa_blocks)
+           
+              # First calculate the intersection (land area)
+              intersection <- st_intersection(closed_poly_no_land, block_geometry)
+            
+              closed_poly_no_land <- st_make_valid(closed_poly_no_land)
+              
+              # Check if there is an intersection
+              if (nrow(intersection) > 0) {
+                # If there is an intersection, manually subtract the mpa portion from the non mpa using st_difference
+                closed_poly_no_mpa <- st_difference(closed_poly_no_land, intersection)
+                plot(closed_poly_no_mpa)
+                
+                # Compute the 75% volume area (land portion removed)
+                area_75_m2_nompa <- sum(st_area(closed_poly_no_mpa))
+              } else {
+                # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+                area_75_m2_nompa <- sum(st_area(closed_poly_no_land))
+              }
+              
+              # Convert area from square meters to square kilometers
+              area_75_km2_nompa <- as.numeric(area_75_m2_nompa) / 1e6  # Convert units object to numeric and divide by 1e6
+              
     df <- data.frame(Portcomplex=portcomplex,
                      Year = year,
-                     volume_within_mpa=volume_within_mpa,
-                     percentage_within_mpa =percentage_within_mpa ,
-                     total_volume=total_volume)
+                     total_area=area_75_km2,
+                     total_area_notinmpa=area_75_km2_nompa,
+                     total_area_inmpa=(area_75_km2-area_75_km2_nompa))%>%
+                     mutate(percent_inmpa = ((total_area_inmpa) / (total_area)) * 100,
+                     percent_inmpa = ifelse(percent_inmpa < 0.001, 0, percent_inmpa))
+    
     # Append current year's results to combined_df
     datalist[[year]] <- df
   }
   all.data<- dplyr::bind_rows(datalist)
-  all.data
+
 }
 a<-plot_fun('Los Angeles')
 b<-plot_fun('Santa Barbara')
@@ -383,7 +484,7 @@ plot_fun<-function(portcomplex){
     filter(port.complex==portcomplex)
   
   p<-ggplot(data=location, aes(x=Year))+
-    geom_line(aes(y=percentage_within_mpa), color="black",size=1)+
+    geom_line(aes(y=percent_inmpa), color="black",size=1)+
     labs(y ='Percent weighted effort \n within MPAs') +
     # Theme
     theme_bw() + 

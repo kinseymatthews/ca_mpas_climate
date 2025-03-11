@@ -7,13 +7,13 @@ cpfv<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_
   mutate(fishery="CPFV",Year=as.numeric(Year))
 cuc_trawl<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Cucumber/Data/Processed Data/MPA_area.rds")%>%
   mutate(fishery="Cucumber trawl",Year=as.numeric(Year))
-cuc_dive<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/MPA_area.rds")%>%
+cuc_dive<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/Cucumber_MPA_area.rds")%>%
   mutate(fishery="Cucumber dive",Year=as.numeric(Year))
-urchin<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/MPA_area.rds")%>%
+urchin<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/Urchin_MPA_area.rds")%>%
   mutate(fishery="Urchin dive",Year=as.numeric(Year))
-drift<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/MPA_area.rds")%>%
+drift<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/drift_MPA_area.rds")%>%
   mutate(fishery="Drift gillnet",Year=as.numeric(Year))
-set<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/MPA_area.rds")%>%
+set<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/setgillnet_MPA_area.rds")%>%
   mutate(fishery="Set gillnet",Year=as.numeric(Year))
 hal_trawl<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/Data/Processed Data/MPA_area.rds")%>%
   mutate(fishery="Halibut trawl",Year=as.numeric(Year))
@@ -28,7 +28,7 @@ spot_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheri
 squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Squid/Data/Processed Data/MPA_area.rds")%>%
   mutate(fishery="Squid seine",Year=as.numeric(Year))
 
-fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)
+fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp, ridge_prawn,squid)
 
 
 # base theme
@@ -75,7 +75,7 @@ plot_fun <- function(fishery2) {
     # Check if the subset data is not empty
     if (nrow(complex_data) > 0) {
       # Run linear regression
-      model <- lm(percentage_within_mpa~ Year, data = complex_data)
+      model <- lm(percent_inmpa~ Year, data = complex_data)
       
       # Save slope and confidence interval
       cf <- coef(model)
@@ -311,8 +311,8 @@ plot_fun <- function(fishery2) {
     # Subset data for the current port complex
     complex_data <- fish[fish$port.complex == port.complex, ]
     
-    sigma=sd(complex_data$percentage_within_mpa)
-    mu=mean(complex_data$percentage_within_mpa)  
+    sigma=sd(complex_data$percent_inmpa)
+    mu=mean(complex_data$percent_inmpa)  
     cv=sigma/abs(mu)
     n=nrow(complex_data) #n
     se_cv <- sqrt(1 / (2 * n))  # Standard error of CV

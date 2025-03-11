@@ -415,7 +415,7 @@ plot_fun<-function(portcomplex){
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    weights<-year_data$total_tow_min
+    weights<-year_data$trap_nights
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1], na.rm = TRUE))
@@ -590,21 +590,22 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
   #legened
   scale_color_manual(name = "Volume Contours",
                      values = c(#"50% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[2],  # Red from RdYlBu palette
-                                "75% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[8] )) # Green from RdYlBu palette
+                                "75% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[8] )) +# Green from RdYlBu palette
                                # "95% contour" = RColorBrewer::brewer.pal(n = 11, name = "Spectral")[10] +  # Blue from RdYlBu palette
-  # Theme
-  theme_bw() + 
-  base_theme  +
-  theme(
+  
+  annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
+  geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "black",size=1)+
+ # Theme 
+    theme(
     strip.text = element_text(size = 12, face = "bold"),  # Font size and style for facet labels
     axis.title.x = element_text(size = 14, face = "bold"),  # Font size and style for x-axis label
     axis.title.y = element_text(size = 14, face = "bold")
   ) +
+theme_bw() + 
+  base_theme  
   
-  annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
-  geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "black",size=1)
+  for(i in 1:n_pages(p)){
 
-for(i in 1:n_pages(p)){
   p_save <-  p + 
     facet_wrap_paginate( ~port.complex, ncol=3, nrow=1, page = i, scales="free_y")
   ggsave(plot = p_save, filename = paste0(lobster_data,'Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")

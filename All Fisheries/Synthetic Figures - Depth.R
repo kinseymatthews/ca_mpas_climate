@@ -3,53 +3,53 @@ library(tidyverse)
 ############
 #Upload data for each fishery
 cpfv<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="CPFV")%>%
   filter(!is.na(port.complex))
 cuc_trawl<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Cucumber/Data/Processed Data/depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Cucumber trawl")%>%
   filter(port.complex=="Eureka" |port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" )
 cuc_dive<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/cucumber_depth.rds")%>%
-  select(port.complex,year,Med_depth_m_recorded)%>%
+  dplyr::select(port.complex,year,Med_depth_m_recorded)%>%
   mutate(fishery="Cucumber dive")%>%
   rename(Depth_m=Med_depth_m_recorded)%>%
   filter(port.complex=="Los Angeles" |port.complex=="Santa Barbara" |port.complex=="San Diego" )
 urchin<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/urchin_depth.rds")%>%
-  select(port.complex,year,Med_depth_m_recorded)%>%
+  dplyr::select(port.complex,year,Med_depth_m_recorded)%>%
   mutate(fishery="Urchin dive")%>%
   rename(Depth_m=Med_depth_m_recorded)%>%
   filter(port.complex=="Fort Bragg" |port.complex=="Los Angeles" |port.complex=="San Diego" |port.complex=="Santa Barbara" )
 drift<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/drift_depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Drift gillnet")%>%
   filter(port.complex=="Eureka" |port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" |port.complex=="San Francisco"|port.complex=="San Diego")
 set<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/set_depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr:: select(port.complex,year,Depth_m)%>%
   mutate(fishery="Set gillnet")%>%
   filter(port.complex=="Bodega Bay" |port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" |port.complex=="San Francisco"|port.complex=="San Diego")
 hal_trawl<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/Data/Processed Data/depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Halibut trawl")%>%
   filter(port.complex=="Eureka" |port.complex=="Bodega Bay" |port.complex=="Fort Bragg" |port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" |port.complex=="San Francisco")
 lobster<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Lobster/Data/Processed Data/depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Lobster trap")%>%
   filter(port.complex=="Los Angeles" |port.complex=="San Diego"  |port.complex=="Santa Barbara" )
 pink_shrimp<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Shrimp/Data/Processed Data/pink_depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Pink shrimp trawl")%>%
   filter(port.complex=="Eureka" |port.complex=="Monterey" |port.complex=="Morro Bay"  |port.complex=="Santa Barbara" )
 ridge_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Shrimp/Data/Processed Data/ridge_depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Ridgeback prawn trawl")%>%
   filter(port.complex=="Los Angeles" |port.complex=="Santa Barbara" )
 spot_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Shrimp/Data/Processed Data/spot_depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Spot prawn trawl")%>%
   filter(port.complex=="Bodega Bay" |port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" |port.complex=="San Francisco")
 squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Squid/Data/Processed Data/depth.rds")%>%
-  select(port.complex,year,Depth_m)%>%
+  dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Squid seine")%>%
   filter(port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Santa Barbara" |port.complex=="San Francisco")
 

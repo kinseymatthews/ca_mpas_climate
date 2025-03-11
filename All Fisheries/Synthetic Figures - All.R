@@ -133,7 +133,7 @@ a<-plot_fun(area_slope)
 b<-plot_fun(latitude_slope)
 c<-plot_fun(extent_north_slope)
 d<-plot_fun(extent_south_slope)
-#e<-plot_fun(mpa_slope)
+e<-plot_fun(mpa_slope)
 
 f<-ggplot(data=distance_slope, aes(x= slope, y=fishery2, color=port_complex))+
   geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -186,15 +186,15 @@ a2<-plot_fun(area_cv)
 b2<-plot_fun(latitude_cv)
 c2<-plot_fun(extent_north_cv)
 d2<-plot_fun(extent_south_cv)
-#e2<-plot_fun(mpa_cv)
+e2<-plot_fun(mpa_cv)
 f2<-plot_fun(distance_cv)
 ############
 
 
 ############
 
-  combined_plot <- a+b+c+d+f+
-    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+  combined_plot <- a+b+c+d+e+f+
+    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
     theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -203,8 +203,8 @@ f2<-plot_fun(distance_cv)
           plot.margin=margin(0,0,0,0)
     )      
   
-    combined_plot2 <- a2+b2+c2+d2+f2+
-    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+    combined_plot2 <- a2+b2+c2+d2+e2+f2+
+    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
       theme(axis.text.y = element_blank(),  # Remove y-axis text
             axis.title.x = element_blank(),# Remove x-axis text
             axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -225,15 +225,15 @@ f2<-plot_fun(distance_cv)
   )
   
   # Increase the margin only for plot 6 and plot 12 (the last column)
-  combined_plot[[5]] <- combined_plot[[5]] + theme(
+  combined_plot[[6]] <- combined_plot[[6]] + theme(
     plot.margin = margin(0, 15, 0, 0)  # Increase space on the right for plot 6
   )
   
-  combined_plot2[[5]] <- combined_plot2[[5]] + theme(
+  combined_plot2[[6]] <- combined_plot2[[6]] + theme(
     plot.margin = margin(15, 15, 0, 0)  # Increase space on the right for plot 12
   )
   
-  combined_plot[[5]] <- combined_plot[[5]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
+  combined_plot[[6]] <- combined_plot[[6]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
                                                    legend.title = element_text(size = 9),  # Smaller font size for legend title
                                                    legend.text = element_text(size = 8) ) 
 
@@ -317,7 +317,7 @@ f2<-plot_fun(distance_cv)
   b<-plot_fun(latitude_slope)
   c<-plot_fun(extent_north_slope)
   d<-plot_fun(extent_south_slope)
- # e<-plot_fun(mpa_slope)
+  e<-plot_fun(mpa_slope)
   
   f<-ggplot(data=distance_slope, aes(x= slope, y=port_complex, color=fishery2))+
     geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -370,15 +370,15 @@ f2<-plot_fun(distance_cv)
   b2<-plot_fun(latitude_cv)
   c2<-plot_fun(extent_north_cv)
   d2<-plot_fun(extent_south_cv)
-  #e2<-plot_fun(mpa_cv)
+  e2<-plot_fun(mpa_cv)
   f2<-plot_fun(distance_cv)
   ############
   
   
   ############
   
-  combined_plot <- a+b+c+d+f+
-    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+  combined_plot <- a+b+c+d+e+f+
+    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
     theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -387,8 +387,8 @@ f2<-plot_fun(distance_cv)
           plot.margin=margin(0,0,0,0)
     )      
   
-  combined_plot2 <- a2+b2+c2+d2+f2+
-    plot_layout(ncol = 5, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
+  combined_plot2 <- a2+b2+c2+d2+e2+f2+
+    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
     theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
@@ -409,15 +409,15 @@ f2<-plot_fun(distance_cv)
   )
   
   # Increase the margin only for plot 6 and plot 12 (the last column)
-  combined_plot[[5]] <- combined_plot[[5]] + theme(
+  combined_plot[[6]] <- combined_plot[[6]] + theme(
     plot.margin = margin(0, 15, 0, 0)  # Increase space on the right for plot 6
   )
   
-  combined_plot2[[5]] <- combined_plot2[[5]] + theme(
+  combined_plot2[[6]] <- combined_plot2[[6]] + theme(
     plot.margin = margin(15, 15, 0, 0)  # Increase space on the right for plot 12
   )
   
-  combined_plot[[5]] <- combined_plot[[5]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
+  combined_plot[[6]] <- combined_plot[[6]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
                                                    legend.title = element_text(size = 9),  # Smaller font size for legend title
                                                    legend.text = element_text(size = 8) ) 
   

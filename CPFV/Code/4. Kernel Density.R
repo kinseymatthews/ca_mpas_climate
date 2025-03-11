@@ -219,8 +219,6 @@ sf_df<- explor %>%
             total_angler_hours = sum(total_angler_hours, na.rm = TRUE),
             angler_hours_per_trip=(total_angler_hours/ntrips),
             nvessels=n_distinct(vessel_id),
-            
-            # same as hours_fished but oh well
             .groups = 'drop')%>%
   #join with block data
   left_join(all_blocks_df, by="block_id")%>%

@@ -27,7 +27,7 @@ spot_prawn<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheri
 squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Squid/Data/Processed Data/squid_all contour volumes.rds")%>%
   mutate(fishery="Squid seine",Year=as.numeric(Year))
 
-fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)
+fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp, ridge_prawn,squid)
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     # axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -375,7 +375,7 @@ saveRDS(results5,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/c
 
 ############
 #southern extent by fishery
-p<-ggplot(data=results4, aes(x= slope.south2, y=fishery2, color=port_complex))+
+p<-ggplot(data=results5, aes(x= slope.south2, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound_south_2, xmax = CI_upper_bound_south_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
@@ -416,7 +416,7 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 
 ############
 #southern extent Figure by complex
-p<-ggplot(data=results4, aes(x= slope.south2, y=port_complex, color=fishery2))+
+p<-ggplot(data=results5, aes(x= slope.south2, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = CI_lower_bound_south_2, xmax = CI_upper_bound_south_2), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   geom_text(
