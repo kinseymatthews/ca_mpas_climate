@@ -129,7 +129,7 @@ plot_fun<-function(portcomplex){
   
   # Convert density to a raster (assuming a reasonable raster resolution)
   density_raster <- as(raster(as.im(density)), "RasterLayer")
-  
+
   # Mask the density raster with the land raster
   density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
   

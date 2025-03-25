@@ -74,8 +74,7 @@ gillnet.logbook3<-gillnet.logbook2%>%
 
 #################
 #STEP 2
-#Second, we used the combination of vessel id and date to match the datasets. For a day in which there were multiple port complexes 
-#listed for a vessel within the landings data, we assigned the port complex that appeared most frequently to the corresponding logbook entry.
+#Second, we used the combination of vessel id and date to match the datasets. 
 no.ports<-gillnet.logbook3%>%
   filter(is.na(port_complex_landings))
 
@@ -270,7 +269,7 @@ gillnet.logbook9<-gillnet.logbook8%>%
   mutate(block_id=as.numeric(block_id))%>%
   mutate(block_id=coalesce(block_id,block_id_landings))%>%
   mutate(trip.identifier=paste(logbook_id, vessel_id,date.logbooks, sep="_"))%>%
-  mutate(tow.identifier=paste(logbook_id, vessel_id, date.logbooks, block_id, net_type,  depth_fa_num, net_length_fa_num, mesh_size_in, buoy_line_depth_ft, soak_hr,sep="_"))
+  mutate(set.identifier=paste(logbook_id, vessel_id, date.logbooks, block_id, net_type,  depth_fa_num, net_length_fa_num, mesh_size_in, buoy_line_depth_ft, soak_hr,sep="_"))
 #################
 
 #################
@@ -280,14 +279,12 @@ gillnet.logbook9<-readRDS(paste0(gillnet_data,"Data/Processed Data/gillnetfisher
 #################
 
 set<-gillnet.logbook9%>%
-  filter(net_type=="Set")%>%
-  rename(set.identifier=tow.identifier)
+  filter(net_type=="Set")
 
 saveRDS(set, paste0(gillnet_data,"Data/Processed Data/setgillnetfishery_matched.rds"))
 
 drift<-gillnet.logbook9%>%
-  filter(net_type=="Drift")%>%
-  rename(set.identifier=tow.identifier)
+  filter(net_type=="Drift")
 
 saveRDS(drift, paste0(gillnet_data,"Data/Processed Data/driftgillnetfishery_matched.rds"))
 

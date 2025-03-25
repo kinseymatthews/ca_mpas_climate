@@ -223,7 +223,7 @@ halibut.logbook5<-rbind(no.ports,ports)
 #################
 #STEP 3
 #Third, we used the combination of vessel id and date to match the datasets. For a day in which there were multiple port complexes 
-#listed for a vessel within the landings data, we assigned the port complex that appeared most frequently to the corresponding logbook entry.
+
 no.ports<-halibut.logbook5%>%
   filter( is.na(port_complex1) & is.na(port_complex2))
 

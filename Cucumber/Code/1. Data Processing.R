@@ -312,8 +312,8 @@ cucumber.logbook10<-cucumber.logbook9%>%
   rename(port_id_logbook=port_id.x, port_logbook=port.x)%>%
   mutate(block_id=coalesce(block_id,block_id_landings, block_id_gps))%>%
   mutate(port.complex=coalesce(port_complex_logbook, port_complex_landings))%>%
-  mutate(trip.identifier=paste(logbook_id, vessel_id, date_depart, date.logbooks, sep="_"))%>%
-  mutate(tow.identifier=paste(logbook_id, vessel_id, date_tow, block_id, lat_dd_set, long_dd_set, lat_dd_up, long_dd_up, tow_number, depth_fa_set, depth_fa_up, time_set,time_up, duration_min, sep="_"))
+  mutate(trip.identifier=paste(logbook_id, port.complex, vessel_id, date_depart, date.logbooks, sep="_"))%>%
+  mutate(tow.identifier=paste(logbook_id, port.complex, vessel_id, date_tow, block_id, lat_dd_set, long_dd_set, lat_dd_up, long_dd_up, tow_number, depth_fa_set, depth_fa_up, time_set,time_up, duration_min, sep="_"))
 
 #################
 

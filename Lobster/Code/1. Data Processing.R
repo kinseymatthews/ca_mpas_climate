@@ -131,7 +131,7 @@ lobster.logbook3<-rbind(lobster.no.receipt,lobster.receipt2)
 
 
 #################
-#STEP 1.5
+#STEP 2
 #matching receipts that only has one port complex regardless of date
 no.ports<-lobster.logbook3%>%
   filter(is.na(port_id1) & is.na(port_id2))
@@ -190,8 +190,8 @@ lobster.logbook4<-rbind(no.ports,ports)
 
 
 #################
-#STEP 2
-#Second, if a vessel was recorded at only one port complex throughout the entire landings dataset, we assigned that port complex to the logbook data
+#STEP 3
+#third, if a vessel was recorded at only one port complex throughout the entire landings dataset, we assigned that port complex to the logbook data
 no.ports<-lobster.logbook4%>%
   filter(is.na(port_complex1)&is.na(port_complex2))
 
@@ -219,9 +219,8 @@ lobster.logbook5<-rbind(no.ports,ports)
 
 
 #################
-#STEP 3
-#Third, we used the combination of vessel id and date to match the datasets. For a day in which there were multiple port complexes 
-#listed for a vessel within the landings data, we assigned the port complex that appeared most frequently to the corresponding logbook entry.
+#STEP 4
+#Tfour, we used the combination of vessel id and date to match the datasets. 
 no.ports<-lobster.logbook5%>%
 filter( is.na(port_complex1) & is.na(port_complex2))
 
@@ -263,8 +262,8 @@ lobster.logbook6<-rbind(ports, no.dupes,dupes)
 
 
 #################
-#STEP 4
-#Fourth, we assigned a port complex from the landings data if a vessel visited the same port 
+#STEP 5
+#Fifth, we assigned a port complex from the landings data if a vessel visited the same port 
 #complex 90% or more of the time during a specific year and month
 
 no.ports<-lobster.logbook6%>%
@@ -302,7 +301,7 @@ lobster.logbook7<-rbind(ports,no.ports)
 
 
 #################
-#STEP 3.5
+#STEP 6
 #Matching entries with port complexes most often seen that day
 
 no.ports<-lobster.logbook7%>%
@@ -334,8 +333,8 @@ lobster.logbook8<-rbind(ports,no.ports2)
 
 
 #################
-#STEP 5
-#Fifth we added a port complex to the logbook data if a vessel went to the same port complex 90% or more of the time during a specific year.
+#STEP 7
+#seventh we added a port complex to the logbook data if a vessel went to the same port complex 90% or more of the time during a specific year.
 
 no.ports<-lobster.logbook8%>%
   filter( is.na(port_complex1) & is.na(port_complex2))%>%
@@ -376,8 +375,8 @@ lobster.logbook9<-rbind(ports,no.ports)
 
 
 #################
-#STEP 6
-#Six, we added a port complex to the logbook data if a vessel went to a specific port complex in over 90% of the landings data
+#STEP 8
+#eith, we added a port complex to the logbook data if a vessel went to a specific port complex in over 90% of the landings data
 
 no.ports<-lobster.logbook9%>%
   filter( is.na(port_complex1) & is.na(port_complex2))%>%

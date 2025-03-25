@@ -17,7 +17,7 @@ lobster_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 
 lobster_logbook<-readRDS(paste0(lobster_data, "Data/Raw Data/CDFW_1980_2022_lobster_logbook_data.rds"))
 landings<-readRDS(paste0(lobster_data, "Data/Raw Data/1980_2022_landings_receipts.rds"))
-port_info<-read.csv(paste0(lobster_data, 'Data/Raw Data/Port Codes.csv'))%>%
+port_info<-read.csv(paste0(general_data, 'Port Codes.csv'))%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################
@@ -365,15 +365,48 @@ no.ports<-lobster.receipt8%>%
   left_join(df.tomerge, by=c("vessel_id" , "year"))%>%
   rename(port.complex.test.7=port.complex)
 
-#see the percentage correct or not - 100%
+#see the percentage correct or not 
 lobster.receipt9<-no.ports%>%
   mutate(matches.7 = (port.complex.perfect == port.complex.test.7))
 
 
 d<-lobster.receipt9%>%
-  filter(matches.7=="FALSE") #100% match
+  filter(matches.7=="FALSE") 
 #################
 
+#################
+vessels<-lobster.receipt9$vessel_id
+
+df<-landings2%>%
+  filter(vessel_id %in% vessels)%>%
+  group_by(vessel_id, port.complex)%>%
+  summarize(number=n())%>%
+  ungroup()%>%
+  group_by(vessel_id)%>%
+  mutate(perc.complex=number/sum(number))
+
+df.tomerge<-df%>%
+  filter(perc.complex>=.9)%>%
+  dplyr::select(-perc.complex,-number)%>%
+  # mutate(year=as.character(year))%>%
+  mutate(vessel_id=as.character(vessel_id))
+
+#match those per year 
+no.ports<-lobster.receipt9%>%
+  left_join(df.tomerge, by=c("vessel_id" ))%>%
+  rename(port.complex.test.8=port.complex)
+
+#see the percentage correct or not 
+lobster.receipt10<-no.ports%>%
+  mutate(matches.8 = (port.complex.perfect == port.complex.test.8))
+
+
+d<-lobster.receipt10%>%
+  filter(matches.8=="FALSE") 
+
+
+
+#################
 
 
 #################

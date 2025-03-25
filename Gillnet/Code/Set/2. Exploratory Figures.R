@@ -79,6 +79,7 @@ explor<- gillnet%>%
 
 ##### which port complexes to keep?
 explor %>%
+  filter(!(port.complex == "Bodega Bay" & year >= 1989))%>% #decided this later so want to see if still above 1% which it is
   group_by(port.complex) %>%
   summarize(ntrips = n_distinct(trip.identifier))%>%
   ungroup()%>%

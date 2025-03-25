@@ -343,7 +343,7 @@ ggplot() +
 
 
 #################
-#Assigning a dive as a sea cucumber or urchin fishery
+#Assigning a tow as prawn, spot, or pink shrimp
 
 df<-shrimp_logbook8%>%
   group_by(tow.identifier)%>%
@@ -378,7 +378,7 @@ shrimp_logbook9<-rbind(df1,df2)
 
 
 #################
-#Assigning a trip as a sea cucumber or urchin fishery
+#Assigning a trip as a  prawn, pink, or spot
 
 df<-shrimp_logbook9%>%
   group_by(trip.identifier)%>%

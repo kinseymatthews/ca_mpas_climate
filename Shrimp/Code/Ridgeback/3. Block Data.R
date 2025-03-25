@@ -94,7 +94,7 @@ explor<- shrimp%>%
   mutate(Depth_m=depth_fa_up*(-0.3048))%>%
   mutate(depth=depth_fa_up)%>%
   #Eliminate tows >5 hours (300 min)
-  filter(duration_min<300 & duration_min>0)%>%
+  filter(duration_min<300 & duration_min>10)%>%
   #remove port complexes we dont care about
   filter(port.complex=="Los Angeles" | port.complex=="Santa Barbara")
 

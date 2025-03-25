@@ -7,7 +7,7 @@ library(sp)
 #################
 #filepaths
 general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
-halibut_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/halibut/'
+halibut_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/'
 
 ###### read in trawl data
 halibut<-readRDS(paste0(halibut_data,"Data/Processed Data/halibut_logbooks_edited.rds"))
@@ -80,8 +80,8 @@ explor<- halibut%>%
   #adding column for reported depth in meters
   mutate(Depth_m=depth_fa_avg*(-0.3048))%>%
   mutate(depth=depth_fa_avg)%>%
-  #Eliminate tows >5 hours (300 min)
-  filter(duration_hrs<6 & duration_hrs>0.2)%>%
+  #Eliminate tows <5 hours (300 min)
+  filter(duration_hrs<6 & duration_hrs>0.16)%>%
   #remove port complexes we dont care about
   filter(port.complex!= "Sacramento Delta" & port.complex!= "San Diego" & port.complex!= "Unknown Major Port")
 

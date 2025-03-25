@@ -87,7 +87,7 @@ explor<- gillnet%>%
   filter(mesh_size_in_num>3.5)%>%
 #remove port complexes we dont care about
 filter(port.complex=="Bodega Bay" | port.complex=="San Francisco" | port.complex=="Monterey" | port.complex=="Morro Bay" | port.complex=="Santa Barbara"| port.complex=="Los Angeles"| port.complex=="San Diego")%>%
-  filter(!(port.complex == "Bodega Bay" & year >= 1988)) 
+  filter(!(port.complex == "Bodega Bay" & year >= 1989)) 
 
 saveRDS(explor, paste0(gillnet_data, "Data/Processed Data/setgillnet_filtered.rds"))
 ############ 
