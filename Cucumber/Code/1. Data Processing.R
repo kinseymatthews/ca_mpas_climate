@@ -16,11 +16,11 @@ all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp")
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
-  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
+  dplyr::select(-c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
   rename(block_id_gps=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)%>%
   filter(blck_st!="International")%>%
   st_make_valid()%>%
-  select(block_id_gps)
+  dplyr::select(block_id_gps)
 #################
 
 #################
@@ -317,27 +317,6 @@ cucumber.logbook10<-cucumber.logbook9%>%
 
 #################
 
-
-# ADD IN FIXING TIME DATA
-a <- explor %>%
-  mutate(
-    time_up_num_new = if_else(time_up == "12:00:00 AM", 24.00000, (time_up_num))
-  ) %>%
-  relocate(time_up_num_new, .after = time_up_num) %>% # Move the new column next to time_up
-  mutate(
-    time_set_num_new = if_else(time_set == "12:00:00 AM", 24.00000, (time_set_num))
-  ) %>%
-  relocate(time_set_num_new, .after = time_set_num)%>%
-  mutate(
-    time_set_num_new = if_else(time_set_num_new < 1, 24 + (time_set_num_new %% 1),time_set_num_new)  # Replace leading 0. with 24
-  )%>%
-  mutate(
-    time_up_num_new = if_else( time_up_num_new < 1, 24 + ( time_up_num_new %% 1), time_up_num_new)  # Replace leading 0. with 24
-  )%>%
-  mutate(
-    # Calculate the difference between the two times in minutes
-    duration_min_new = abs((time_up_num_new)- (time_set_num_new ) )*60)%>%
-  relocate(duration_min_new, .after = duration_min)
 
 #################
 saveRDS(cucumber.logbook10, paste0(cucumber_data,"Data/Processed Data/seacucumbertrawlfishery_matched.rds"))

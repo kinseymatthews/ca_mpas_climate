@@ -81,7 +81,7 @@ explor<- halibut%>%
   mutate(Depth_m=depth_fa_avg*(-0.3048))%>%
   mutate(depth=depth_fa_avg)%>%
   #Eliminate tows <5 hours (300 min)
-  filter(duration_hrs<6 & duration_hrs>0.16)%>%
+  filter(duration_hrs<15 & duration_hrs>0.16)%>%
   #remove port complexes we dont care about
   filter(port.complex!= "Sacramento Delta" & port.complex!= "San Diego" & port.complex!= "Unknown Major Port")
 

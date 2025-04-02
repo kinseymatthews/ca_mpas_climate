@@ -85,6 +85,8 @@ explor<- gillnet%>%
   mutate(depth=depth_fa_num)%>%
   #remove mesh too small
   filter(mesh_size_in_num>3.5)%>%
+  #filter for sets that are way too long
+  filter(soak_hr_num<217)%>%
 #remove port complexes we dont care about
 filter(port.complex=="Bodega Bay" | port.complex=="San Francisco" | port.complex=="Monterey" | port.complex=="Morro Bay" | port.complex=="Santa Barbara"| port.complex=="Los Angeles"| port.complex=="San Diego")%>%
   filter(!(port.complex == "Bodega Bay" & year >= 1989)) 
@@ -187,7 +189,7 @@ stats_blocks_sf<- explor %>%
   mutate(year=as.numeric(year))
 
 #ordering
-stats_blocks_sf$port.complex<- factor(stats_blocks_sf$port.complex, levels = c( 'Bodega Bay','San Francisco','Monterey', 'Morro Bay','Santa Barbara', 'Los Angeles', 'San Diego')))
+stats_blocks_sf$port.complex<- factor(stats_blocks_sf$port.complex, levels = c( 'Bodega Bay','San Francisco','Monterey', 'Morro Bay','Santa Barbara', 'Los Angeles', 'San Diego'))
 ############
 
 ############
@@ -233,4 +235,57 @@ plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
 plot_fun('San Diego')
 
+############
+
+
+
+############
+#years separately - non animation
+plot_fun<-function(portcomplex){ 
+  
+  location <- stats_blocks_sf %>%
+    filter(port.complex== portcomplex)
+  
+  # Get unique years to loop through
+  unique_years <- unique(location$year)
+  
+  for(year in unique_years){
+    #subset data for the current year
+    year_data<-location[location$year==year,]
+    
+    p<-ggplot(data=year_data, mapping=aes(fill=total_set_hr)) +
+      # Blocks
+      geom_sf(color="grey50", linewidth=0.1)+
+      # Land
+      geom_sf(data = usa, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+      geom_sf(data=mexico, fill="grey85", col="white", linewidth=0.2, inherit.aes = F) +
+      # State waters
+      geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+      # Set the limits for the coordinate system
+      coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
+      # Axes
+      scale_x_continuous(breaks=seq(-126, -118, 2)) +
+      scale_y_continuous(breaks=seq(31, 42, 2)) + 
+      scale_fill_gradientn(name="Set Hours",  trans="log", 
+                           colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev(),
+                           labels = scales::label_comma(accuracy = 100))+
+      
+      ggtitle(paste0(portcomplex,' Fishing Grounds'), subtitle=paste0('Gillnet Fishery: Year ', year))+
+      # Theme
+      theme_bw() + base_theme
+    
+   
+    name=paste0(gillnet_data, 'Figures/Set/Block Data/',portcomplex,'/',portcomplex,'_Blocks', year ,'.jpg')
+    ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
+    
+  }
+}
+
+plot_fun('Bodega Bay')
+plot_fun('San Francisco')
+plot_fun('Monterey')
+plot_fun('Morro Bay')
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+plot_fun('San Diego')
 ############

@@ -662,11 +662,9 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
   geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "black",size=1)
 
 
-for(i in 1:n_pages(p)){
-  p_save <-  p + 
-    facet_wrap_paginate( ~port.complex, ncol=3, nrow=1, page = i, scales="free_y")
-  ggsave(plot = p_save, filename = paste0(gillnet_data,'Figures/Set/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 8, units = "in")
-}
+
+  ggsave(plot = p, filename = paste0(gillnet_data,'Figures/Set/Kernel Density/Volume Contours.jpg'),width = 16, height = 8, units = "in")
+
 ############
 
 ############

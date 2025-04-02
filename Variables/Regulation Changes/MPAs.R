@@ -19,7 +19,9 @@ mpas<- mpas %>%
 
 #add implementation yera and date from wc fish
 mpa_blocks<-wcfish::mpas_ca%>%
+  sf::st_drop_geometry() %>%
   as.data.frame()
+write.csv(mpa_blocks,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Regulation/MPAs/processed data/wcfish_mpas.csv")
 
 mpas<-mpas%>%
   left_join(select(mpa_blocks,name,implementation_year,implementation_date), by="name")
