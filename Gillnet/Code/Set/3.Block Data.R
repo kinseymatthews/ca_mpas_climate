@@ -83,10 +83,10 @@ explor<- gillnet%>%
   #adding column for reported depth in meters
   mutate(Depth_m=depth_fa_num*(-0.3048))%>%
   mutate(depth=depth_fa_num)%>%
-  #remove mesh too small
-  filter(mesh_size_in_num>3.5)%>%
+  #remove mesh too small and too large
+  filter(mesh_size_in_num>3.5 & mesh_size_in_num<22)%>%
   #filter for sets that are way too long
-  filter(soak_hr_num<217)%>%
+  filter(soak_hr_num<217 & soak_hr_num>=1)%>%
 #remove port complexes we dont care about
 filter(port.complex=="Bodega Bay" | port.complex=="San Francisco" | port.complex=="Monterey" | port.complex=="Morro Bay" | port.complex=="Santa Barbara"| port.complex=="Los Angeles"| port.complex=="San Diego")%>%
   filter(!(port.complex == "Bodega Bay" & year >= 1989)) 

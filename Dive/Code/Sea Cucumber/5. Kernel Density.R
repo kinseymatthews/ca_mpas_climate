@@ -427,7 +427,7 @@ plot_fun<-function(portcomplex){
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    weights<-year_data$total_tow_min
+    weights<-year_data$total_dive_hours
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1], na.rm = TRUE))

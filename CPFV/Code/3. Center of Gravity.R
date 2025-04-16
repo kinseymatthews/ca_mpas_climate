@@ -375,7 +375,7 @@ plot_fun<-function(portcomplex){
   
   p<-ggplot(data=location, aes(x=year))+
     geom_line(aes(y=distance_shore_km),size=1)+
-    labs(y = bquote('Distance from shore'~(km^2))) +
+    labs(y = bquote('Distance from shore'~(km))) +
     # Theme
     theme_bw() + 
     base_theme  +

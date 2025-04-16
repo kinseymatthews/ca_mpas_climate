@@ -115,7 +115,7 @@ plot_fun<-function(portcomplex){
   
   #extracting coordinates and weights
   coordinates<-st_coordinates(location)
-  weights<-location$total_set_hr
+  weights<-location$total_tow_min
   
   # Create a point pattern (ppp object)
   # Create a point pattern (ppp object)

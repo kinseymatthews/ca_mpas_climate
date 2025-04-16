@@ -15,7 +15,7 @@ urchin_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mp
 urc<-readRDS(paste0(urchin_data, "Data/Processed Data/redseaurchinfishery_matched.rds"))
 
 ###### read in block data
-all_blocks<-st_read(paste0(urchin_data,"Data/Raw Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
+all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 
 all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
@@ -23,7 +23,7 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
 
 ##### read in bathymetry data with blocks
-bathy.data<-read.csv(paste0("Data/Raw Data/fishingblockstatistics.csv"))%>%
+bathy.data<-read.csv(paste0(general_data,"fishingblockstatistics.csv"))%>%
   dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
   rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
 
@@ -40,10 +40,10 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 
 #port codes
-port<-read.csv(paste0(urchin_data, "Data/Raw Data/Port Codes.csv"))
+port<-read.csv(paste0(general_data, "Port Codes.csv"))
 
 # State waters
-state_waters <- readRDS( paste0(urchin_data, "Data/Raw Data/CA_state_waters_polyline.Rds"))
+state_waters <- readRDS( paste0(general_data, "CA_state_waters_polyline.Rds"))
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),

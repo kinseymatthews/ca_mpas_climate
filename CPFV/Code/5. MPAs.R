@@ -196,7 +196,10 @@ plot_fun<-function(portcomplex){
     extended_raster <- extend(density_raster, extended_extent, value = 0)
     
     # Mask the density raster with the land raster
-    density_masked <- mask(extended_raster, usa_mexico_sf, inverse=TRUE)
+    density_masked <- mask(extended_raster, usa_mexico_sf_proj, inverse=TRUE)
+    
+    
+    crs(density_masked) <- CRS("+init=EPSG:3310")
     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
@@ -253,7 +256,7 @@ plot_fun<-function(portcomplex){
       # State waters
       geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
       #points COG
-      #geom_sf(data=b,size=5, fill="white",color="black",pch=21)+
+      geom_sf(data=b,size=5, fill="white",color="black",pch=21)+
       # Crop
       coord_sf(xlim = c(minx-50000, maxx+50000), ylim = c(miny-50000, maxy+50000)) +
       # Axes
@@ -265,7 +268,7 @@ plot_fun<-function(portcomplex){
       theme(axis.title = element_blank())
     
     
-    filename1 <- paste0(CPFV_data,'Figures/MPAs/',portcomplex,'/', portcomplex, year, '_MPAs_cropped.jpg')
+    filename1 <- paste0(CPFV_data,'Figures/MPAs/',portcomplex,'/', portcomplex, year, '_MPAs_cropped_COG.jpg')
     ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }

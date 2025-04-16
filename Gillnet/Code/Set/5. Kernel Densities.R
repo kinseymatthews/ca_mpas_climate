@@ -268,7 +268,7 @@ plot_fun<-function(portcomplex){
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
     #weights
-    weights<-year_data$total_tow_min
+    weights<-year_data$total_set_hr
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1], na.rm = TRUE))
@@ -465,11 +465,11 @@ plot_fun<-function(portcomplex){
   for(year in unique_years){
     
     #subset data for the current year
-    year_data<-location[location$year==year,]
+    year_data<-location %>% filter(year == !!year)
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    weights<-year_data$total_tow_min
+    weights<-year_data$total_set_hr
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1], na.rm = TRUE))

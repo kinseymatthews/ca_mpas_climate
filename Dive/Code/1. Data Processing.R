@@ -13,8 +13,8 @@ dive_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas
 
 #upload raw data
 dive_logbook<-readRDS(paste0(dive_data,"Data/Raw Data/CDFW_1980_2023_dive_logbooks.rds"))
-landings<-readRDS(paste0(dive_data,"Data/Raw Data/1980_2022_landings_receipts.rds"))
-port_info<-read.csv(paste0(dive_data,'Data/Raw Data/Port Codes.csv'))%>%
+landings<-readRDS(paste0(general_data,"1980_2022_landings_receipts.rds"))
+port_info<-read.csv(paste0(general_data,'/Port Codes.csv'))%>%
   rename(port_id=port_code)
 port_info$port_id<-as.double(port_info$port_id)
 #################
@@ -89,7 +89,7 @@ landings.tomerge<- landings2%>%
 #Matching with first receipt and vessel ID
 matched_data<-dive.receipts%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings, price_usd), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
   filter(((date.landings - date.logbooks) <= 7 ) & (date.landings - date.logbooks) >= 0 )
 
 # Identify unmatched entries
@@ -99,13 +99,13 @@ unmatched_entries <- dive.receipts %>%
 
 # Combine matched entries with unmatched entries (without matched data)
 df <- bind_rows(matched_data, unmatched_entries)%>%
-  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex,block_id_landings1=block_id_landings)
+  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex,block_id_landings1=block_id_landings, price_usd1=price_usd)
 
 
 #matching with second landing receipt
 matched_data<-df%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings, price_usd), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
   filter(((date.landings - date.logbooks) <= 7 ) & (date.landings - date.logbooks) >= 0 )
 
 
@@ -118,19 +118,19 @@ unmatched_entries <- df %>%
 df2 <- bind_rows( matched_data, unmatched_entries )
 
 dive.receipts2<-df2%>%
-  rename( port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex,block_id_landings2=block_id_landings)
+  rename( port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex,block_id_landings2=block_id_landings, price_usd2=price_usd)
 
 
 
 dive.no.receipts<-dive.no.receipts%>%
-  mutate(port_complex_landings1=NA,date_landings1=NA, port_id_landings1=NA, port_landings1=NA, primary_gear_landings1=NA, gear_landings1=NA, block_id_landings1=NA, date_landings2=NA, port_id_landings2=NA, port_landings2=NA, primary_gear_landings2=NA, gear_landings2=NA, port_complex_landings2=NA, block_id_landings2=NA)
+  mutate(port_complex_landings1=NA,date_landings1=NA, port_id_landings1=NA, port_landings1=NA, primary_gear_landings1=NA, gear_landings1=NA, block_id_landings1=NA, date_landings2=NA, port_id_landings2=NA, port_landings2=NA, primary_gear_landings2=NA, gear_landings2=NA, port_complex_landings2=NA, block_id_landings2=NA, price_usd1=NA, price_usd2=NA)
 
 dive_logbook3<-rbind(dive.receipts2,dive.no.receipts)
 #################
 
 
 #################
-#STEP 1.5
+#STEP 2
 #matching receipts that only has one port complex regardless of date and vessel
 no.ports<-dive_logbook3%>%
   filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))
@@ -164,25 +164,25 @@ landings2.tomerge<- landings2%>%
 
 #merging with port and gear information - based on receipt 1
 no.ports.match<- no.ports%>%
-  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1,-block_id_landings1)%>%
+  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1,-block_id_landings1, -price_usd1)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex,block_id_landings), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
-  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex, block_id_landings1=block_id_landings)
+  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex,block_id_landings, price_usd), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
+  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex, block_id_landings1=block_id_landings, price_usd1=price_usd)
 
 #merging with port and gear information - based on receipt 2
 no.ports.match2<- no.ports.match%>%
-  dplyr::select(-port_complex_landings2,-date_landings2, -port_id_landings2, -port_landings2, -primary_gear_landings2, -gear_landings2,-block_id_landings2)%>%
+  dplyr::select(-port_complex_landings2,-date_landings2, -port_id_landings2, -port_landings2, -primary_gear_landings2, -gear_landings2,-block_id_landings2, -price_usd2)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex,block_id_landings), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
-  rename(port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex,block_id_landings2=block_id_landings)
+  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex,block_id_landings, price_usd), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
+  rename(port_id_landings2=port_id,gear_landings2=gear,primary_gear_landings2=primary_gear, date_landings2=date.landings, port_landings2=port,port_complex_landings2=port.complex,block_id_landings2=block_id_landings, price_usd2=price_usd)
 
 dive_logbook4<-rbind(no.ports.match2,ports)
 #################
 
 
 #################
-#STEP 2
-#Second, if a vessel was recorded at only one port complex throughout the entire landings dataset, we assigned that port complex to the logbook data
+#STEP 3
+#if a vessel was recorded at only one port complex throughout the entire landings dataset, we assigned that port complex to the logbook data
 no.ports<-dive_logbook4%>%
   filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))
 
@@ -209,8 +209,8 @@ dive_logbook5<-rbind(no.ports,ports)
 
 
 #################
-#STEP 3
-#Third, we used the combination of vessel id and date to match the datasets. For a day in which there were multiple port complexes 
+#STEP 4
+# we used the combination of vessel id and date to match the datasets. For a day in which there were multiple port complexes 
 #listed for a vessel within the landings data, we assigned the port complex that appeared most frequently to the corresponding logbook entry.
 no.ports<-dive_logbook5%>%
   filter(is.na(port_complex_landings1) & is.na(port_complex_landings2))
@@ -239,10 +239,10 @@ landings.tomerge<- landings2%>%
   distinct(vesselID_date, .keep_all = TRUE) #just need the port info
 
 no.ports.match<-no.ports%>%
-  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1,-block_id_landings1)%>%
+  dplyr::select(-port_complex_landings1,-date_landings1, -port_id_landings1, -port_landings1, -primary_gear_landings1, -gear_landings1,-block_id_landings1, -price_usd1)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by="vesselID_date", na_matches = "never")%>%
-  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex, block_id_landings1=block_id_landings)
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings, price_usd), by="vesselID_date", na_matches = "never")%>%
+  rename(port_id_landings1=port_id, port_landings1=port,date_landings1=date.landings, gear_landings1=gear,primary_gear_landings1=primary_gear,port_complex_landings1=port.complex, block_id_landings1=block_id_landings, price_usd1=price_usd)
 
 dive_logbook6<-rbind(ports, no.ports.match)
 #################
@@ -648,5 +648,5 @@ saveRDS(sc.updated, paste0(dive_data,"Data/Processed Data/seacucumberfishery_mat
 rsu<-dive_logbook18%>%
   filter(Target_species_Trip=="Red sea urchin")
 
-saveRDS(rsu,paste0(dive_data,"Data/Processed Data/redseaurchinfishery_matched.rds")
+saveRDS(rsu,paste0(dive_data,"Data/Processed Data/redseaurchinfishery_matched.rds"))
 

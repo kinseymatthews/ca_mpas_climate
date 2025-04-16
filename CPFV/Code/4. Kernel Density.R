@@ -433,7 +433,7 @@ plot_fun<-function(portcomplex){
     
     #extracting coordinates and weights
     coordinates<-st_coordinates(year_data)
-    weights<-year_data$total_tow_min
+    weights<-year_data$total_angler_hours
     
     # Create a point pattern (ppp object)
     minx<-(min(coordinates[,1], na.rm = TRUE))
@@ -603,10 +603,10 @@ saveRDS(all.volumes,paste0(CPFV_data,"Data/Processed Data/CPFV_all contour volum
 
 all.volumes<-readRDS(paste0(CPFV_data,"Data/Processed Data/CPFV_all contour volumes.rds"))
 #order from north to south
-all.volumes$Portcomplex<- factor(all.volumes$port.complex, levels = c( 'Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
+all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c( 'Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
 
 p<-ggplot(data=all.volumes, aes(x=Year))+
-  facet_wrap(~port.complex, scales="free_y")+
+  facet_wrap_paginate(~port.complex, scales="free_y")+
   
   #geom_line(aes(y=vol_50_km ,color="50% contour"),size=1)+
   geom_line(aes(y=area_75_km2 ,color="75% contour"),size=1)+
@@ -630,12 +630,9 @@ p<-ggplot(data=all.volumes, aes(x=Year))+
   geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "black",size=1)
 
 p
-for(i in 1:n_pages(p)){
-  p_save <-  p + 
-    facet_wrap_paginate( ~Portcomplex, ncol=3, nrow=1, page = i, scales="free_y")
-  ggsave(plot = p_save, filename = paste0(CPFV_Data,'Figures/Kernel Density/Volume Contours_page_', i, '.jpg'),width = 16, height = 6, units = "in")
-}
-#can also do the above so its not facetwrap and all separate
+
+  ggsave(plot = p, filename = paste0(CPFV_data,'Figures/Kernel Density/Volume Contours.jpg'),width = 16, height = 6, units = "in")
+
 ############
 
 
@@ -647,7 +644,7 @@ plot_fun<-function(portcomplex){
     filter(Portcomplex==portcomplex)
   
   p<-ggplot(data=location, aes(x=Year))+
-    geom_line(aes(y=vol_75_km ,color="75% volume"),size=1)+
+    geom_line(aes(y=area_75_km2 ,color="75% volume"),size=1)+
     labs(y = bquote('Fishing Ground Area '~(km^2))) +
     #legened
     scale_color_manual(values=c("75% volume" = "black"))+  
@@ -658,7 +655,7 @@ plot_fun<-function(portcomplex){
     annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
-  filename1 <- paste0(CPFV_Data,'Figures/Kernel Density/', portcomplex,'/',portcomplex, '_75%volume contour.jpg')
+  filename1 <- paste0(CPFV_data,'Figures/Kernel Density/', portcomplex,'/',portcomplex, '_75%volume contour.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
   
   p
@@ -676,9 +673,13 @@ plot_fun('Santa Barbara')
 ############
 #time series analyses
 #COG and northern and southern latitudes
+COG_sf <- st_transform(COG_sf, crs = 4326)
+
 COG_df<-COG_sf%>%
   sf::st_drop_geometry()%>%
   mutate(year=as.numeric(as.character(year)))
+
+
 
 COG_df$COG_latitude <- st_coordinates(COG_sf)[, "Y"]  # Extracts latitude
 COG_df$COG_longitude <- st_coordinates(COG_sf)[, "X"]
@@ -723,7 +724,7 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
   
-  filename1 <- paste0(CPFV_Data,'Figures/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
+  filename1 <- paste0(CPFV_data,'Figures/Kernel Density/', portcomplex,'/',portcomplex, '_COG_extents_latitude.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
@@ -738,21 +739,3 @@ plot_fun('Los Angeles')
 
 ############
 
-
-
-p<-ggplot() +
-
-  # Land
-  geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
-  # State waters
- geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
-  # Crop
-  coord_sf(xlim = c(-126, -117), ylim = c(32, 42)) +
-  # Axes
-  scale_x_continuous(breaks=seq(-125, -117, 2)) +
-  scale_y_continuous(breaks=seq(32, 44, 2)) +
-  theme_bw() + base_theme+ 
-  theme(axis.title = element_blank())
-filename1 <- ('C:/Users/kinse/Downloads/Statemap.jpg')
-ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
-  
