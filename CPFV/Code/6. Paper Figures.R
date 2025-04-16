@@ -485,109 +485,109 @@ location <- sf_df_projected%>%
 
 plot_fun<-function(type){ 
   
-    year_data<- location%>%
+  year_data<- location%>%
     filter(Year_Type==type)
-    
-    #extracting coordinates and weights
-    coordinates<-st_coordinates(year_data)
-    weights<-year_data$total_angler_hours
-    
-    # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1], na.rm = TRUE))
-    maxx<-(max(coordinates[,1], na.rm = TRUE))
-    miny<-(min(coordinates[,2], na.rm = TRUE))
-    maxy<-(max(coordinates[,2], na.rm = TRUE))
-    
-    # Define the tolerance
-    tolerance <- 0.0000001
-    
-    if (abs(minx - maxx) < tolerance) {
-      minx <- minx - 0.025
-      maxx <- maxx + 0.025
-    }
-    
-    if (abs( miny - maxy)< tolerance) {
-      miny <- miny - 0.025
-      maxy <- maxy + 0.025
-    }
-    
-    # Expand bounding box
-    minx <- minx - 20000
-    maxx <- maxx + 20000
-    miny <- miny - 20000
-    maxy <- maxy + 20000
-    
-    points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
-    
-    # Compute kernel density estimation using raw data
-    sigma<-bw.diggle(points_ppp) #increasing bandwidth
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
-    
-    # Convert density to a raster 
-    density_raster <- as(raster(as.im(density)), "RasterLayer")
-    
-    # Extend the extent of the density raster by 200 meters
-    buffer_distance <- 20000  # 200 meters
-    extended_extent <- extend(extent(density_raster), buffer_distance)
-    
-    # Create a new raster with the extended extent
-    extended_raster <- extend(density_raster, extended_extent, value = 0)
-    
-    
-    # Mask the density raster with the land raster
-    density_masked <- mask( extended_raster, usa_mexico_sf_proj, inverse=TRUE)
-    
-    
-    crs(density_masked) <- CRS("+init=EPSG:3310")
-    
-    # Convert density to a data frame
-    density_df <- as.data.frame(rasterToPoints(density_masked))
-    names(density_df) <- c("x", "y", "value")
-    
-    # Calculate the cumulative distribution function (CDF)
-    density_values <- sort(density_df$value, decreasing = TRUE)
-    cdf <- cumsum(density_values) / sum(density_values)
-    
-    # Find the contour level corresponding to,50 75, and 95% volume and then save the corresponding volumes
-    
-    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
-    
-    # Create contour lines from the density raster
-    contours <- rasterToContour( density_masked, levels = c(contour_level_75))
-    
-    #convert to sf object
-    contours_sf <- st_as_sf(contours)
-    #set crs
-    contours_sf <- st_set_crs(contours_sf , 3310)
-    
-    # Normalize density values to the range 0-1
-    density_df$value <- scales::rescale(density_df$value)
-    
-    
-    p<-ggplot() +
-      geom_raster(data = density_df, aes(x=x,y=y,fill = value)) +
-      
-      scale_fill_gradientn(name = "Kernel Density", 
-                           colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
-                           limits = c(0, max(density_df$value)),  # Adjust limits as needed
-                           na.value = "white") +  # Set NA values to white
-      
-      # Add contour lines at 75% volume boundary
-      geom_sf(data = contours_sf, color = "black", linewidth = 1)  +
-      
-      # Land
-      geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
-      # State waters
-      geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
-      # Crop
-      coord_sf(xlim = c(-350000, 6000), ylim = c(-250000, 20000))+
-      # Theme
-      theme_bw() + base_theme +
-    ggtitle(paste0(type))
-    
-    p
+  
+  #extracting coordinates and weights
+  coordinates<-st_coordinates(year_data)
+  weights<-year_data$total_angler_hours
+  
+  # Create a point pattern (ppp object)
+  minx<-(min(coordinates[,1], na.rm = TRUE))
+  maxx<-(max(coordinates[,1], na.rm = TRUE))
+  miny<-(min(coordinates[,2], na.rm = TRUE))
+  maxy<-(max(coordinates[,2], na.rm = TRUE))
+  
+  # Define the tolerance
+  tolerance <- 0.0000001
+  
+  if (abs(minx - maxx) < tolerance) {
+    minx <- minx - 0.025
+    maxx <- maxx + 0.025
   }
   
+  if (abs( miny - maxy)< tolerance) {
+    miny <- miny - 0.025
+    maxy <- maxy + 0.025
+  }
+  
+  # Expand bounding box
+  minx <- minx - 20000
+  maxx <- maxx + 20000
+  miny <- miny - 20000
+  maxy <- maxy + 20000
+  
+  points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
+  
+  # Compute kernel density estimation using raw data
+  sigma<-bw.diggle(points_ppp) #increasing bandwidth
+  density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
+  
+  # Convert density to a raster 
+  density_raster <- as(raster(as.im(density)), "RasterLayer")
+  
+  # Extend the extent of the density raster by 200 meters
+  buffer_distance <- 20000  # 200 meters
+  extended_extent <- extend(extent(density_raster), buffer_distance)
+  
+  # Create a new raster with the extended extent
+  extended_raster <- extend(density_raster, extended_extent, value = 0)
+  
+  
+  # Mask the density raster with the land raster
+  density_masked <- mask( extended_raster, usa_mexico_sf_proj, inverse=TRUE)
+  
+  
+  crs(density_masked) <- CRS("+init=EPSG:3310")
+  
+  # Convert density to a data frame
+  density_df <- as.data.frame(rasterToPoints(density_masked))
+  names(density_df) <- c("x", "y", "value")
+  
+  # Calculate the cumulative distribution function (CDF)
+  density_values <- sort(density_df$value, decreasing = TRUE)
+  cdf <- cumsum(density_values) / sum(density_values)
+  
+  # Find the contour level corresponding to,50 75, and 95% volume and then save the corresponding volumes
+  
+  contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
+  
+  # Create contour lines from the density raster
+  contours <- rasterToContour( density_masked, levels = c(contour_level_75))
+  
+  #convert to sf object
+  contours_sf <- st_as_sf(contours)
+  #set crs
+  contours_sf <- st_set_crs(contours_sf , 3310)
+  
+  # Normalize density values to the range 0-1
+  density_df$value <- scales::rescale(density_df$value)
+  
+  
+  p<-ggplot() +
+    geom_raster(data = density_df, aes(x=x,y=y,fill = value)) +
+    
+    scale_fill_gradientn(name = "Kernel Density", 
+                         colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
+                         limits = c(0, max(density_df$value)),  # Adjust limits as needed
+                         na.value = "white") +  # Set NA values to white
+    
+    # Add contour lines at 75% volume boundary
+    geom_sf(data = contours_sf, color = "black", linewidth = 1)  +
+    
+    # Land
+    geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+    # State waters
+    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+    # Crop
+    coord_sf(xlim = c(-350000, 6000), ylim = c(-250000, 20000))+
+    # Theme
+    theme_bw() + base_theme +
+    ggtitle(paste0(type))
+  
+  p
+}
+
 a<-plot_fun("First Year")
 b<-plot_fun("Last Year")
 
@@ -600,157 +600,157 @@ combined_plot <- a+b+
         legend.position = "none", #Hide legends by default
         plot.margin=margin(0,0,0,0)
   )      
-  
-  combined_plot[[1]] <- combined_plot[[1]] + theme(
-    axis.text.y = element_text(size=12),
-    axis.ticks.y = element_line(),
-    axis.text.x = element_text(size=12)
-  )
-  
-  combined_plot[[2]] <- combined_plot[[2]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
-                                                   legend.title = element_text(size = 12),  # Smaller font size for legend title
-                                                   legend.text = element_text(size = 10) ) 
 
-  
-  combined_plot
-  filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CPFV_Monterey_twoyears.jpg')
-  ggsave(filename = filename1, plot =   combined_plot , width = 15, height = 8, units = "in", dpi = 300)
-  
+combined_plot[[1]] <- combined_plot[[1]] + theme(
+  axis.text.y = element_text(size=12),
+  axis.ticks.y = element_line(),
+  axis.text.x = element_text(size=12)
+)
+
+combined_plot[[2]] <- combined_plot[[2]] + theme(legend.position = "right",  # Place the legend to the far right for plot 6
+                                                 legend.title = element_text(size = 12),  # Smaller font size for legend title
+                                                 legend.text = element_text(size = 10) ) 
+
+
+combined_plot
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CPFV_Monterey_twoyears.jpg')
+ggsave(filename = filename1, plot =   combined_plot , width = 15, height = 8, units = "in", dpi = 300)
+
 ############
-  
+
 ############
 # multi-panel figure #1981 and 2021
-  location <- sf_df_projected%>%
-    filter(port.complex=="Eureka")%>%
-    group_by(year)%>%
-    filter(n() > 1) %>%
-    ungroup()%>%
-    filter(year== min(year) | year== max(year))
-  
-  plot_fun<-function(Year){ 
-    
-    year_data<- location%>%
-      filter(year==Year)
-    
-    #extracting coordinates and weights
-    coordinates<-st_coordinates(year_data)
-    weights<-year_data$total_angler_hours
-    
-    # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1], na.rm = TRUE))
-    maxx<-(max(coordinates[,1], na.rm = TRUE))
-    miny<-(min(coordinates[,2], na.rm = TRUE))
-    maxy<-(max(coordinates[,2], na.rm = TRUE))
-    
-    # Define the tolerance
-    tolerance <- 0.0000001
-    
-    if (abs(minx - maxx) < tolerance) {
-      minx <- minx - 0.025
-      maxx <- maxx + 0.025
-    }
-    
-    if (abs( miny - maxy)< tolerance) {
-      miny <- miny - 0.025
-      maxy <- maxy + 0.025
-    }
-    
-    # Expand bounding box
-    minx <- minx - 20000
-    maxx <- maxx + 20000
-    miny <- miny - 20000
-    maxy <- maxy + 20000
-    
-    points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
-    
-    # Compute kernel density estimation using raw data
-    sigma<-bw.diggle(points_ppp) #increasing bandwidth
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
-    
-    # Convert density to a raster 
-    density_raster <- as(raster(as.im(density)), "RasterLayer")
-    
-    # Extend the extent of the density raster by 200 meters
-    buffer_distance <- 20000  # 200 meters
-    extended_extent <- extend(extent(density_raster), buffer_distance)
-    
-    # Create a new raster with the extended extent
-    extended_raster <- extend(density_raster, extended_extent, value = 0)
-    
-    
-    # Mask the density raster with the land raster
-    density_masked <- mask( extended_raster, usa_mexico_sf_proj, inverse=TRUE)
-    
-    
-    crs(density_masked) <- CRS("+init=EPSG:3310")
-    
-    # Convert density to a data frame
-    density_df <- as.data.frame(rasterToPoints(density_masked))
-    names(density_df) <- c("x", "y", "value")
-    
-    # Calculate the cumulative distribution function (CDF)
-    density_values <- sort(density_df$value, decreasing = TRUE)
-    cdf <- cumsum(density_values) / sum(density_values)
-    
-    # Find the contour level corresponding to,50 75, and 95% volume and then save the corresponding volumes
-    
-    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
-    
-    # Create contour lines from the density raster
-    contours <- rasterToContour( density_masked, levels = c(contour_level_75))
-    
-    #convert to sf object
-    contours_sf <- st_as_sf(contours)
-    #set crs
-    contours_sf <- st_set_crs(contours_sf , 3310)
-    
-    # Normalize density values to the range 0-1
-    density_df$value <- scales::rescale(density_df$value)
-    #center of gravity
-    a<-COG_sf%>%
-      filter(port.complex=="Eureka")%>%
-      filter(year==Year)
-  
-    
-    p<-ggplot() +
-      geom_raster(data = density_df, aes(x=x,y=y,fill = value)) +
-      
-      scale_fill_gradientn(name = "Kernel Density", 
-                           colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
-                           limits = c(0, max(density_df$value)),  # Adjust limits as needed
-                           na.value = "white") +  # Set NA values to white
-      # Black ticks to color bar
-      guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
-      # Add contour lines at 75% volume boundary
-      geom_sf(data = contours_sf, color = "black", linewidth = 1)  +
-      # Land
-      geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
-      # State waters
-      geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
-      #mpas
-      geom_sf(data=mpa_blocks, fill="black", col="white", linewidth=0.2, inherit.aes = F)+
-      #points COG
-      geom_sf(data=a,size=4, fill="white",color="black",pch=21)+
-      # Crop
-      coord_sf(xlim = c(-500000, -200000), ylim = c(190000, 450000),
-               crs = 3310,
-               label_graticule = "SW",   # Only label axes, not plot
-               datum = 4326)+
-     #scale
-      scale_x_continuous(breaks = seq(-125.5, -122.5, by = 1.0)) +
-      # Theme
-      theme_bw()+
-      theme(axis.title.x = element_blank(),
-               axis.title.y = element_blank()) + 
-      base_theme +
-      ggtitle(paste0(Year))
+location <- sf_df_projected%>%
+  filter(port.complex=="Eureka")%>%
+  group_by(year)%>%
+  filter(n() > 1) %>%
+  ungroup()%>%
+  filter(year== min(year) | year== max(year))
 
+plot_fun<-function(Year){ 
+  
+  year_data<- location%>%
+    filter(year==Year)
+  
+  #extracting coordinates and weights
+  coordinates<-st_coordinates(year_data)
+  weights<-year_data$total_angler_hours
+  
+  # Create a point pattern (ppp object)
+  minx<-(min(coordinates[,1], na.rm = TRUE))
+  maxx<-(max(coordinates[,1], na.rm = TRUE))
+  miny<-(min(coordinates[,2], na.rm = TRUE))
+  maxy<-(max(coordinates[,2], na.rm = TRUE))
+  
+  # Define the tolerance
+  tolerance <- 0.0000001
+  
+  if (abs(minx - maxx) < tolerance) {
+    minx <- minx - 0.025
+    maxx <- maxx + 0.025
   }
   
-  a<-plot_fun(1980)
-  b<-plot_fun(2022)
+  if (abs( miny - maxy)< tolerance) {
+    miny <- miny - 0.025
+    maxy <- maxy + 0.025
+  }
   
-  plot(a)
+  # Expand bounding box
+  minx <- minx - 20000
+  maxx <- maxx + 20000
+  miny <- miny - 20000
+  maxy <- maxy + 20000
+  
+  points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
+  
+  # Compute kernel density estimation using raw data
+  sigma<-bw.diggle(points_ppp) #increasing bandwidth
+  density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
+  
+  # Convert density to a raster 
+  density_raster <- as(raster(as.im(density)), "RasterLayer")
+  
+  # Extend the extent of the density raster by 200 meters
+  buffer_distance <- 20000  # 200 meters
+  extended_extent <- extend(extent(density_raster), buffer_distance)
+  
+  # Create a new raster with the extended extent
+  extended_raster <- extend(density_raster, extended_extent, value = 0)
+  
+  
+  # Mask the density raster with the land raster
+  density_masked <- mask( extended_raster, usa_mexico_sf_proj, inverse=TRUE)
+  
+  
+  crs(density_masked) <- CRS("+init=EPSG:3310")
+  
+  # Convert density to a data frame
+  density_df <- as.data.frame(rasterToPoints(density_masked))
+  names(density_df) <- c("x", "y", "value")
+  
+  # Calculate the cumulative distribution function (CDF)
+  density_values <- sort(density_df$value, decreasing = TRUE)
+  cdf <- cumsum(density_values) / sum(density_values)
+  
+  # Find the contour level corresponding to,50 75, and 95% volume and then save the corresponding volumes
+  
+  contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
+  
+  # Create contour lines from the density raster
+  contours <- rasterToContour( density_masked, levels = c(contour_level_75))
+  
+  #convert to sf object
+  contours_sf <- st_as_sf(contours)
+  #set crs
+  contours_sf <- st_set_crs(contours_sf , 3310)
+  
+  # Normalize density values to the range 0-1
+  density_df$value <- scales::rescale(density_df$value)
+  #center of gravity
+  a<-COG_sf%>%
+    filter(port.complex=="Eureka")%>%
+    filter(year==Year)
+  
+  
+  p<-ggplot() +
+    geom_raster(data = density_df, aes(x=x,y=y,fill = value)) +
+    
+    scale_fill_gradientn(name = "Kernel Density", 
+                         colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
+                         limits = c(0, max(density_df$value)),  # Adjust limits as needed
+                         na.value = "white") +  # Set NA values to white
+    # Black ticks to color bar
+    guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
+    # Add contour lines at 75% volume boundary
+    geom_sf(data = contours_sf, color = "black", linewidth = 1)  +
+    # Land
+    geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+    # State waters
+    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+    #mpas
+    geom_sf(data=mpa_blocks, fill="black", col="white", linewidth=0.2, inherit.aes = F)+
+    #points COG
+    geom_sf(data=a,size=4, fill="white",color="black",pch=21)+
+    # Crop
+    coord_sf(xlim = c(-500000, -200000), ylim = c(190000, 450000),
+             crs = 3310,
+             label_graticule = "SW",   # Only label axes, not plot
+             datum = 4326)+
+    #scale
+    scale_x_continuous(breaks = seq(-125.5, -122.5, by = 1.0)) +
+    # Theme
+    theme_bw()+
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank()) + 
+    base_theme +
+    ggtitle(paste0(Year))
+  
+}
+
+a<-plot_fun(1980)
+b<-plot_fun(2022)
+
+plot(a)
 
 
 #other parts
@@ -777,7 +777,7 @@ d<-ggplot(data=combined_eureka, aes(x=Year))+
   theme_bw() + base_theme  +
   #remove y axis
   theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
+        axis.ticks.x=element_blank())+
   #add red line for mpa implementation and gray box for marine heatwave
   annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
   geom_vline(aes(xintercept = mpayear.x), linetype = "dotted", color = "red",size=1)
@@ -821,7 +821,7 @@ c<-ggplot(data=COG_vcontours, aes(x=year))+
              color = "blue", 
              size = 4,
              shape=8) +  
-   # Theme
+  # Theme
   theme_bw() + 
   base_theme  +
   theme(legend.title = element_blank(),
@@ -867,7 +867,7 @@ f<-ggplot(data=combined_eureka, aes(x=Year))+
   annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') + # Font size and style for y-axis label
   geom_vline(aes(xintercept = 2012), linetype = "dotted", color = "red",size=1)
 
-  ###########
+###########
 
 a <- a + theme(
   legend.position = "none",

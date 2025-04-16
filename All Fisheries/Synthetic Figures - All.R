@@ -436,7 +436,7 @@ f2<-plot_fun(distance_cv)
     theme(
       plot.margin = margin(0, 0, 0, 0)  # Remove margins
     )
-  
+   
   # Create the combined layout with the text plot between the two rows
   combined_plot_with_text <- (combined_plot / text_plot / combined_plot2 / text_plot2) +
     plot_layout( nrow=4, heights = c(1, .1,1,.1))
