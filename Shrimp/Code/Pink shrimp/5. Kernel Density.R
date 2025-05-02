@@ -261,6 +261,9 @@ plot_fun<-function(portcomplex){
   #get unique years in dataset
   unique_years<-unique(location$year)
   
+  #contours for shapefile
+  all_contours <- list()
+  
   #Loop through each year and calculate kernel density
   for(year in unique_years){
     
@@ -317,7 +320,7 @@ plot_fun<-function(portcomplex){
     extended_raster <- extend(density_raster, extended_extent, value = 0)
     
     # Mask the density raster with the land raster
-    density_masked <- mask(extended_raster, usa_mexico_sf, inverse=TRUE)
+    density_masked <- mask(extended_raster, usa_mexico_sf_proj, inverse=TRUE)
     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
@@ -338,6 +341,11 @@ plot_fun<-function(portcomplex){
     contour_75_sf <- st_as_sf(contour_level_75_lines)
     
     st_crs(contour_75_sf) <-  3310
+    
+    #save into dataframe
+    contour_75_sf$year <- year
+    contour_75_sf$portcomplex <- portcomplex
+    all_contours[[as.character(year)]] <- contour_75_sf
     
     # Normalize density values to the range 0-1
     density_df$value <- scales::rescale(density_df$value)
@@ -397,6 +405,12 @@ plot_fun<-function(portcomplex){
  
 
   }
+  
+  # ---- Save merged contours to contour directory ----
+  merged_contours <- do.call(rbind, all_contours)
+  merged_file <- file.path(shrimp_data, paste0('Data/Processed Data/',portcomplex, "pink_contours_75.gpkg"))
+  st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
+  
 }
 
 plot_fun('Eureka')

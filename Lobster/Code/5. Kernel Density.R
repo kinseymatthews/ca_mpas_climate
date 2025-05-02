@@ -230,6 +230,10 @@ plot_fun<-function(portcomplex){
   #get unique years in dataset
   unique_years<-unique(location$year)
   
+  #contours for shapefile
+  all_contours <- list()
+
+  
   #Loop through each year and calculate kernel density
   for(year in unique_years){
     
@@ -308,6 +312,11 @@ plot_fun<-function(portcomplex){
     
     st_crs(contour_75_sf) <-  3310
     
+    #save into dataframe
+    contour_75_sf$year <- year
+    contour_75_sf$portcomplex <- portcomplex
+    all_contours[[as.character(year)]] <- contour_75_sf
+    
     # Normalize density values to the range 0-1
     density_df$value <- scales::rescale(density_df$value)
     
@@ -359,7 +368,13 @@ plot_fun<-function(portcomplex){
     ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
 
   }
+  # ---- Save merged contours to contour directory ----
+  merged_contours <- do.call(rbind, all_contours)
+  merged_file <- file.path(lobster_data, paste0('Data/Processed Data/',portcomplex, "_contours_75.gpkg"))
+  st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
+  
 }
+
 plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
 plot_fun('San Diego')

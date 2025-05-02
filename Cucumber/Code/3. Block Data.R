@@ -218,7 +218,7 @@ plot_fun<-function(portcomplex){
   num_years <-max(portcomplex_data$year)-min(portcomplex_data$year) +1
   anim<-gganimate::animate(p_animation, duration=num_years)
   
-  name=paste0(cucumber_data, 'Figures//Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
+  name=paste0(cucumber_data, 'Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
   anim_save(name, anim)
 }
 plot_fun('Eureka')

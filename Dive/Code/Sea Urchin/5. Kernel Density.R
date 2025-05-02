@@ -248,6 +248,9 @@ plot_fun<-function(portcomplex){
   #get unique years in dataset
   unique_years<-unique(location$year)
   
+  #contours for shapefile
+  all_contours <- list()
+  
   #Loop through each year and calculate kernel density
   for(year in unique_years){
     
@@ -304,7 +307,7 @@ plot_fun<-function(portcomplex){
     extended_raster <- extend(density_raster, extended_extent, value = 0)
     
     # Mask the density raster with the land raster
-    density_masked <- mask(extended_raster, usa_mexico_sf, inverse=TRUE)
+    density_masked <- mask(extended_raster, usa_mexico_sf_proj, inverse=TRUE)
     
     # Convert density to a data frame
     density_df <- as.data.frame(rasterToPoints(density_masked))
@@ -325,6 +328,12 @@ plot_fun<-function(portcomplex){
     contour_75_sf <- st_as_sf(contour_level_75_lines)
     
     st_crs(contour_75_sf) <-  3310
+    
+    #save into dataframe
+    contour_75_sf$year <- year
+    contour_75_sf$portcomplex <- portcomplex
+    all_contours[[as.character(year)]] <- contour_75_sf
+    
     
     # Normalize density values to the range 0-1
     density_df$value <- scales::rescale(density_df$value)
@@ -369,13 +378,20 @@ plot_fun<-function(portcomplex){
       #  scale_x_continuous(breaks=seq(minx-20000, maxx+20000, 20000),labels=scales::number_format(accuracy=20000)) +
       #  scale_y_continuous(breaks=seq(miny-20000, maxy+20000, 20000),labels=scales::number_format(accuracy=20000)) + 
       theme_bw() + base_theme+ 
-      ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Sea urchin Dive Fishery: Year ',year, ', with 75% volume contour') )
+      ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle=paste0('Sea urchin dive fishery: Year ',year, ', with 75% volume contour') )
     
     
     name=paste0(urchin_data, 'Figures/Urchin/Kernel Density/',portcomplex,'/',portcomplex,' Kernel Density_',year,'.jpg')
     ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
     
   }
+  
+  # ---- Save merged contours to contour directory ----
+  merged_contours <- do.call(rbind, all_contours)
+  merged_file <- file.path(urchin_data, paste0('Data/Processed Data/',portcomplex, "urchin_contours_75.gpkg"))
+  st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
+  
+  
 }
 plot_fun("Fort Bragg")
 plot_fun('Santa Barbara')

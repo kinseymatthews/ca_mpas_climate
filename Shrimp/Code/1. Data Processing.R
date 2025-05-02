@@ -114,7 +114,7 @@ landings.tomerge<- landings%>%
 no.ports.no.duplicates2<-no.ports.no.duplicates%>%
   select(-port_complex_landings)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_code_landings,port_landings,primary_gear,gear,date.landings, port_complex_landings, block_id_landings), by="vesselID_date", na_matches = "never")
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_code_landings,port_landings,primary_gear,gear,date.landings, port_complex_landings, block_id_landings, price_usd,landings_lbs,value_usd, receipt_id), by="vesselID_date", na_matches = "never")
 
 #merge together with the eother
 shrimp_logbook3<-bind_rows(no.ports.no.duplicates2,no.ports.duplicates, ports)

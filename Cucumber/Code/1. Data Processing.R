@@ -119,8 +119,14 @@ landings.tomerge<- landings2%>%
 no.dupes<-no.dupes%>%
   dplyr::select( -port_complex_landings)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by="vesselID_date", na_matches = "never")%>%
-  rename(port_id1=port_id.y,port1=port.y, port_complex_landings=port.complex)
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings, price_usd,landings_lbs,value_usd, receipt_id), by="vesselID_date", na_matches = "never")%>%
+  rename(port_id1=port_id.y,port1=port.y, port_complex_landings=port.complex, port_id=port_id.x,port=port.x)
+
+dupes<-dupes%>%
+  mutate(date.landings=NA, port_id1=NA, port1=NA, primary_gear=NA, gear=NA,block_id_landings=NA, price_usd=NA,landings_lbs=NA,value_usd=NA, receipt_id=NA)
+
+ports<-ports%>%
+  mutate(date.landings=NA, port_id1=NA, port1=NA, primary_gear=NA, gear=NA,block_id_landings=NA, price_usd=NA,landings_lbs=NA,value_usd=NA, receipt_id=NA)
 
 cucumber.logbook4<-bind_rows(no.dupes, ports,dupes)
 #################
@@ -307,10 +313,11 @@ gps2_block_df <- cbind(gps2_block, coords)%>%
 cucumber.logbook9<-rbind(no.gps,gps2_block_df)
 #################
 
+
 #################
 cucumber.logbook10<-cucumber.logbook9%>%
-  rename(port_id_logbook=port_id.x, port_logbook=port.x)%>%
-  mutate(block_id=coalesce(block_id,block_id_landings, block_id_gps))%>%
+  rename(port_id_logbook=port_id, port_logbook=port, block_id_logbook=block_id)%>%
+  mutate(block_id=coalesce(block_id_logbook,block_id_landings, block_id_gps))%>%
   mutate(port.complex=coalesce(port_complex_logbook, port_complex_landings))%>%
   mutate(trip.identifier=paste(logbook_id, port.complex, vessel_id, date_depart, date.logbooks, sep="_"))%>%
   mutate(tow.identifier=paste(logbook_id, port.complex, vessel_id, date_tow, block_id, lat_dd_set, long_dd_set, lat_dd_up, long_dd_up, tow_number, depth_fa_set, depth_fa_up, time_set,time_up, duration_min, sep="_"))

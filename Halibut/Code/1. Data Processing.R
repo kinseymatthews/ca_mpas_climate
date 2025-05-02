@@ -95,7 +95,7 @@ landings.tomerge<- landings2%>%
 #match with first landing receipt available
 matched_data<-halibut.receipt%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings, price_usd,landings_lbs, value_usd, receipt_ids), by=c("receipt_vesselID_1" = "receipt_vesselID"), na_matches = "never")%>%
   filter(((date.landings - receipt_date1) <= 7 ) & (date.landings - receipt_date1) >= 0 )
 
 # Identify unmatched entries
@@ -112,7 +112,7 @@ halibut.receipt2 <- bind_rows(
 #match with second landing receipt available
 matched_data<-halibut.receipt2%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
+  left_join(dplyr::select(landings.tomerge,receipt_vesselID,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings, price_usd,landings_lbs, value_usd,receipt_ids), by=c("receipt_vesselID_2" = "receipt_vesselID"), na_matches = "never")%>%
   filter(((date.landings.y - receipt_date2) <= 7 ) & (date.landings.y - receipt_date2) >= 0 )
 
 # Identify unmatched entries
@@ -128,11 +128,11 @@ halibut.receipt2 <- bind_rows(
 
 
 halibut.receipt2<-halibut.receipt2%>%
-  rename(port_complex1=port.complex.x, port_id1=port_id.x, port_id2=port_id.y,gear1=gear.x, port_complex2=port.complex.y,  gear2=gear.y,primary_gear1=primary_gear.x, primary_gear2=primary_gear.y, date_landings1=date.landings.x, date_landings2=date.landings.y, port2=port.y, port1=port.x, block_id_landings1=block_id_landings.x,block_id_landings2=block_id_landings.y)
+  rename(port_complex1=port.complex.x, port_id1=port_id.x, port_id2=port_id.y,gear1=gear.x, port_complex2=port.complex.y,  gear2=gear.y,primary_gear1=primary_gear.x, primary_gear2=primary_gear.y, date_landings1=date.landings.x, date_landings2=date.landings.y, port2=port.y, port1=port.x, block_id_landings1=block_id_landings.x,block_id_landings2=block_id_landings.y,price_usd1=price_usd.x , price_usd2=price_usd.y,landings_lbs1=landings_lbs.x, landings_lbs2=landings_lbs.y,value_usd1=value_usd.x,value_usd2=value_usd.y, receipt_id_landings1=receipt_ids.x, receipt_id_landings2=receipt_ids.y) 
 
 
 halibut.no.receipt<-halibut.no.receipt%>%
-  mutate(port_complex1=NA,date_landings1=NA, port_id1=NA, port1=NA, primary_gear1=NA, gear1=NA,date_landings2=NA, port_id2=NA, port2=NA, primary_gear2=NA, gear2=NA, port_complex2=NA, block_id_landings1=NA,block_id_landings2=NA)
+  mutate(port_complex1=NA,date_landings1=NA, port_id1=NA, port1=NA, primary_gear1=NA, gear1=NA,date_landings2=NA, port_id2=NA, port2=NA, primary_gear2=NA, gear2=NA, port_complex2=NA, block_id_landings1=NA,block_id_landings2=NA, price_usd2= NA, price_usd1=NA,landings_lbs2=NA,landings_lbs1=NA,value_usd2=NA, value_usd1=NA, receipt_id_landings2= NA, receipt_id_landings1=NA)
 
 halibut.logbook3<-rbind(halibut.no.receipt,halibut.receipt2)
 #################
@@ -171,33 +171,36 @@ no.ports.2<- no.ports[(no.ports$receipt_id1 %in% common_names), ] #these have mo
 
 # can merge the no duplicates with the landings data
 landings2.tomerge<- landings2%>%
-  distinct(receipt_id, .keep_all = TRUE)
+  distinct(receipt_id, .keep_all = TRUE)%>%
+  mutate(receipt_id_new = receipt_id)
+
 
 #merging with port and gear information
 no.ports.1.match<- no.ports.1%>%
-  dplyr::select(-port_complex1,-date_landings1, -port_id1, -port1, -primary_gear1, -gear1, -block_id_landings1)%>%
+  dplyr::select(-port_complex1,-date_landings1, -port_id1, -port1, -primary_gear1, -gear1, -block_id_landings1,-price_usd1,-landings_lbs1, -value_usd1 , -receipt_id_landings1 )%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_id1" = "receipt_id"), na_matches = "never")%>%
-  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings)
+  left_join(dplyr::select(landings2.tomerge,receipt_id_new ,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings, price_usd, landings_lbs,value_usd), by=c("receipt_id1" = "receipt_id_new"), na_matches = "never")%>%
+  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings, price_usd1=price_usd, landings_lbs1=landings_lbs, value_usd1=value_usd, receipt_id_landings1=receipt_id)
 
 #merge with no.ports2. 
 no.ports<-rbind(no.ports.1.match, no.ports.2)
 
 #remove second receipt id information and then can add based on 2nd receipt id
 no.ports<-no.ports%>%
-  dplyr::select(-port_complex2, -port2, -port_id2, -date_landings2,-primary_gear2,-gear2,-block_id_landings2)%>%
+  dplyr::select(-port_complex2, -port2, -port_id2, -date_landings2,-primary_gear2,-gear2,-block_id_landings2,-price_usd2,-landings_lbs2, -value_usd2, -receipt_id_landings2)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings2.tomerge,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings), by=c("receipt_id2" = "receipt_id"), na_matches = "never")%>%
-  rename(port_complex2=port.complex, port2=port,port_id2=port_id, date_landings2=date.landings,primary_gear2=primary_gear,gear2=gear, block_id_landings2=block_id_landings)
-
+  left_join(dplyr::select(landings2.tomerge,receipt_id_new ,receipt_id,port_id,port,primary_gear,gear,date.landings, port.complex, block_id_landings,price_usd, landings_lbs,value_usd), by=c("receipt_id2" = "receipt_id_new"), na_matches = "never")%>%
+  rename(port_complex2=port.complex, port2=port,port_id2=port_id, date_landings2=date.landings,primary_gear2=primary_gear,gear2=gear, block_id_landings2=block_id_landings,price_usd2=price_usd, landings_lbs2=landings_lbs, value_usd2=value_usd,receipt_id_landings2=receipt_id)
 
 #add with other dataframe
 halibut.logbook4<-rbind(no.ports,ports)
 #################
 
+
+
 #################
-#STEP 2
-#Second, if a vessel was recorded at only one port complex throughout the entire landings dataset, we assigned that port complex to the logbook data
+#STEP 3
+#third, if a vessel was recorded at only one port complex throughout the entire landings dataset, we assigned that port complex to the logbook data
 no.ports<-halibut.logbook4%>%
   filter(is.na(port_complex1)&is.na(port_complex2))
 
@@ -255,10 +258,10 @@ landings.tomerge<- landings2%>%
   distinct(vesselID_date, .keep_all = TRUE) #just need the port info
 
 no.dupes<-no.dupes%>%
-  dplyr::select(-port_id1,-port1,-primary_gear1,-gear1,-date_landings1, -port_complex1,-block_id_landings1)%>%
+  dplyr::select(-port_id1,-port1,-primary_gear1,-gear1,-date_landings1, -port_complex1,-block_id_landings1,-price_usd1,-landings_lbs1, -value_usd1, -receipt_id_landings1 )%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by="vesselID_date", na_matches = "never")%>%
-  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings)
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings,price_usd,landings_lbs,value_usd, receipt_id), by="vesselID_date", na_matches = "never")%>%
+  rename(port_complex1=port.complex, port1=port,port_id1=port_id, date_landings1=date.landings,primary_gear1=primary_gear,gear1=gear, block_id_landings1=block_id_landings,price_usd1=price_usd, landings_lbs1=landings_lbs, value_usd1=value_usd, receipt_id_landings1=receipt_id)
 
 halibut.logbook6<-rbind(ports, no.dupes,dupes)
 #################
@@ -442,6 +445,46 @@ gps2_block_df <- cbind(gps2_block, coords)%>%
 #combine back with the other dataframe
 halibut.logbook11<-rbind(no.gps,gps2_block_df)
 #################
+
+#################
+#which receipt id is best?
+#New column to show if port complexes agree or dont agree
+
+halibut.logbook12<- halibut.logbook11%>%
+  mutate(matching_landing_complexes = case_when(
+    is.na(port_complex1) | is.na(port_complex2) ~ NA,  # Set to NA if either is NA
+    port_complex1 == port_complex2 ~ TRUE, # Agree
+    TRUE ~ FALSE                                # Disagree
+    
+  )) %>%
+  left_join(dplyr::select(port_info, port_id, port.complex), by=c("port_code_depart" = "port_id"))%>%
+  rename(port_id_logbook=port_code_depart, port_complex_logbook=port.complex)%>%
+  mutate(matching_logbook_landing1 = case_when(
+    is.na(port_complex1) | is.na(port_complex_logbook) ~ NA,  # Set to NA if either is NA
+    port_complex1 == port_complex_logbook ~ TRUE, # Agree
+    TRUE ~ FALSE                                # Disagree
+    
+  )) %>%
+  mutate(matching_logbook_landing2 = case_when(
+    is.na(port_complex2) | is.na(port_complex_logbook) ~ NA,  # Set to NA if either is NA
+    port_complex2 == port_complex_logbook ~ TRUE, # Agree
+    TRUE ~ FALSE                                # Disagree
+    
+  ))
+
+# false logbook and landings 1 compared to all
+halibut.logbook12%>%
+  filter(matching_logbook_landing1 %in% c("FALSE", "TRUE")) %>%
+  summarise(percent_false = mean(matching_logbook_landing1 == "FALSE") * 100)
+#2.2% false
+# false logbook and landings 2 compared to all
+halibut.logbook12%>%
+  filter(matching_logbook_landing2 %in% c("FALSE", "TRUE")) %>%
+  summarise(percent_false = mean(matching_logbook_landing2 == "FALSE") * 100)
+#3.3%
+#receipt id 1 more accurate
+#################
+
 
 #################
 halibut.logbook12<-halibut.logbook11%>%

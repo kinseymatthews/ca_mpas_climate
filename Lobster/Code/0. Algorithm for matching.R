@@ -1,5 +1,5 @@
 
-library(dplyr)
+library(tidyverse)
 library(sf)
 library(tidyr)
 library(stringr)
@@ -375,6 +375,7 @@ d<-lobster.receipt9%>%
 #################
 
 #################
+#Assign a port complex if a vessel visited the same port complex 90% or more of the time across all landings
 vessels<-lobster.receipt9$vessel_id
 
 df<-landings2%>%
@@ -401,7 +402,7 @@ lobster.receipt10<-no.ports%>%
   mutate(matches.8 = (port.complex.perfect == port.complex.test.8))
 
 
-d<-lobster.receipt10%>%
+e<-lobster.receipt10%>%
   filter(matches.8=="FALSE") 
 
 
@@ -474,8 +475,8 @@ p<-ggplot(results_df, aes(x = day, y = percent_matched)) +
   geom_line() +
   geom_point() +
   labs(
-    x = "Number of Days in Buffer",
-    y = "Percent Matched"
+    x = "Number of days in buffer",
+    y = "Percent matched"
   ) + # base theme
 theme(axis.text=element_text(size=8),
                       axis.text.y = element_text(angle = 90, hjust = 0.5),
