@@ -30,6 +30,7 @@ squid<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca
 fisheries<-rbind(cpfv,cuc_trawl,cuc_dive,urchin, drift, set, hal_trawl, lobster, pink_shrimp,spot_prawn, ridge_prawn,squid)%>%
   dplyr::select(-X, -cog_longitude)
 
+saveRDS(fisheries,"G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/allfisheries_all distance shore.rds")
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
                     # axis.text.y = element_text(angle = 90, hjust = 0.5),
