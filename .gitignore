@@ -26,3 +26,9 @@ Dive/Data
 Dive/Figures
 
 All Fisheries Data
+
+ShinyApp/California_fisheries/data
+Shinydashboard/California_fisheries/data
+Shinydashboard/scratchdata
+
+Shinydashboard/scratch data/allfisheries_KD_allrasters.rds
