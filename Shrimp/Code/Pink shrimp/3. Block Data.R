@@ -72,7 +72,6 @@ port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Mo
 values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
-#lots of incorrect blocks within the logbook data, filter out potential bad blocks before merging the various block id columns and removing block IDs north of monterey bay where fishing shouldnt occur
 
 explor<- shrimp%>%
   mutate(agree = case_when(
@@ -104,6 +103,16 @@ explor<- shrimp%>%
 ggplot()+
   geom_density(data= explor, aes(x=duration_min))+
   base_theme
+
+#at least three vessels contributing to time series - include all EXCEPT MONTEREY due to every 
+#year having one vessel
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
+explor<- explor%>%
+  #remove Monterey
+  filter(port.complex!="Monterey" )
 
 saveRDS(explor, paste0(shrimp_data, "Data/Processed Data/pinktrawl_filtered.rds"))
 ############ 
@@ -166,7 +175,6 @@ plot_fun<-function(portcomplex){
   
 }
 plot_fun('Eureka')
-plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 ############ 
@@ -237,7 +245,6 @@ plot_fun<-function(portcomplex){
   anim_save(name, anim)
 }
 plot_fun('Eureka')
-plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 
@@ -289,6 +296,5 @@ plot_fun<-function(portcomplex){
 
 plot_fun('Morro Bay')
 plot_fun('Eureka')
-plot_fun('Monterey')
 plot_fun('Santa Barbara')
 ############

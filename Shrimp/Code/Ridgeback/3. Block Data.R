@@ -72,7 +72,8 @@ port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Mo
 values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
-#lots of incorrect blocks within the logbook data, filter out potential bad blocks before merging the various block id columns and removing block IDs north of monterey bay where fishing shouldnt occur
+##remove blocks north of monterey bay
+block.to.remove<-c(433,441,442)
 
 explor<- shrimp%>%
   mutate(agree = case_when(
@@ -87,6 +88,7 @@ explor<- shrimp%>%
   left_join(all_blocks_df, by="block_id")%>%
   filter(!is.na(block_id))%>%
   filter(!is.na(block_lat_dd))%>%
+  filter(!block_id %in% block.to.remove)  %>%
   #getting rid of international, offshore,  all midshore besides 897, and all blocks that are too deep
   filter(blck_st!="International" | is.na(blck_st) )%>%
   filter(blck_ty!="Offshore" | is.na(blck_st))%>%
@@ -103,6 +105,12 @@ explor<- shrimp%>%
 ggplot()+
   geom_density(data= explor, aes(x=duration_min))+
   base_theme
+
+#at least three vessels contributing to time series - include all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
 
 saveRDS(explor, paste0(shrimp_data, "Data/Processed Data/ridegback_filtered.rds"))
 ############ 
@@ -160,7 +168,8 @@ plot_fun<-function(portcomplex){
     theme_bw() + base_theme+
     ggtitle(paste0(portcomplex, ' Fishing Grounds'),subtitle="Commercial Ridgeback Prawn Trawl Fishery" )
   
-  name=paste0(shrimp_data,'Figures/Ridgeback/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
+ 
+ name=paste0(shrimp_data,'Figures/Ridgeback/Block Data/',portcomplex,'/',portcomplex,' Blocks_All Years.jpg')
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }

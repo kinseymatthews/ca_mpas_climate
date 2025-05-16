@@ -17,9 +17,9 @@ halibut%>%
 
 
 hal_1<-halibut%>%
-  select(year, port.complex,receipt_landings1, landings_lbs1, value_usd1) 
+  dplyr::select(year, port.complex,receipt_landings1, landings_lbs1, value_usd1) 
 hal_2 <-halibut %>%
-  select(year, port.complex, receipt_landings2,landings_lbs2, value_usd2) 
+  dplyr::select(year, port.complex, receipt_landings2,landings_lbs2, value_usd2) 
 
 hal.price.port.year.1<-hal_1%>%
   distinct(receipt_landings1, .keep_all = TRUE)%>%

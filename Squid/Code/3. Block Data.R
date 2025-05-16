@@ -88,6 +88,11 @@ ggplot()+
   geom_density(data= explor, aes(x=duration_min))+
   base_theme
 
+#at least three vessels contributing to time series - include all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
 saveRDS(explor, paste0(squid_data, "Data/Processed Data/squid_filtered.rds"))
 ############ 
 
