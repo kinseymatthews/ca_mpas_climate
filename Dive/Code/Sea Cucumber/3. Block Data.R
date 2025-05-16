@@ -103,6 +103,12 @@ explor<-cuc%>%
   filter(!is.na(block_id))%>%
   filter(port.complex=="Santa Barbara" |port.complex=="Los Angeles" |port.complex=="San Diego")
 
+#at least three vessels contributing to time sereis - -nclude all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
+
 saveRDS(explor, paste0(cucumber_data,"Data/Processed Data/seacucumber_filtered.rds"))
 ############ 
 

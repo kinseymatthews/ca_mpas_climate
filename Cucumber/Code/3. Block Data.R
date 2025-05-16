@@ -90,6 +90,12 @@ ggplot()+
   geom_density(data= explor, aes(x=duration_min))+
   base_theme
 
+#at least three vessels contributing to time series - can keep all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
+
 saveRDS(explor, paste0(cucumber_data, "Data/Processed Data/cuctrawl_filtered.rds"))
 ############ 
 

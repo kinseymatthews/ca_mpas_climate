@@ -85,10 +85,15 @@ explor<- halibut%>%
   #remove port complexes we dont care about
   filter(port.complex!= "Sacramento Delta" & port.complex!= "San Diego" & port.complex!= "Unknown Major Port")
 
-#graph of#graph of#graph of duration 
+#graph of duration 
 ggplot()+
   geom_density(data= explor, aes(x=duration_hrs))+
   base_theme
+
+#at least three vessels contributing to time series - include all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
 
 saveRDS(explor, paste0(halibut_data, "Data/Processed Data/halibuttrawl_filtered.rds"))
 ############ 

@@ -98,6 +98,13 @@ filter(is.na(hrs_minutes_fished_flag))%>%
   filter(!is.na(port.complex))%>%
   filter(!is.na(block_id))
 
+#at least three vessels contributing to time series
+explor %>%
+  group_by(port.complex)%>%
+  summarize(ntrips=n_distinct(logbookID_vesselID_date),
+            nvessels=n_distinct(vessel_id))
+
+
 saveRDS(explor,paste0(CPFV_data,"Data/Processed Data/CPFV_filtered.rds"))
 
 ############

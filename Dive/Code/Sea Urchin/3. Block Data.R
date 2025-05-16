@@ -100,6 +100,12 @@ explor<-urc%>%
   filter(!is.na(port.complex)& port.complex=="Fort Bragg"|port.complex=="Santa Barbara"|port.complex=="Los Angeles"|port.complex=="San Diego")%>%
   filter(!is.na(block_id))
 
+#at least three vessels contributing to time series - include all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
+
 saveRDS(explor, paste0(urchin_data,"Data/Processed Data/seaurchin_filtered.rds"))
 ############ 
 

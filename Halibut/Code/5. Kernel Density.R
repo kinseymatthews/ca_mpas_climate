@@ -105,6 +105,7 @@ sf_df<- explor %>%
   #remove any bad spatial blocks
   filter(!st_is_empty(.))
 
+saveRDS(sf_df,("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/Data/Processed Data/halibut_summarizeddata_yearly.rds"))
 
 plot_fun<-function(portcomplex){ 
   
@@ -126,7 +127,7 @@ plot_fun<-function(portcomplex){
   
   # Compute kernel density estimation using raw and logcdata
   sigma<-bw.diggle(points_ppp)
-  density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, eps=0.05)
+  density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE)
   
   # Convert density to a raster (assuhrsg a reasonable raster resolution)
   density_raster <- as(raster(as.im(density)), "RasterLayer")
@@ -215,6 +216,9 @@ sf_df<- explor %>%
   st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = "+proj=longlat +datum=WGS84 +no_defs")%>%
   #remove any bad spatial blocks
   filter(!st_is_empty(.))
+
+saveRDS(sf_df,("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/Data/Processed Data/halibut_summarizeddata_sepyears.rds"))
+
 
 sf_df_projected <- st_transform(sf_df, crs = 3310)
 

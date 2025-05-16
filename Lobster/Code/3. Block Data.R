@@ -82,8 +82,6 @@ explor<- Lobster%>%
     TRUE ~ FALSE                                # Disagree
   ))%>%
   mutate(port.complex = coalesce(port.complex1, port.complex2))%>%
-  #filtering for only the port complexes that agree
-  filter(agree==TRUE | is.na(agree))%>%
   left_join(dplyr::select(mpa,port.complex,mpayear),by=("port.complex"))%>%
   rename(block_id_logbook=block_id)%>%
   mutate(block_id = coalesce(block_id_logbook,block_id_gps, block_id_landings1,block_id_landings2))%>% #prefers logbook block id to gps block id
@@ -102,6 +100,11 @@ explor<- Lobster%>%
   filter(n_nights>0)%>%
   distinct()%>%
   filter(port.complex=="Santa Barbara" |port.complex=="Los Angeles" | port.complex=="San Diego")
+
+#at least three vessels contributing to time series - include all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
 
 saveRDS(explor, paste0(lobster_data, "Data/Processed Data/lobster_filtered.rds"))
 

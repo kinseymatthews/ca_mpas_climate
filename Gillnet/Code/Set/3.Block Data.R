@@ -91,6 +91,11 @@ explor<- gillnet%>%
 filter(port.complex=="Bodega Bay" | port.complex=="San Francisco" | port.complex=="Monterey" | port.complex=="Morro Bay" | port.complex=="Santa Barbara"| port.complex=="Los Angeles"| port.complex=="San Diego")%>%
   filter(!(port.complex == "Bodega Bay" & year >= 1989)) 
 
+#at least three vessels contributing to time series - include all
+explor %>%
+  group_by(port.complex)%>%
+  summarize(nvessels=n_distinct(vessel_id, na.rm=TRUE))
+
 saveRDS(explor, paste0(gillnet_data, "Data/Processed Data/setgillnet_filtered.rds"))
 ############ 
 

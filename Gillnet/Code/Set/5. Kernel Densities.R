@@ -108,6 +108,9 @@ sf_df<- explor %>%
 
 sf_df_projected <- st_transform(sf_df, crs = 3310)
 
+saveRDS(sf_df,("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/set_summarizeddata_yearly.rds"))
+
+
 plot_fun<-function(portcomplex){ 
   
   #filtering for location
@@ -246,6 +249,12 @@ sf_df<- explor %>%
   st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = "+proj=longlat +datum=WGS84 +no_defs")%>%
   #remove any bad spatial blocks
   filter(!st_is_empty(.))
+
+
+saveRDS(sf_df,("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Gillnet/Data/Processed Data/set_summarizeddata_sepyears.rds"))
+
+
+
 sf_df_projected <- st_transform(sf_df, crs = 3310)
 
 plot_fun<-function(portcomplex){ 
