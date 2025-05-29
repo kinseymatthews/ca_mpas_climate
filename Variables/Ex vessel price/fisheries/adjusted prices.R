@@ -4,37 +4,68 @@ library(priceR) #https://cran.r-project.org/web/packages/priceR/priceR.pdf
 
 base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed"
 
-lobster    <- readRDS(file.path(base_path, "lobster_exvessel_port_notadjusted.rds"))
-cuc_trawl  <- readRDS(file.path(base_path, "cuc_landing_exvessel_port_notadjusted.rds"))
-cuc_dive   <- readRDS(file.path(base_path, "cucumberdive_exvessel_port_notadjusted.rds"))
-urchin     <- readRDS(file.path(base_path, "urchindive_exvessel_port_notadjusted.rds"))
-squid      <- readRDS(file.path(base_path, "squid_exvessel_port_notadjusted.rds"))
-halibut    <- readRDS(file.path(base_path, "halibut_exvessel_port_notadjusted.rds"))
-pink       <- readRDS(file.path(base_path, "pinkshrimp_exvessel_port_notadjusted.rds"))
-ridge      <- readRDS(file.path(base_path, "ridge_logbook_exvessel_port_notadjusted.rds"))
+lobster    <- readRDS(file.path(base_path, "lobster_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Lobster trap", year=as.character(year))
+cuc_trawl  <- readRDS(file.path(base_path, "cuc_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Cucumber trawl", year=as.character(year))
+cuc_dive   <- readRDS(file.path(base_path, "cuc_dive_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Cucumber dive", year=as.character(year))
+urchin     <- readRDS(file.path(base_path, "urch_dive_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Urchin dive", year=as.character(year))
+squid      <- readRDS(file.path(base_path, "squid_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Squid seine", year=as.character(year))
+halibut    <- readRDS(file.path(base_path, "halibut_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Halibut trawl", year=as.character(year))
+pink       <- readRDS(file.path(base_path, "pinkshrimp__landings_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Pink shrimp trawl", year=as.character(year))
+ridge      <- readRDS(file.path(base_path, "ridge_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Ridgeback prawn trawl", year=as.character(year))
+set      <- readRDS(file.path(base_path, "setgillnet_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="Set gillnet", year=as.character(year))
+
+all_fisheries<-bind_rows(lobster, cuc_trawl, cuc_dive, urchin, squid,
+                         halibut, pink, ridge, set)
+
 
 # Assign these variables once
 country <- "United States"
 inflation_dataframe <- retrieve_inflation_data(country)
 countries_dataframe <- show_countries()
 
-
 #write function to go through process
-adjust_function<-function(fishery){
-  fishery$cost_per_pound_adjusted<-adjust_for_inflation(fishery$price_lbs,
-                                                        fishery$year, 
+unique_fisheries<-unique(all_fisheries$fishery)
+#create mepty dataframe
+adjusted_fisheries <- list()
+
+#for loop to go through each fishery and save the adjusted prices as individual .rds files
+for (fish in unique_fisheries) {
+  fish_df<-all_fisheries%>%
+    filter(fishery==fish)
+  
+  fish_df$cost_per_pound_adjusted<-adjust_for_inflation( fish_df$price_lbs,
+                                                         fish_df$year, 
                                                         country="United States", 
                                                         to_date =  2022,
                                                         inflation_dataframe = inflation_dataframe,
                                                         countries_dataframe = countries_dataframe )
-  return(fishery)
+  
+  
+  # Save the adjusted data
+  saveRDS(
+    fish_df,
+    file.path(
+      "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed",
+      paste0(gsub(" ", "_", tolower(fish)), "_exvessel_port_adjusted_prices.rds")
+    )
+  )
+  
+  
+  # add to the list
+  adjusted_fisheries[[fish]] <- fish_df
 }
 
-lobster   <- adjust_function(lobster)
-cuc_trawl <- adjust_function(cuc_trawl)
-cuc_dive  <- adjust_function(cuc_dive)
-urchin    <- adjust_function(urchin)
-squid     <- adjust_function(squid)
-halibut   <- adjust_function(halibut)
-pink      <- adjust_function(pink)
-ridge     <- adjust_function(ridge)
+# Combine list of adjusted fisheries into one dataframe
+all_adjusted_fisheries <- bind_rows(adjusted_fisheries)
+
+#and save into one dataframr
+saveRDS(all_adjusted_fisheries, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/allfisheries_exvessel_port_adjusted.rds")

@@ -108,7 +108,7 @@ landings.tomerge<- landings2%>%
 no.dupes<-no.dupes%>%
   dplyr::select( -port_complex_landings)%>%
   #attach information from receipts
-  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings), by="vesselID_date", na_matches = "never")%>%
+  left_join(dplyr::select(landings.tomerge,vesselID_date,port_id,port,primary_gear,gear,date.landings,port.complex, block_id_landings, price_usd,landings_lbs,value_usd, receipt_id), by="vesselID_date", na_matches = "never")%>%
   rename( port_complex_landings=port.complex)
 
 gillnet.logbook4<-bind_rows(no.dupes, ports,dupes)

@@ -12,15 +12,11 @@ port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 #edited shrimp data from the block script
 shrimp<-readRDS(paste0(shrimp_data,"Data/Processed Data/pinktrawl_filtered.rds"))%>%
-  mutate(receipt_landings1=  paste(receipt_id, landings_lbs, sep = "_"))
+  mutate(receipt_landings1=  paste(receipt_id, landings_lbs, sep = "_")) #receipt id is from the matched landings data
 
-#when looking at the the below dataframe and filter the shrimp for a specific receipt_id_landings, the
-#receipt_id_landings (receipt id from the landings data) is more accurate than the receipt_id in the logbook data
+
 shrimp%>%
-  group_by(receipt_id_landings) %>%
-  summarize(diferent= n_distinct(receipt_id) > 1)%>%
-  filter(diferent == "TRUE")
-
+  filter(value_usd>0)
 #not enough data so instead going to use the landings data and filter for shrimp and 
 ##landings data
 landings<-readRDS(paste0(general_data,"1980_2022_landings_receipts.rds"))
@@ -49,10 +45,12 @@ landings_pink%>%
   filter(diferent == "TRUE")
 
 pink.price.port.year<-landings_pink%>%
+  filter(value_usd>0)%>%
   distinct(receipt_landings1, .keep_all = TRUE)%>%
   group_by(port.complex,year)%>%
   summarize(all_landings=sum(landings_lbs), all_value=sum(value_usd))%>%
-  mutate(price_lbs=(all_value/all_landings))
+  mutate(price_lbs=(all_value/all_landings))%>%
+  filter(port.complex %in% c("Eureka",  "Morro Bay","Santa Barbara"))
 
 
-saveRDS(pink.price.port.year, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/pinkshrimp_exvessel_port_notadjusted.rds")
+saveRDS(pink.price.port.year, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/pinkshrimp__landings_exvessel_port_notadjusted.rds")

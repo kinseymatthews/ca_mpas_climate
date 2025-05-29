@@ -119,7 +119,6 @@ a <- plot_fun("CPFV")
 b<-plot_fun("Cucumber trawl")
 c<-plot_fun("Cucumber dive")
 d<-plot_fun("Urchin dive")
-e<-plot_fun("Drift gillnet")
 f<-plot_fun("Set gillnet")
 g<-plot_fun("Halibut trawl")
 h<-plot_fun("Lobster trap")
@@ -127,9 +126,9 @@ i<-plot_fun("Pink shrimp trawl")
 k<-plot_fun("Ridgeback prawn trawl")
 l<-plot_fun("Squid seine")
 
-results <- dplyr::bind_rows(a, b, c, d, e, f, g, h, i,  k, l)
+results <- dplyr::bind_rows(a, b, c, d, f, g, h, i,  k, l)
 results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego', 'All')))
-results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
+results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine',  'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 
 

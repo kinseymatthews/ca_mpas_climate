@@ -854,7 +854,7 @@ plot_fun<-function(portcomplex){
   colors <- brewer.pal(n = 11, name = "RdYlBu") 
   
   location<-COG_vcontours%>%
-    filter(port.complex==portcomplex)
+    filter(port.complex=="Fort Bragg")
   
   p<-ggplot(data=location, aes(x=year))+
     geom_line(aes(y=COG_latitude, color = "COG"),size=.5)+
