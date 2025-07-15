@@ -65,8 +65,12 @@ ggplot(a, aes(x=YEAR, y=pricegal))+
 
 
 fuel_ports_sum<-fuel_ports%>%
-  group_by(port.complex,YEAR)%>%
+  mutate(month_year=paste(MONTH,YEAR, sep="_"))%>%
+  group_by(port.complex,month_year)%>%
   summarize(price.gal.avg=mean(pricegal))
+
+
+fuel_ports_sum$year <- stringr::str_extract(fuel_ports_sum$month_year, "\\d{4}")
 
 #adjusting price
 # Assign these variables once
@@ -75,11 +79,11 @@ inflation_dataframe <- retrieve_inflation_data(country)
 countries_dataframe <- show_countries()
 
 fuel_ports_sum$cost_per_gal_adjusted<-adjust_for_inflation(fuel_ports_sum$price.gal.avg,
-                                                           fuel_ports_sum$YEAR, 
+                                                           fuel_ports_sum$year, 
                                                        country="United States", 
                                                        to_date =  2022,
                                                        inflation_dataframe = inflation_dataframe,
                                                        countries_dataframe = countries_dataframe )
 
 #and save into one dataframr
-saveRDS(fuel_ports_sum, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Fuel price/data/processed/allportcomplexes_dieselprice_adjusted.rds")
+saveRDS(fuel_ports_sum, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Fuel price/data/processed/allportcomplexes_dieselprice_monthly_adjusted.rds")

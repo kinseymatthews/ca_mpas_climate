@@ -9,7 +9,7 @@ profits<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/c
 filepath<-('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/')
 area_cv<-readRDS(paste0(filepath, 'area_cv.rds'))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(-c(lower.CI.2,upper.CI.2))%>%
+  dplyr::select(-c(lower.CI.2,upper.CI.2))%>%
   rename(CV.area=CV, lower.CI.area=lower.CI,upper.CI.area=upper.CI)
 base_theme <- theme(axis.text=element_text(size=7),
                     axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -52,8 +52,8 @@ plot_fun <- function(fishery2) {
     # Subset data for the current port complex
     complex_data <- fish[fish$port.complex == port.complex, ]
     
-    sigma=sd(complex_data$price_lbs)
-    mu=mean(complex_data$price_lbs)  
+    sigma=sd(complex_data$all_value_adjusted)
+    mu=mean(complex_data$all_value_adjusted)  
     cv=sigma/abs(mu)
     n=nrow(complex_data) #n
     se_cv <- sqrt(1 / (2 * n))  # Standard error of CV
@@ -96,11 +96,15 @@ profit_cv <- dplyr::bind_rows( b, c, d,  f, g, h, i,  k, l)%>%
 
 #merge
 area_profit_cv<-area_cv%>%
-  left_join(profit_cv, by=c("fishery2", "port_complex"))
+  left_join(profit_cv, by=c("fishery2", "port_complex"))%>%
+  filter(fishery2!="CPFV")%>%
+  filter(!(fishery2=="Cucumber trawl" & port_complex=="Eureka"))
+
 area_profit_cv$port_complex<- factor(area_profit_cv$port_complex, levels = rev(c('Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego')))
 
-plot<-ggplot(area_profit_cv, aes(x=CV.area, y=CV.profits, color=port_complex, shape=fishery2))+
-  geom_point(size=2.5)+ 
+ggplot(area_profit_cv, aes(x=CV.area, y=CV.profits, ))+
+  geom_point(size=2.5, aes(color=port_complex, shape=fishery2))+ 
+  geom_smooth(method="lm")+
   scale_shape_manual(values = c(0:5, 6:10)) + # Add more as needed
     scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
                        guide = guide_legend(reverse = TRUE) )+
@@ -109,3 +113,14 @@ plot<-ggplot(area_profit_cv, aes(x=CV.area, y=CV.profits, color=port_complex, sh
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/Revenue_vs_Profits.jpg')
 ggsave(filename = filename1, plot =  plot , width = 10, height = 8, units = "in", dpi = 300)
+
+
+ggplot(area_profit_cv, aes(x=CV.area, y=CV.profits ))+
+  facet_wrap(~fishery2)+
+  geom_point(size=2.5, aes(color=port_complex))+ 
+ # geom_smooth(method="lm")+
+  scale_shape_manual(values = c(0:5, 6:10)) + # Add more as needed
+  scale_color_brewer(name = "Port Complex",palette = 'RdYlBu', direction=1,
+                     guide = guide_legend(reverse = TRUE) )+
+  labs(y="Revenue", x="Behavior")+
+  base_theme

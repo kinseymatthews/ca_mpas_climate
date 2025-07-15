@@ -2,8 +2,9 @@ library(tidyverse)
 library(priceR) #https://cran.r-project.org/web/packages/priceR/priceR.pdf
 
 
-base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed"
-
+base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/"
+cpfv     <- readRDS(file.path(base_path, "cpfv_landing_exvessel_port_notadjusted.rds"))%>%
+  mutate(fishery="CPFV", year=as.character(year))
 lobster    <- readRDS(file.path(base_path, "lobster_landing_exvessel_port_notadjusted.rds"))%>%
   mutate(fishery="Lobster trap", year=as.character(year))
 cuc_trawl  <- readRDS(file.path(base_path, "cuc_landing_exvessel_port_notadjusted.rds"))%>%
@@ -23,7 +24,7 @@ ridge      <- readRDS(file.path(base_path, "ridge_landing_exvessel_port_notadjus
 set      <- readRDS(file.path(base_path, "setgillnet_exvessel_port_notadjusted.rds"))%>%
   mutate(fishery="Set gillnet", year=as.character(year))
 
-all_fisheries<-bind_rows(lobster, cuc_trawl, cuc_dive, urchin, squid,
+all_fisheries<-bind_rows(cpfv,lobster, cuc_trawl, cuc_dive, urchin, squid,
                          halibut, pink, ridge, set)
 
 
@@ -49,6 +50,12 @@ for (fish in unique_fisheries) {
                                                         inflation_dataframe = inflation_dataframe,
                                                         countries_dataframe = countries_dataframe )
   
+  fish_df$all_value_adjusted<-adjust_for_inflation( fish_df$all_value,
+                                                         fish_df$year, 
+                                                         country="United States", 
+                                                         to_date =  2022,
+                                                         inflation_dataframe = inflation_dataframe,
+                                                         countries_dataframe = countries_dataframe )
   
   # Save the adjusted data
   saveRDS(

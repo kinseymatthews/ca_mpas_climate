@@ -11,18 +11,19 @@ port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 #edited cucumber data from the block script
 cucumber<-readRDS(paste0(cucumber_data,"Data/Processed Data/cuctrawl_filtered.rds"))%>%
-  mutate(receipt_landings=  paste(receipt_id, landings_lbs, sep = "_"))
+  mutate(receipt_landings=  paste(receipt_id, landings_lbs, sep = "_"),
+         month_year=paste(month,year, sep="_"))
 #20,000 of 86,000 entries had a receipt id - i think it's enough?
 
 
-cuc.price.port.year.logbook<-cucumber%>%
+cuc.price.port.year.month.logbook<-cucumber%>%
   filter(value_usd>0)%>%
   distinct(receipt_landings, .keep_all = TRUE)%>%
-  group_by(port.complex,year)%>%
+  group_by(port.complex,month_year)%>%
   summarize(all_landings=sum(landings_lbs), all_value=sum(value_usd))%>%
   mutate(price_lbs=(all_value/all_landings))
 
-saveRDS(cuc.price.port.year.logbook, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/cuc_logbook_exvessel_port_notadjusted.rds")
+saveRDS(cuc.price.port.year.month.logbook, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/cuc_logbook_exvessel_port_month_year_notadjusted.rds")
 
 ##################
 
@@ -56,15 +57,19 @@ landings_cuc<- map2_dfr( # loops through each species and its associated gear ty
   left_join(port, by='port')%>%
   mutate(receipt_landings=  paste(receipt_id, landings_lbs, sep = "_"))
 
+landings_cuc$month<- month(landings_cuc$date)
 
-cuc.price.port.year.landings<-landings_cuc%>%
+landings_cuc<-landings_cuc%>%
+  mutate(month_year=paste(month,year, sep="_"))
+
+cuc.price.port.year.month.landings<-landings_cuc%>%
   filter(value_usd>0)%>%
   distinct(receipt_landings, .keep_all = TRUE)%>%
-  group_by(port.complex,year)%>%
+  group_by(port.complex,month_year)%>%
   summarize(all_landings=sum(landings_lbs), all_value=sum(value_usd))%>%
   mutate(price_lbs=(all_value/all_landings))%>%
   filter(port.complex %in% c("Eureka","Los Angeles", "Monterey", "Morro Bay","Santa Barbara"))
 
 
-saveRDS(cuc.price.port.year.landings, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/cuc_landing_exvessel_port_notadjusted.rds")
+saveRDS(cuc.price.port.year.month.landings, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/cuc_landing_exvessel_port_month_year_notadjusted.rds")
 ##################

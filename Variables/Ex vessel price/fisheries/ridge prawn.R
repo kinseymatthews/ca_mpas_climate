@@ -12,19 +12,20 @@ port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
 #edited shrimp data from the block script
 shrimp<-readRDS(paste0(shrimp_data,"Data/Processed Data/ridegback_filtered.rds"))%>%
-  mutate(receipt_landings=  paste(receipt_id, landings_lbs, sep = "_"))
+  mutate(receipt_landings=  paste(receipt_id, landings_lbs, sep = "_"),
+         month_year=paste(month,year, sep="_"))
 
 #maybe enough data? going to compare both methods of using logbook data and landings data
 
-ridge.price.port.year.logbook<-shrimp%>%
+ridge.price.port.year.month.logbook<-shrimp%>%
   filter(value_usd>0)%>%
   distinct(receipt_landings, .keep_all = TRUE)%>%
-  group_by(port.complex,year)%>%
+  group_by(port.complex, month_year)%>%
   summarize(all_landings=sum(landings_lbs), all_value=sum(value_usd))%>%
   mutate(price_lbs=(all_value/all_landings))%>%
   filter(port.complex== "Santa Barbara" | port.complex== "Los Angeles")
 
-saveRDS(ridge.price.port.year.logbook, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/ridge_logbook_exvessel_port_notadjusted.rds")
+saveRDS(ridge.price.port.year.month.logbook, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/ridge_logbook_exvessel_port_year_month_notadjusted.rds")
 
 ##################
 ##landings data
@@ -48,14 +49,20 @@ landings_ridge<- map2_dfr( # loops through each species and its associated gear 
   mutate(receipt_landings=  paste(receipt_id, landings_lbs, sep = "_"))
 
 
-ridge.price.port.year.landings<-landings_ridge%>%
+landings_ridge$month<- month(landings_ridge$date)
+
+landings_ridge<-landings_ridge%>%
+  mutate(month_year=paste(month,year, sep="_"))
+
+
+ridge.price.port.year.month.landings<-landings_ridge%>%
   filter(value_usd>0)%>%
   distinct(receipt_landings, .keep_all = TRUE)%>%
-  group_by(port.complex,year)%>%
+  group_by(port.complex,month_year)%>%
   summarize(all_landings=sum(landings_lbs), all_value=sum(value_usd))%>%
   mutate(price_lbs=(all_value/all_landings))%>%
   filter(port.complex== "Santa Barbara" | port.complex== "Los Angeles")
 
-saveRDS(ridge.price.port.year.landings, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/ridge_landing_exvessel_port_notadjusted.rds")
+saveRDS(ridge.price.port.year.month.landings, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/ridge_landing_exvessel_port_year_month_notadjusted.rds")
 
 ##################
