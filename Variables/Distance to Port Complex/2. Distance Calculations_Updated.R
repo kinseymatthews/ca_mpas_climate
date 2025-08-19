@@ -50,6 +50,7 @@ distances_portcomplex<-allports_blocks%>%
   #add port complex through left join
 left_join(dplyr::select(all_ports,port, port_complex),by=("port"))%>%
   group_by(port_complex, block_id)%>%
-  summarize(average.distance=mean(distance_m))
+  summarize(average.distance.m=mean(distance_m))%>%
+  mutate(average.distance.km=average.distance.m/1000)
 saveRDS(distances_portcomplex, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Distance to Port Complex/Data/Processed/port_block_distances_complete.rds")
 ############

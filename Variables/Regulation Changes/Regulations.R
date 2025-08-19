@@ -33,14 +33,14 @@ hist_mpas_sf <- st_read(paste0(reg_data,"MPAs/processed data/historical mpas/his
 #current mpas
 mpas_sf <- st_read(paste0(reg_data,"MPAs/processed data/current mpas/MPAs.shp"))
 DECA_sf <- st_read(paste0(reg_data,"DECA/processed/shapefile/DECA.shp"))
-CCA_sf <- st_read(paste0(reg_data,"CCA_YRCA/CCA/processed/shapefile/CCA.shp"))%>%
-  rename(name=Name)
 EFHCA_sf <- st_read(paste0(reg_data,"EFHCA/processed/shapefile/EFHCA.shp"))%>%
   rename(name=AREA_NAME)
 urchin_sf <- st_read(paste0(reg_data,"urchin closure/processed/shapefile/south capsar point.shp"))
 trawl_sf <- st_read(paste0(reg_data,"trawl/processed/shapefile/trawl_closed_areas.shp"))
 gillnet_sf <- st_read(paste0(reg_data,"gillnet/processed/shapefile/gillnet_closures.shp"))
-#RCA
+rca_sf <- st_read(paste0(reg_data,"RCA lines/processed/shapefile/RCA_Lines_All_nongroundfish_trawl.shp"))%>%
+  rename(name=RCA)
+
 ############
 
 
@@ -51,14 +51,13 @@ mpas_hist <- read.csv(paste0(reg_data,"MPAs/processed data/old_mpa_regulations.c
 #current mpas
 mpas_cur <- read.csv(paste0(reg_data,"MPAs/processed data/current_mpa_regulations.csv"))
 DECA <- read.csv(paste0(reg_data,"DECA/processed/DECA regulations.csv"))
-CCA<- read.csv(paste0(reg_data,"CCA_YRCA/CCA/processed/CCA regulations.csv"))%>%
-      rename(name=Name)
 EFHCA <-  read.csv(paste0(reg_data,"EFHCA/processed/EFHCA regulations.csv"))%>%
           rename(name=Name)
 urchin <- read.csv(paste0(reg_data,"urchin closure/processed/urchin_regulations.csv"))
 trawl <- read.csv(paste0(reg_data,"trawl/processed/trawl_regulations.csv"))
 gillnet<- read.csv(paste0(reg_data,"gillnet/processed/gillnet_regulations.csv"))
-#RCA
+rca <- read.csv(paste0(reg_data,"RCA lines/processed/nongroundfish_trawlRCAs.csv"))
+
 ############
 
 
@@ -67,21 +66,25 @@ gillnet<- read.csv(paste0(reg_data,"gillnet/processed/gillnet_regulations.csv"))
 hist_mpas_sf_comb <- left_join(hist_mpas_sf, mpas_hist, by = "name")
 mpas_sf_comb <- left_join(mpas_sf, mpas_cur, by = "name")
 deca_sf_comb <- left_join(DECA_sf, DECA, by = "name")
-cca_sf_comb <- left_join(CCA_sf, CCA, by = "name")
 efhca_sf_comb <- left_join(EFHCA_sf, EFHCA, by = "name")
 urchin_sf_comb <- left_join(urchin_sf, urchin, by = "name")
 trawl_sf_comb <- left_join(trawl_sf, trawl, by = "name")
 gillnet_sf_comb <- left_join(gillnet_sf, gillnet, by = "name")
+rca_sf_comb <- left_join(rca_sf, rca, by = "name")
+
 
 # Ensure CRS matches for all shapefiles
 mpas_sf_comb  <- st_transform(mpas_sf_comb , st_crs(all_blocks))
 hist_mpas_sf_comb <- st_set_crs(hist_mpas_sf_comb, st_crs(all_blocks))  
 deca_sf_comb <- st_transform(deca_sf_comb, st_crs(all_blocks))  
-cca_sf_comb <- st_transform(cca_sf_comb, st_crs(all_blocks))  
 efhca_sf_comb <- st_transform(efhca_sf_comb, st_crs(all_blocks))  
 urchin_sf_comb <- st_transform(urchin_sf_comb, st_crs(all_blocks))  
-trawl_sf_comb <- st_transform(trawl_sf_comb, st_crs(all_blocks))  
-gillnet_sf_comb <- st_transform(gillnet_sf_comb, st_crs(all_blocks))  
+trawl_sf_comb <- st_transform(trawl_sf_comb, st_crs(all_blocks))
+
+gillnet_sf_comb <- st_zm(gillnet_sf_comb, drop = TRUE, what = "ZM")
+gillnet_sf_comb <- st_transform(gillnet_sf_comb, st_crs(all_blocks))
+
+rca_sf_comb <- st_transform(rca_sf_comb , st_crs(all_blocks))
 
 
 
@@ -102,10 +105,7 @@ deca_sf_comb <- deca_sf_comb%>%
   select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
          Squid.seine,geometry)
-cca_sf_comb <-cca_sf_comb  %>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
-         Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+
 efhca_sf_comb <- efhca_sf_comb%>%
   select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
@@ -125,11 +125,14 @@ gillnet_sf_comb <- gillnet_sf_comb%>%
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
          Squid.seine,geometry)
 
-
+rca_sf_comb <- rca_sf_comb%>%
+  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+         Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
+         Squid.seine,geometry)
 
 #combine all together in one regulation file
-regulations_sf<-rbind(mpas_sf_comb ,hist_mpas_sf_comb,deca_sf_comb,cca_sf_comb,efhca_sf_comb,urchin_sf_comb, 
-                      trawl_sf_comb,gillnet_sf_comb)
+regulations_sf<-rbind(mpas_sf_comb ,hist_mpas_sf_comb,deca_sf_comb,efhca_sf_comb,urchin_sf_comb, 
+                      trawl_sf_comb,gillnet_sf_comb,rca_sf_comb)
 regulations_sf <- regulations_sf %>%
   mutate(
     Date.implemented = as.Date(Date.implemented, format = "%m/%d/%Y"),
@@ -152,16 +155,16 @@ regulations_sf  <- regulations_sf  %>%
 ############
 #great a time grid
 dates <- seq(ymd("2000-01-01"), ymd("2023-12-01"), by = "1 month")
-time_grid <- tibble(month_year = format(dates, "%Y-%m"))
+time_grid <- tibble(month_year = format(dates, "%m-%Y"))
 ############
 
 ############
 calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_sf) {
   #Converts the string that is year-month into a full date using lubridate::ymd.
-  date <- ymd(paste0(date_string, "-01"))
+  date <- ymd(paste0(str_sub(date_string, 4, 7), "-", str_sub(date_string, 1, 2), "-01"))
   
-  # Subset active MPAs for that date and fishery = 0 (closed)
-  mpas_active <- regs_sf %>%
+  # Subset active regs for that date and fishery = 0 (closed)
+  regs_active <- regs_sf %>%
     #finding any closed areas that started before or on the given date
     filter(Date.implemented <= date, 
            #either has no end date or the end date is after the goal date
@@ -170,7 +173,7 @@ calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_s
            !!sym(fishery) == 0)
   
   # If there are no closures, return each block, a closed percent of 0
-  if (nrow(mpas_active) == 0) {
+  if (nrow(regs_active) == 0) {
     return(all_blocks %>% 
              mutate(month_year = date_string, 
                     fishery = (fishery), 
@@ -179,7 +182,7 @@ calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_s
   
   
   # Union only the closed areas (safe because they're all closed to the same fishery)
-  mpas_closed_union <- mpas_active %>%
+  regs_closed_union <- regs_active %>%
     st_union() %>%
     st_sf() %>%
     mutate(geometry = geometry)  # force geometry column
@@ -187,7 +190,7 @@ calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_s
   
   # Intersect blocks with closed MPAs, will compute the area of overlap between each block and the closed mpa
   #calculates area of intersection
-  block_intersections <- st_intersection(all_blocks,   mpas_closed_union ) %>%
+  block_intersections <- st_intersection(all_blocks,    regs_closed_union ) %>%
     mutate(intersect_area = st_area(.))
   
   # Calculates total area of each block
@@ -221,13 +224,16 @@ calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_s
   
   results <- expand.grid(date = time_grid$month_year, fishery = fisheries, stringsAsFactors = FALSE) %>%
     pmap_dfr(~ calculate_closure_for_month(..1, ..2, all_blocks , regulations_sf))
+   
+    
+    results <- results%>%
+    select(-geometry)
   
-  
-  results_with_geom <- left_join(all_blocks, results, by = "block_id")
-  
+    results_with_geom <- left_join(all_blocks, results, by = "block_id")
+
+ 
 saveRDS(results_with_geom, paste0(reg_data,"monthly_percent_closed_blocks.rds"))
         
-  a<-  results_with_geom%>%
-    filter(fishery=="Lobster.trap" & block_id=="684")
+
   
   
