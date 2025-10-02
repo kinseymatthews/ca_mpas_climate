@@ -47,6 +47,11 @@ all_fisheries <- imap_dfr(file_info, ~process_fishery(.x$file, .x$fishery, .x$ho
 all_fisheries<-all_fisheries%>%
   filter(!is.na(block_id))
 
+
+#specific fishery regulations
+# need to remove months where the lobster fishery doesnt operate (4 to 9)
+
+
 saveRDS(all_fisheries, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/summarized_fishery_data_ready4model.rds")
 
 

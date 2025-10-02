@@ -1,6 +1,8 @@
 library(tidyverse)
 library(sf)
 library(cowplot)
+library(RColorBrewer)
+library(patchwork)
 ##################
 # Shared base path
 base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate"
@@ -59,7 +61,7 @@ read_fishery_data <- function(base_path, fishery_folder, files, fishery_name) {
 
 # Read data for each fishery
 cpfv <- read_fishery_data(base_path, "CPFV", "all_portcomplex_contours_75_last5years.gpkg", "CPFV")%>%
-  mutate(comm_name="Mult-species")
+  mutate(comm_name="Mult-species_CPFV")
 
 cuc_trawl <- read_fishery_data(base_path, "Cucumber", "all_portcomplex_contours_75_last5years.gpkg", "Cucumber trawl")%>%
   mutate(comm_name="Giant red sea cucumber")
@@ -72,7 +74,7 @@ urchin <- read_fishery_data(base_path, "Dive", "urchin_all_portcomplex_contours_
 
 
 gillnet <- read_fishery_data(base_path, "Gillnet","set_all_portcomplex_contours_75_last5years.gpkg", "Set gillnet")%>%
-  mutate(comm_name="Mult-species")
+  mutate(comm_name="Mult-species_gillnet")
 
 halibut <- read_fishery_data(base_path, "Halibut","all_portcomplex_contours_75_last5years.gpkg", "Halibut trawl")%>%
   mutate(comm_name="California halibut")
@@ -116,7 +118,7 @@ species_gear <- list(
 )
 
 # Combine filtered data for each species-gear combo
-df<- map2_dfr( # loops through each species and its associated gear types to filter rows accordingly.
+df_species<- map2_dfr( # loops through each species and its associated gear types to filter rows accordingly.
   names(species_gear),
   species_gear,
   ~ landings %>%
@@ -127,6 +129,14 @@ df<- map2_dfr( # loops through each species and its associated gear types to fil
     comm_name == "Unspecified sea cucumber" ~ "Giant red sea cucumber",
     TRUE ~ comm_name
   ))
+
+#now for set gillnet
+df_gillnet <- landings %>%
+  filter(gear == "Set gill net") %>%
+  mutate(comm_name = "Mult-species_gillnet") %>%  # tag them so they don't overwrite existing names
+  mutate(gear=recode(gear, "Set gill net"="Set gillnet"))
+# 🔹 Bind together
+df <- bind_rows(df_species, df_gillnet)
 
 # Summarize the filtered data
 landings_weights <- df %>%
@@ -200,7 +210,7 @@ plot_fun<-function(fish){
           axis.text.y = element_text(size = 8))  # Adjust y-axis text size)
   
   
-  p
+  return(p)
   
   #filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/',fish,'Allports_LastVC.jpg')
   #ggsave(filename = filename1, plot = p, width = 15, height = 8, units = "in", dpi = 300)

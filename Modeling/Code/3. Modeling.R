@@ -4,11 +4,14 @@ library(sdmTMB)
 library(sf)
 library(sdmTMBextra)
 library(ggeffects)
-
+library(ggcorrplot)
+library(INLA)
+library(rnaturalearth)
  ############
 #upload fisheries information
 fisheries<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/summarized_fishery_data_ready4model.rds")%>%
-  filter(year>1999)
+  filter(year>1999)%>%
+  mutate(date = my(month_year, tz = "UTC"))
 #upload management regulations
 regulations<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Regulation/monthly_percent_closed_blocks.rds")
 regulations$month_year <- gsub("-", "_", regulations$month_year)
@@ -38,20 +41,20 @@ general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 #upload block information
 all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
-
 all_blocks<- st_transform(all_blocks, crs = st_crs(3310))
-
 # Calculate centroids
 centroids <- st_centroid(all_blocks)
-
 # Extract lon/lat coordinates
 coords <- st_coordinates(centroids)
-
-
 # Add to the polygon data as new columns
 all_blocks$block_long_dd <- coords[,1]/ 1000
 all_blocks$block_lat_dd <- coords[,2]/ 1000
 
+all_blocks_sf<-all_blocks%>%
+  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
+  rename(block_id=block_d)%>%
+  filter(blck_ty!="Offshore" & blck_st!="Oregon"& blck_st!="Washington")%>%
+  dplyr::select(-c(blck_st, blck_ty, blck_sq, block_lat_dd, block_long_dd))
 
 all_blocks<-all_blocks%>%
   dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
@@ -60,6 +63,24 @@ all_blocks<-all_blocks%>%
   dplyr::select(-c(blck_st, blck_ty, blck_sq, geometry))%>%
   st_drop_geometry()
 
+#shore data for mesh
+# US West Coast states
+west_coast_us <- ne_states(
+  country = "United States of America", 
+  returnclass = "sf"
+) %>%
+  filter(iso_3166_2 %in% c("US-CA", "US-OR", "US-WA", "US-NV"))
+
+# Mexican Baja states
+baja <- ne_states(
+  country = "Mexico", 
+  returnclass = "sf"
+) %>%
+  filter(iso_3166_2 %in% c("MX-BCN", "MX-BCS"))
+
+# Combine and transform
+west_coast <- bind_rows(west_coast_us, baja) %>%
+  st_transform(crs = 3310)
 ############
 
 ############
@@ -102,8 +123,9 @@ fisheries_augmented <- bind_rows(fisheries, zero_grid)
 
 ############
 #create full dataframe by adding explanatory variables 
-fisheries_variables<-fisheries_augmented %>%
-  left_join(fuel, by=c('port.complex','month_year'))%>%
+fisheries_variables<-fisheries %>%
+  mutate(date = my(month_year, tz = "UTC"))%>%
+  left_join(fuel, by=c('port.complex','month_year','date'))%>%
   left_join(exvessel, by=c('port.complex','month_year','fishery','year'))%>%
   left_join(dist_shore, by=c('block_id'))%>%
   left_join(dist_complex, by=c('port.complex','block_id'))%>%
@@ -115,101 +137,468 @@ fisheries_variables<-fisheries_augmented %>%
   filter(!is.na(block_long_dd), !is.na(block_lat_dd))%>%
 #remove 100% closed blocks with 0 fishing hours -> removing dummy blocks that we created where fishing can't occur.
   #also got rid of ~2 entries where there was logbook data - assuming they wrote the block number down incorrectly
-filter(closed_pct!=1)
+filter(closed_pct!=1)%>%
 #remove those of not CPFV with the exvessel price of NA - only had landings data to mid 2023
-fisheries_variables2<-fisheries_variables%>%
   filter(fishery == "CPFV" | !is.na(cost_per_pound_adjusted))%>%
-  #remove block_id one which is inshore
-  filter(block_id!="101")
+  #remove block_id 101 which is inshore
+  filter(block_id!="101") %>% 
+  mutate(year = as.integer(year),
+         metier=paste(port.complex, fishery, sep = "_"))
 
-############
 
-
-############
+#make coordinates numeric
 fisheries_variables$block_long_dd <- as.numeric(fisheries_variables$block_long_dd)
 fisheries_variables$block_lat_dd  <- as.numeric(fisheries_variables$block_lat_dd)
+#adds month for 0 variables
+fisheries_variables$month <- format(fisheries_variables$date, "%m")
 
-#create mesh
-#mesh <- make_mesh(fisheries_variables, c("block_long_dd", "block_lat_dd"), cutoff = 10)
-#plot(mesh)
+############
 
-test<-fisheries_variables2%>%
-  filter(fishery=="Lobster trap" & port.complex=="Santa Barbara")%>%
-  mutate(closed_pct=closed_pct*100)%>%
-  mutate(date = my(month_year, tz = "UTC"))
-
-mesh <- make_mesh(test, c("block_long_dd", "block_lat_dd"), cutoff = 10)
-plot(mesh)
-
+############
+#scale variables
 num_vars <- c("cost_per_gal_adjusted", "cost_per_pound_adjusted", 
               "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct")
 
-test <- test %>%
+fisheries_variables <- fisheries_variables%>%
   mutate(across(all_of(num_vars), ~ as.numeric(scale(.)), .names = "{.col}_scaled"))
 
-# Check means and sds
-#sapply(test_scaled[num_vars], mean)  # all ~0
-#sapply(test_scaled[num_vars], sd)    # all ~1
-#create model
-test$fyear <- as.factor(test$year)
+fisheries_variables$fyear <- as.factor(fisheries_variables$year)
+fisheries_variables$fmonth_year <- as.factor(fisheries_variables$month_year)
+############
+
+############
+# Plot correlation between variables
+test_cor <- fisheries_variables %>% dplyr::select("cost_per_gal_adjusted", ,
+                                   "cost_per_pound_adjusted", ,
+                                   "distance_to_shore_km", , 
+                                   "distance_complex_km", , 
+                                   "BT",  
+                                   "SST", 
+                                   "closed_pct", )
+
+corr <- round(cor(test_cor, use = "pairwise.complete.obs"), 1)
+
+ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 2.5) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.3))
+############
 
 
-test<-test%>%
-  arrange(date) %>%
-  mutate(time_index = as.integer(factor(date, levels = unique(date))))
 
-test <- test %>%
-  arrange(date) %>%
-  mutate(time_index = match(date, sort(unique(date))))
 
+
+############
+ ## ------------------------
+ ## Editing DF
+ ## ------------------------
+
+fisheries_variables<-fisheries_variables%>%
+  mutate(closed_pct=closed_pct*100)%>%
+  filter(total.hours!=0)%>%
+  mutate(month=as.integer(month))%>%
+  mutate(sin12 = (sin(2 * pi * month / 12)),
+         cos12  = (cos(2 * pi * month / 12))
+  )
+#adding in variables that will represent the cyclical nature of months as putting
+#month is a smooth term with cubic spline did not work
+
+
+## ------------------------
+## Function to go through different metiers and models 
+## ------------------------
+fit_models<-function(df, metier_name){
+  #filter to a single metier
+  test<-df%>%
+    filter(metier==metier_name)
+  
+  # Time index
+  test <- test %>%
+    arrange(date) %>%
+    mutate(time_index = match(date, sort(unique(date))))
+  
+  smooth_vars <- c("BT_scaled", "SST_scaled")
+  test <- test %>%
+    filter(if_all(all_of(smooth_vars), ~ !is.na(.) & is.finite(.)))
+  
+  #create mesh and barrier mesh
+  mesh <- make_mesh(
+    test,
+    c("block_long_dd", "block_lat_dd"),
+    cutoff = 10
+  )
+  
+  bspde <- sdmTMBextra::add_barrier_mesh(
+    mesh, west_coast,
+    range_fraction = 0.02,
+    proj_scaling = 1000
+  )
+  
+  # ------------------------
+  # Determine if cost_per_pound_adjusted_scaled exists
+  # ------------------------
+  include_pound <- "cost_per_pound_adjusted_scaled" %in% colnames(test) &&
+    !all(is.na(test$cost_per_pound_adjusted_scaled))
+  
+  # ------------------------
+  # Build formulas
+  # ------------------------
+  # Base terms (common to all models)
+  base_terms <- c("cost_per_gal_adjusted_scaled",
+                  "distance_to_shore_km_scaled", "distance_complex_km_scaled",
+                  "closed_pct_scaled", "fyear", "sin12", "cos12")
+  
+  if (include_pound) {
+    base_terms <- c("cost_per_gal_adjusted_scaled", 
+                    "cost_per_pound_adjusted_scaled",
+                    "distance_to_shore_km_scaled", "distance_complex_km_scaled",
+                    "closed_pct_scaled", "fyear", "sin12", "cos12")
+  }
+  
+  # Unsmooth models (linear BT and SST)
+  f1 <- reformulate(c(base_terms, "BT_scaled", "SST_scaled"), response = "total.hours")
+ f2 <- reformulate(c(base_terms, "BT_scaled", "SST_scaled"), response = "total.hours")
+  
+  # Smooth models (splines on BT and SST)
+  if (include_pound) {
+    f3 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+    
+    f4 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+  } else {
+    f3 <- total.hours ~ cost_per_gal_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+    
+    f4 <- total.hours ~ cost_per_gal_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+  }
+  
+  #formulas <- list(m1 = f1, m2 = f2, m3 = f3, m4 = f4)
+  formulas <- list(m1=f1, m2=f2, m3 = f3, m4 = f4)
+  # ------------------------
+  # Families
+  # ------------------------
+  families <- list(
+    m1 = lognormal(link = "log"),
+    m2 = Gamma(link = "log"),
+    m3 = lognormal(link = "log"),
+    m4 = Gamma(link = "log")
+  )
+  
+  # ------------------------
+  # Fit models
+  # ------------------------
+  models <- imap(formulas, ~ {
+    fit <- sdmTMB(
+      data = test,
+      formula = .x,
+      mesh = bspde,
+      family = families[[.y]],
+      spatial = "on",
+      time = "time_index",
+      spatiotemporal = "iid"
+    )
+    list(model = fit, summary = summary(fit), sanity = sanity(fit))
+  })
+  
+  return(models)
+}
+
+
+
+# ---- Run across multiple metiers ----
+metiers <- c("Santa Barbara_Urchin dive","Los Angeles_CPFV", "Santa Barbara_CPFV", 
+             "Los Angeles_Lobster trap","Los Angeles_Squid seine","Santa Barbara_Set gillnet",
+             "Santa Barbara_Squid seine")  # expand as needed
+
+results <- map(metiers, ~ fit_models(
+  df = fisheries_variables,
+  metier_name = .x
+))
+names(results) <- metiers
+
+# Example: see summary of model 2 for San Diego_CPFV
+results[["Los Angeles_CPFV"]]$m2$summary
+
+
+
+
+## ------------------------
+## Mesh Prep
+## ------------------------
+
+#mesh <- make_mesh(test, c("block_long_dd", "block_lat_dd"),n_knots =85, type = "kmeans" ) #performed worse
+mesh <- make_mesh(test, c("block_long_dd", "block_lat_dd"),cutoff=10)
+
+plot(mesh)
+#add on barrier
+bspde<-sdmTMBextra::add_barrier_mesh(
+  mesh, west_coast, range_fraction = .01,
+  proj_scaling=1000, plot=TRUE
+)
+
+mesh_df_water <- bspde$mesh_sf[bspde$normal_triangles, ]
+mesh_df_land <- bspde$mesh_sf[bspde$barrier_triangles, ]
+ggplot( west_coast) +
+  geom_sf() +
+  geom_sf(data = mesh_df_water, size = 1, colour = "blue") +
+  geom_sf(data = mesh_df_land, size = 1, colour = "green")
+
+## ------------------------
+## Fitting the model
+## ------------------------
+set.seed(123)
 m <- sdmTMB(
   data = test,
   formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
-    distance_complex_km_scaled + s(BT) + s(SST) + (closed_pct_scaled) + fyear, 
-  mesh = mesh, 
+    distance_complex_km_scaled + s(BT, k=10) + s(SST, k=8) + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
+  mesh = bspde, 
   family = tweedie(link = "log"),
-  spatial = "on",
-  time = "date",
-  spatiotemporal = "IID"
+  spatial = "on", 
+  time = "time_index",
+spatiotemporal = "iid"
 )
 summary(m)
 sanity(m)
 
+
+m2 <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
+    distance_complex_km_scaled + s(BT_scaled, k=10) + s(SST_scaled, k=8) + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
+  mesh = bspde, 
+  family = tweedie(link = "log"),
+  spatial = "on", 
+ time = "time_index",
+  spatiotemporal = "iid"
+)
+summary(m2)
+sanity(m2)
+
+
+m3 <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
+    distance_complex_km_scaled + BT_scaled + SST_scaled + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
+  mesh = bspde, 
+  family = tweedie(link = "log"),
+  spatial = "on", 
+  time = "time_index",
+  spatiotemporal = "iid"
+)
+summary(m3)
+sanity(m3)
+
+m4 <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
+    distance_complex_km_scaled + s(BT_scaled, k=10) + s(SST_scaled, k=8)  + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
+  mesh = bspde, 
+  family = lognormal(link = "log"),
+  spatial = "on", 
+  time = "time_index",
+  spatiotemporal = "iid"
+)
+summary(m4)
+sanity(m4)
+
+m5 <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
+    distance_complex_km_scaled + s(BT_scaled) + s(SST_scaled) + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
+  mesh = bspde, 
+  family = Gamma(link = "log"),
+  spatial = "on", 
+  time = "time_index",
+  spatiotemporal = "iid"
+)
+summary(m5)
+sanity(m5)
+
+
+## ------------------------
+## Confidence Intervals
+## ------------------------
+
 # We can view the confidence intervals on the fixed effects by using the tidy function:
-tidy(m, conf.int = TRUE)
+tidy(m2, conf.int = TRUE)%>% arrange(desc(abs(estimate)))
 #And similarly for the random effect and variance parameters:
-tidy(m, "ran_pars", conf.int = TRUE)
+tidy(m2, "ran_pars", conf.int = TRUE)
+
+tidy(m2, conf.int = TRUE) %>% filter(!grepl("year", term)) %>% arrange(desc(estimate))
+
+tidy(m2, conf.int = TRUE) %>% filter(!grepl("year", term)) %>% arrange(estimate)
+
+# Average magnitude of fixed effects?
+tidy(m2, conf.int = TRUE) %>%
+  filter(!grepl("year", term)) %>%
+  mutate(abs_coef = abs(estimate)) %>% 
+  summarise(mean_abs_coef = mean(abs_coef))
+#would use this for spatiotemporal effects
+tidy(m2, conf.int = TRUE, effects = "ran_par") %>%
+  filter(term %in% c("sigma_O", "sigma_E")) %>%
+  summarise(mean_estimate = mean(estimate))
+
+
+## ------------------------
+## Model diagnostics
+## ------------------------
 
 #We can inspect randomized quantile residuals:
-test$resids <- residuals(m) # randomized quantile residuals
+test$resids <- residuals(m2) # randomized quantile residuals
 qqnorm(test$resids)
 qqline(test$resids)
+hist(test$resids, breaks = 40) 
 
-ggplot(test, aes(block_long_dd, block_lat_dd, col = resids)) +
-  scale_colour_gradient2() +
-  geom_point() +
-  facet_wrap(~date) +
-  coord_fixed()
-
-
-#Those were fast to calculate but can look ‘off’ even when the model is 
-#consistent with the data. MCMC-based residuals are more reliable but slow. 
-#We can calculate them through some help from the sdmTMBextra package. 
-#https://github.com/pbs-assess/sdmTMBextra. In practice you would like want
-#more mcmc_iter and mcmc_warmup. Total samples is mcmc_iter - mcmc_warmup. 
-#We will also just use the spatial model here so the vignette builds quickly.
-
-set.seed(123)
-samps <- sdmTMBextra::predict_mle_mcmc(m, mcmc_warmup = 50, mcmc_iter = 51)
-
-r <- residuals(m3, "mle-mcmc", mcmc_samples = samps)
-qqnorm(r)
-qqline(r)
+# Plot residuals vs. fitted
+plot(fitted(m), test$resids, pch = 16, cex = 0.5)
+abline(h = 0, col = "red")
 
 
-#mariginal effects
-g <- ggpredict(m, "cost_per_gal_adjusted_scaled")
-#> Model contains splines or polynomial terms. Consider using `terms="depth
-#>   [all]"` to get smooth plots. See also package-vignette 'Adjusted
-#>   Predictions at Specific Values'.
-plot(g)
+## ------------------------
+## Smooth terms (via ggeffects)
+## ------------------------
+
+ggeffects::ggpredict(m2, "SST_scaled [all]") |> plot() +
+  labs(y = "Predicted total.hours", x = "SST (°C)")
+ggeffects::ggpredict(m2, "BT_scaled [all]") |> plot()+
+  labs(y = "Predicted total.hours", x = "Bottom Temp (°C)")
+
+
+## ------------------------
+## Variable importance
+## ------------------------
+
+
+## ------------------------
+## Marginal effects of fixed effects
+## ------------------------
+# Continuous predictors
+me_cost_gal <- ggpredict(m2, "cost_per_gal_adjusted_scaled [all]")
+plot(me_cost_gal) + labs(y = "Predicted total.hours", x = "Fuel cost (scaled)")
+
+me_cost_lb <- ggpredict(m2, "cost_per_pound_adjusted_scaled [all]")
+plot(me_cost_lb) + labs(y = "Predicted total.hours", x = "Price per pound (scaled)")
+
+# Categorical predictor: year
+me_year <- ggpredict(m2, "fyear")
+plot(me_year) +
+  labs(y = "Predicted total.hours", x = "Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Closure effect
+me_closure <- ggpredict(m2, "closed_pct_scaled [all]")
+plot(me_closure) + labs(y = "Predicted total.hours", x = "Closure % (scaled)")
+
+# month effect
+me_sin12 <- ggpredict(m2, "sin12 [all]")
+plot(me_closure) + labs(y = "Predicted total.hours", x = "sin12")
+
+
+## ------------------------
+## Spatial & spatiotemporal predictions
+## ------------------------
+
+prediction_grid<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")%>%
+  rename(block_long_dd=blck_ln_, block_lat_dd=blck_lt_ )#rename to be same columns as mesh X and Y 
+
+# Convert to sf object
+prediction_grid_sf <- st_as_sf(prediction_grid, coords = c("block_long_dd", "block_lat_dd"), crs = 4326)%>%
+      st_transform(crs = st_crs(3310))%>%
+  arrange(date) %>%
+  mutate(time_index = match(date, sort(unique(date))))
+
+
+
+coords <- st_coordinates(prediction_grid_sf)
+# Add to the polygon data as new columns
+prediction_grid_sf$block_long_dd <- coords[,1]
+prediction_grid_sf$block_lat_dd <- coords[,2]#/ 1000
+
+#scale variables
+num_vars <- c("cost_per_gal_adjusted", "cost_per_pound_adjusted", 
+              "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct")
+
+prediction_grid_sf <- prediction_grid_sf%>%
+  mutate(across(all_of(num_vars), ~ as.numeric(scale(.)), .names = "{.col}_scaled"))
+
+#drop geometry and create
+prediction_grid_final<-prediction_grid_sf%>%
+                      st_drop_geometry()%>%
+  filter(time_index %in% unique(test$time_index)) #filtering for same time in time_index for model
+
+prediction_grid_final$year <- year(ymd(prediction_grid_final$date))
+prediction_grid_final$fyear <- as.factor(prediction_grid_final$year)
+
+prediction_grid_final$month <- month(ymd(prediction_grid_final$date))
+
+prediction_grid_final$sin12 <- sin(2 * pi * prediction_grid_final$month / 12)
+prediction_grid_final$cos12 <- cos(2 * pi * prediction_grid_final$month / 12)
+
+prediction_grid_final<-prediction_grid_final%>%
+                      filter(month %in% c(1,2,3,10,11,12))
+                      
+prediction_grid_final_sb_lob<-prediction_grid_final%>%
+  filter(fishery=="Lobster trap" & port.complex=="Santa Barbara")%>%
+  filter(!is.na(SST_scaled))
+
+prediction_grid_final_sb_lob$block_long_dd<- prediction_grid_final_sb_lob$block_long_dd / 1000
+prediction_grid_final_sb_lob$block_lat_dd <- prediction_grid_final_sb_lob$block_lat_dd / 1000
+
+predictions <- predict(m2, newdata = prediction_grid_final_sb_lob)
+
+
+all_blocks_sf <-all_blocks_sf %>%
+  mutate(block_id=as.factor(block_id))
+
+
+predictions_sf <- left_join(predictions ,all_blocks_sf, by = "block_id")%>%
+  st_as_sf()
+
+#function to help make maps
+plot_map <- function(dat, column) {
+  ggplot(dat) +
+    geom_sf(aes(fill = {{ column }}), color = NA) +  # NA removes polygon borders
+    coord_sf() +
+    scale_fill_viridis_c(trans = "sqrt") +
+    theme_minimal()
+}
+
+
+plot_map(predictions_sf, exp(est)) +
+  facet_wrap(~year) +
+  ggtitle("Prediction (fixed effects + all random effects)")+
+
+scale_fill_viridis_c(
+  trans = "sqrt",
+  limits = c(0, quantile(exp(predictions_sf$est), 0.995, na.rm = TRUE)),
+  na.value = "yellow"
+)
+
+plot_map(predictions_sf, exp(est_non_rf)) +
+  scale_fill_viridis_c(trans = "sqrt") +
+  ggtitle("Prediction (fixed effects only)")
+
+
+plot_map(predictions_sf, omega_s) +
+  scale_fill_gradient2() +
+  ggtitle("Spatial random effects only")
+
+
+#spatiotemporal random effects that represent deviation 
+#from the fixed effect predictions and the spatial random 
+#effect deviations. These represent biotic and abiotic factors 
+#that are changing through time and are not accounted for in 
+#the model.
+plot_map(predictions_sf, epsilon_st) +
+  scale_fill_gradient2() +
+  facet_wrap(~year) +
+  ggtitle("Spatiotemporal random effects only")

@@ -35,7 +35,6 @@ all_blocks_vect <- vect(all_blocks)  # all_blocks is your sf object
 
 
 ###############
-#SECOND WAY
 sst_bt_time1<-rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/cmems_mod_glo_phy_my_0.083deg_P1M-m_1755106570377.nc")
 sst_bt_time2<-rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/cmems_mod_glo_phy_myint_0.083deg_P1M-m_1755106870727.nc")
 
@@ -76,6 +75,9 @@ bt<- project(bt, crs(all_blocks))
 # Extract using nearest raster cell instead of mean
 sst_filled <- focal(sst, w = matrix(1,3,3), fun = mean, na.rm = TRUE, na.policy="only")
 bt_filled <- focal(bt, w = matrix(1,3,3), fun = mean, na.rm = TRUE, na.policy="only")
+writeRaster(sst_filled, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/processed/monthly_sst_GLORYS_raster.tif")
+writeRaster(bt_filled, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/processed/monthly_bt_GLORYS_raster.tif")
+
 
 sst_means <- terra::extract(sst_filled, all_blocks_vect, fun = mean, na.rm = TRUE)
 bt_means <- terra::extract(bt_filled, all_blocks_vect, fun = mean, na.rm = TRUE)
