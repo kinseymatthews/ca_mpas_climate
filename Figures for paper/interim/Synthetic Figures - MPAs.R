@@ -133,7 +133,7 @@ results$port_complex<- factor(results$port_complex, levels = rev(c('Eureka', 'Fo
 results$fishery2<- factor(results$fishery2, levels = rev(c( 'Pink shrimp trawl', 'Ridgeback prawn trawl', 'Spot prawn trawl', 'Halibut trawl', 'Cucumber trawl', 'Squid seine', 'Drift gillnet', 'Set gillnet', 'Lobster trap','Urchin dive', 'Cucumber dive','CPFV')))
 ############
 
-############
+
 ############
 #calculating lower and upper fences and truncating 
 lower_quartile_lower <- quantile(results$CI_lower_bound, 0.25, na.rm = TRUE)
@@ -291,7 +291,7 @@ ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi 
 ############
 
 
-############
+
 ############
 #other synethic figures
 #critical value for CI
@@ -363,7 +363,7 @@ saveRDS(results,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca
 ############
 
 ############
-#Distance to shore Figure by fishery
+#MPA Figure by fishery
 p<-ggplot(data=results, aes(x= CV, y=fishery2, color=port_complex))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = lower.CI, xmax = upper.CI), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
@@ -392,7 +392,7 @@ p<-ggplot(data=results, aes(x= CV, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = lower.CI, xmax = upper.CI), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
-    x = "CV of Area",
+    x = "CV of Area in MPA",
     y = "Port Complex",
     color = "Fishery"
   )+

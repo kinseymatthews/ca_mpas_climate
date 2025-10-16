@@ -81,15 +81,15 @@ annotations_arrows <- data.frame(
   metric = rep(c("(a) Area", "(b) Latitude", "(c) Northern extent", "(d) Southern extent"), each = 2),
   x = c(-15, 15, -0.01, 0.01, -0.006, 0.006, -0.03,0.03),         # start of arrow
   xend = c(-180, 180, -0.1, .1, -0.07, 0.07,-0.35,0.35),      # end of arrow
-  y = c(0.0058, 0.0058, 80, 80, 52, 52,40,40),
-  yend = c(0.0058, 0.0058, 80, 80, 52, 52,40,40)
+  y = c(0.0055, 0.0055, 80, 80, 52, 52,40,40),
+  yend = c(0.0055, 0.0055, 80, 80, 52, 52,40,40)
 )
 
 
 annotations_text <- data.frame(
   metric = c("(a) Area", "(a) Area", "(b) Latitude", "(b) Latitude", "(c) Northern extent", "(c) Northern extent","(d) Southern extent","(d) Southern extent"),
-  x = c(-90, 70, -0.05, 0.05, -0.03, 0.03, -0.15,0.15),
-  y = c(0.006, 0.006, 85, 85, 55, 55,43,43),
+  x = c(-85, 75, -0.05, 0.05, -0.03, 0.03, -0.15,0.15),
+  y = c(0.0057, 0.0057, 83, 83, 54, 54,41.5,41.5),
   label = c("Getting smaller", "Getting larger", "Moving south", "Moving north", "Moving south", "Moving north","Moving south", "Moving north")
 )
 

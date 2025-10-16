@@ -42,6 +42,7 @@ area_extents<- readRDS(paste0(data,'CPFV/Data/Processed Data/CPFV_all contour vo
 lat_dist<- readRDS(paste0(data, "CPFV/Data/Processed Data/COG_distance_results_anglerhours_final.rds"))%>%
   rename(Year=year)
 mpa<- readRDS(paste0(data, "CPFV/Data/Processed Data/MPA_area.rds"))
+reg<- readRDS(paste0(data, "CPFV/Data/Processed Data/regs_MPA_area.rds"))
 
 # block data
 all_blocks<-st_read(paste0(data,"All Fisheries Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
@@ -71,6 +72,16 @@ mpa_blocks <- st_cast(mpa_blocks, "POLYGON")
 # Union the MPAs so they are treated as a single shape
 mpa_blocks <- st_union(mpa_blocks)
 mpa_blocks <- st_make_valid(mpa_blocks)
+
+#regs
+
+all_regs<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Regulation/spatialregulations_perfishery.rds")%>%
+  filter(CPFV==0) #only getting regs where the CPFV fleet is NOT allowed to fish
+all_regs <- st_cast(all_regs, "POLYGON")
+# Union the MPAs so they are treated as a single shape
+all_regs <- st_union(all_regs)
+all_regs <- st_make_valid(all_regs)
+
 
 # base theme
 base_theme <- theme(axis.text=element_text(size=7),
@@ -540,7 +551,7 @@ plot_fun<-function(Year){
     #add state waters
     geom_sf(data = state_waters, color = "grey30", linewidth = 0.2, inherit.aes = FALSE) +
     #add mpas
-    geom_sf(data = mpa_blocks, fill = "black", col = "white", linewidth = 0.2, inherit.aes = FALSE) +
+    geom_sf(data = all_regs, fill = "black", col = "white", linewidth = 0.2, inherit.aes = FALSE) +
     #points COG
     geom_sf(data=a,size=4, fill="white",color="black",pch=21)+
     #crop and axis
@@ -596,7 +607,7 @@ plot(b)
 combined_eureka<-area_extents%>%
   filter(port.complex=="Eureka")%>%
   left_join(lat_dist, by=c("port.complex","Year"))%>%
-  left_join(mpa, by=c("port.complex","Year"))%>%
+  left_join(reg, by=c("port.complex","Year"))%>%
   mutate(distance_shore_km=cog_dist_shore/1000)
 
 combined_eureka_years<-combined_eureka%>%
@@ -692,12 +703,13 @@ e<-ggplot(data=combined_eureka, aes(x=Year))+
   geom_vline(aes(xintercept = 2012), linetype = "dotted", color = "red",size=1)
 
 f<-ggplot(data=combined_eureka, aes(x=Year))+
+  geom_line(aes(y=percent_inreg),size=.5)+
   geom_line(aes(y=percent_inmpa),size=.5)+
   #y label
-  labs(y = ('Effort in MPA \n(%)'), x='Year')+
+  labs(y = ('Effort in regulation area \n(%)'), x='Year')+
   #point to highlight years
   geom_point(data =combined_eureka_years, 
-             aes(x = Year, y = percent_inmpa ), 
+             aes(x = Year, y = percent_inreg ), 
              color = "blue", 
              size = 4,
              shape=8) +  

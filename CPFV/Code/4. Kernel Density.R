@@ -391,7 +391,7 @@ plot_fun<-function(portcomplex){
   
   #contours for shapefile
   all_contours <- list()
-  
+  all_contours_poly <- list()
   #Loop through each year and calculate kernel density
   for(year in unique_years){
     
@@ -464,15 +464,78 @@ plot_fun<-function(portcomplex){
     # Create contour lines from the density raster
     contour_level_75_lines <- rasterToContour(density_masked, levels = c(contour_level_75))
     
-    
     # Convert contour lines to sf polygons
     contour_75_sf <- st_as_sf(contour_level_75_lines)
+    
     st_crs(contour_75_sf) <-  3310
+    
+    # Create a mask for values above the 75% contour
+    density_raster_masked <- density_masked
+    density_raster_masked[] <- ifelse(density_masked[] >= contour_level_75, density_masked[], NA)
+    
+    # Mask the density raster with the land raster
+    density_raster_masked <- mask(density_raster_masked, usa_mexico_sf_proj, inverse=TRUE)
+    
+    # Compute total area of 75% KDE - will need to polygonize and calculate area
+    
+    # Create contour lines from the density raster
+    contours <- rasterToContour(extended_raster, levels = c(contour_level_75))
+    
+    #convert to sf object
+    contours_sf <- st_as_sf(contours)
+    #set crs
+    contours_sf <- st_set_crs(contours_sf ,st_crs(usa_mexico_sf_proj))
+    
+    # Convert the LINESTRING to POLYGON if needed
+    # Attempt to cast to POLYGON
+    closed_poly <- tryCatch(
+      st_cast(contours_sf, "POLYGON"),
+      error = function(e) {
+        message("st_cast failed, using st_polygonize instead")
+        st_polygonize(contours_sf)
+      }
+    )
+    # Ensure valid geometry
+    closed_poly <- st_make_valid(closed_poly)
+    
+    # Plot the closed polygon to verify the closure
+    plot(closed_poly)
+    
+    # Extract only the geometry of the USA/Mexico shapefile
+    usa_geometry <- st_geometry(usa_mexico_sf_proj)
+    
+    # First calculate the intersection (land area)
+    intersection <- st_intersection(closed_poly, usa_geometry)
+    
+    # Check if there is an intersection
+    if (nrow(intersection) > 0) {
+      # If there is an intersection, manually subtract the land portion from the ocean using st_difference
+      closed_poly_no_land <- st_difference(closed_poly, st_union(usa_geometry))
+      plot(closed_poly_no_land)
+      
+      # Compute the 75% volume area (land portion removed)
+      area_75_m2 <- sum(st_area(closed_poly_no_land))
+    } else {
+      closed_poly_no_land <- closed_poly
+      plot(closed_poly_no_land)
+      # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+      area_75_m2 <- sum(st_area(closed_poly_no_land))
+    }
+    # Convert area from square meters to square kilometers
+    area_75_km2 <- as.numeric(area_75_m2) / 1e6  # Convert units object to numeric and divide by 1e6
+    
    
      #save into dataframe
+    closed_poly_no_land$year <- year
+    closed_poly_no_land$portcomplex <- portcomplex
+    closed_poly_no_land$area_75_km2 <-  area_75_km2 
+    all_contours_poly[[as.character(year)]] <-  closed_poly_no_land
+    
+    #save into dataframe
     contour_75_sf$year <- year
     contour_75_sf$portcomplex <- portcomplex
     all_contours[[as.character(year)]] <- contour_75_sf
+    
     
     # Normalize density values to the range 0-1
     density_df$value <- scales::rescale(density_df$value)
@@ -530,6 +593,10 @@ plot_fun<-function(portcomplex){
   # ---- Save merged contours to contour directory ----
   merged_contours <- do.call(rbind, all_contours)
   merged_file <- file.path(CPFV_data, paste0('Data/Processed Data/',portcomplex, "_contours_75.gpkg"))
+  st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
+  
+  merged_contours <- do.call(rbind, all_contours_poly)
+  merged_file <- file.path(CPFV_data, paste0('Data/Processed Data/',portcomplex, "_contours_75_polygon.gpkg"))
   st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
   
 }

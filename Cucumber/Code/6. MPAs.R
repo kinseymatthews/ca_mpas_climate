@@ -83,14 +83,20 @@ port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Mo
 values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
 
-#mpas
-mpa_blocks<-wcfish::mpas_ca
-mpa_blocks<- st_transform(mpa_blocks, crs = 3310)%>%
-  st_make_valid()
-mpa_blocks <- st_cast(mpa_blocks, "POLYGON")
+
+all_regs<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Regulation/spatialregulations_perfishery.rds")%>%
+  filter(Cucumber.trawl==0) #only getting regs where the CPFV fleet is NOT allowed to fish
+all_regs <- st_cast(all_regs, "POLYGON")
+
+#just mpas
+mpa_blocks <-all_regs%>%filter(type=="MPA")
 # Union the MPAs so they are treated as a single shape
 mpa_blocks <- st_union(mpa_blocks)
 mpa_blocks <- st_make_valid(mpa_blocks)
+
+# Union the MPAs so they are treated as a single shape
+all_regs <- st_union(all_regs)
+all_regs <- st_make_valid(all_regs)
 ############
 
 ############
@@ -245,7 +251,7 @@ plot_fun<-function(portcomplex){
       # Land
       geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
       #mpas
-      geom_sf(data=mpa_blocks, fill="black", col="white", linewidth=0.2, inherit.aes = F)+
+      geom_sf(data=all_regs, fill="black", col="white", linewidth=0.2, inherit.aes = F)+
       # State waters
       geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
       #points COG
@@ -261,7 +267,7 @@ plot_fun<-function(portcomplex){
       theme(axis.title = element_blank())
     
     
-    filename1 <- paste0(cucumber_data,'Figures/MPAs/',portcomplex,'/', portcomplex, year, '_MPAs_cropped.jpg')
+    filename1 <- paste0(cucumber_data,'Figures/MPAs/',portcomplex,'/', portcomplex, year, 'regs_MPAs_cropped.jpg')
     ggsave(filename = filename1, plot = p, width = 6, height = 6, units = "in", dpi = 300)
     
   }
@@ -275,31 +281,31 @@ plot_fun('Los Angeles')
 
 #importing yearly images and creating an animation
 years<-c(1995,1997:2006,2009,2010)
-frames<-paste0(cucumber_data,"Figures/MPAs/Eureka/Eureka",years,"_MPAs_cropped.jpg")
+frames<-paste0(cucumber_data,"Figures/MPAs/Eureka/Eureka",years,"regs_MPAs_cropped.jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m, paste0(cucumber_data,"Figures/MPAs/Eureka/Eureka Kernel Densities_Animation.gif"))
 
 years<-c(1994:1997,1999,2000:2003)
-frames<-paste0(cucumber_data, "Figures/MPAs/Monterey/Monterey", years,"_MPAs_cropped.jpg")
+frames<-paste0(cucumber_data, "Figures/MPAs/Monterey/Monterey", years,"regs_MPAs_cropped.jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(cucumber_data,"Figures/MPAs/Monterey/Monterey Kernel Densities_Animation.gif"))
 
 years<-c(1983:1985,1994:2002, 2004,2005)
-frames<-paste0(cucumber_data,"Figures/MPAs/Morro Bay/Morro Bay", years,"_MPAs_cropped.jpg")
+frames<-paste0(cucumber_data,"Figures/MPAs/Morro Bay/Morro Bay", years,"regs_MPAs_cropped.jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(cucumber_data,"Figures/MPAs/Morro Bay/Morro Bay Kernel Densities_Animation.gif"))
 
 years<-c(1982:2020)
-frames<-paste0(cucumber_data,"Figures/MPAs/Santa Barbara/Santa Barbara", years,"_MPAs_cropped.jpg")
+frames<-paste0(cucumber_data,"Figures/MPAs/Santa Barbara/Santa Barbara", years,"regs_MPAs_cropped.jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(cucumber_data,"Figures/MPAs/Santa Barbara/Santa Barbara Kernel Densities_Animation.gif"))
 
 years<-c(1984,1986,1991,1994:2003,2009:2012,2014:2016,2020)
-frames<-paste0(cucumber_data,"Figures/MPAs/Los Angeles/Los Angeles", years,"_MPAs_cropped.jpg")
+frames<-paste0(cucumber_data,"Figures/MPAs/Los Angeles/Los Angeles", years,"regs_MPAs_cropped.jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(cucumber_data,"Figures/MPAs/Los Angeles/Los Angeles Kernel Densities_Animation.gif"))
@@ -307,7 +313,7 @@ image_write(m,paste0(cucumber_data,"Figures/MPAs/Los Angeles/Los Angeles Kernel 
 
 
 ############
-#area within an mpa
+#area within an mpa nad regulatory areas
 plot_fun<-function(portcomplex){
   
   location <- sf_df_projected%>%
@@ -420,8 +426,6 @@ plot_fun<-function(portcomplex){
     # Ensure valid geometry
     closed_poly <- st_make_valid(closed_poly)
     
-    # Ensure valid geometry
-    closed_poly <- st_make_valid(closed_poly)
     
     # Plot the closed polygon to verify the closure
     plot(closed_poly)
@@ -435,7 +439,7 @@ plot_fun<-function(portcomplex){
     # Check if there is an intersection
     if (nrow(intersection) > 0) {
       # If there is an intersection, manually subtract the land portion from the ocean using st_difference
-      closed_poly_no_land <- st_difference(closed_poly, intersection)
+      closed_poly_no_land <- st_difference(closed_poly, st_union(usa_geometry))
       plot(closed_poly_no_land)
       
       # Compute the 75% volume area (land portion removed)
@@ -444,13 +448,47 @@ plot_fun<-function(portcomplex){
       closed_poly_no_land <- closed_poly
       plot(closed_poly_no_land)
       # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
-      area_75_m2 <- sum(st_area(closed_poly))
+      area_75_m2 <- sum(st_area(closed_poly_no_land))
     }
     # Convert area from square meters to square kilometers
     area_75_km2 <- as.numeric(area_75_m2) / 1e6  # Convert units object to numeric and divide by 1e6
     
     #compute area of mpas within 75%
     #turn mpas into polygons and calculate interactions between the two
+    
+    # Extract only the geometry of the regs
+    block_geometry <- st_geometry(all_regs)
+    
+    closed_poly_no_land <- st_make_valid(closed_poly_no_land)
+    block_geometry <- st_make_valid(block_geometry)
+    
+    # First calculate the intersection (land area)
+    intersection <- st_intersection(closed_poly_no_land, block_geometry)
+    
+
+    # Check if there is an intersection
+    if (nrow(intersection) > 0) {
+      # Subtract regs from KDE polygon
+      closed_poly_no_reg <- st_difference(closed_poly_no_land, st_union(block_geometry))
+      
+      # Handle empty or invalid result
+      if (is.null(closed_poly_no_reg) ||
+          all(st_is_empty(closed_poly_no_reg)) ||
+          nrow(closed_poly_no_reg) == 0) {
+        message("Entire KDE area overlaps with regs — setting non-reg area to 0.")
+        area_75_m2_noreg <- 0
+      } else {
+        # compute area only if geometry exists
+        area_75_m2_noreg <- sum(st_area(closed_poly_no_reg), na.rm = TRUE)
+        plot(closed_poly_no_reg)
+      }
+      
+    } else {
+      # no intersection — full area outside regs
+      area_75_m2_noreg <- sum(st_area(closed_poly_no_land), na.rm = TRUE)
+    }
+    # Convert area from square meters to square kilometers
+    area_75_km2_noreg <- as.numeric(area_75_m2_noreg) / 1e6  # Convert units object to numeric and divide by 1e6
     
     # Extract only the geometry of the USA/Mexico shapefile
     block_geometry <- st_geometry(mpa_blocks)
@@ -463,11 +501,11 @@ plot_fun<-function(portcomplex){
     # Check if there is an intersection
     if (nrow(intersection) > 0) {
       # If there is an intersection, manually subtract the mpa portion from the non mpa using st_difference
-      closed_poly_no_mpa <- st_difference(closed_poly_no_land, intersection)
-      plot(closed_poly_no_mpa)
+      closed_poly_no_mpas <- st_difference(closed_poly_no_land, st_union(block_geometry))
+      plot(closed_poly_no_mpas)
       
       # Compute the 75% volume area (land portion removed)
-      area_75_m2_nompa <- sum(st_area(closed_poly_no_mpa))
+      area_75_m2_nompa <- sum(st_area(closed_poly_no_mpas))
     } else {
       # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
       area_75_m2_nompa <- sum(st_area(closed_poly_no_land))
@@ -480,9 +518,13 @@ plot_fun<-function(portcomplex){
                      Year = year,
                      total_area=area_75_km2,
                      total_area_notinmpa=area_75_km2_nompa,
-                     total_area_inmpa=(area_75_km2-area_75_km2_nompa))%>%
+                     total_area_inmpa=(area_75_km2-area_75_km2_nompa),
+                     total_area_notinreg=area_75_km2_noreg ,
+                     total_area_inreg=(area_75_km2-area_75_km2_noreg))%>%
       mutate(percent_inmpa = ((total_area_inmpa) / (total_area)) * 100,
-             percent_inmpa = ifelse(percent_inmpa < 0.001, 0, percent_inmpa))
+             percent_inmpa = ifelse(percent_inmpa < 0.001, 0, percent_inmpa))%>%
+      mutate(percent_inreg = ((total_area_inreg) / (total_area)) * 100,
+             percent_inreg = ifelse(percent_inreg < 0.001, 0, percent_inreg))
     
     # Append current year's results to combined_df
     datalist[[year]] <- df
@@ -490,6 +532,7 @@ plot_fun<-function(portcomplex){
   all.data<- dplyr::bind_rows(datalist)
   
 }
+
 a<-plot_fun('Eureka')
 b<-plot_fun('Monterey')
 c<-plot_fun('Morro Bay')
@@ -502,9 +545,9 @@ all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
   left_join(mpa,by="port.complex")
 
-saveRDS(all.volumes,paste0(cucumber_data,"Data/Processed Data/MPA_area.rds"))
+saveRDS(all.volumes,paste0(cucumber_data,"Data/Processed Data/regs_MPA_area.rds"))
 
-
+#graph of effort in mpas
 plot_fun<-function(portcomplex){
   location <- all.volumes%>%
     filter(port.complex==portcomplex)
@@ -520,6 +563,31 @@ plot_fun<-function(portcomplex){
     geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
   
   filename1 <- paste0(cucumber_data,'Figures/MPAs/', portcomplex, '/', portcomplex, '_perc.effort within mpa.jpg')
+  ggsave(filename = filename1, plot = p, width = 6, height = 4, units = "in", dpi = 300)
+}
+
+plot_fun('Eureka')
+plot_fun('Monterey')
+plot_fun('Morro Bay')
+plot_fun('Santa Barbara')
+plot_fun('Los Angeles')
+
+#graph of effort in regs
+plot_fun<-function(portcomplex){
+  location <- all.volumes%>%
+    filter(port.complex==portcomplex)
+  
+  p<-ggplot(data=location, aes(x=Year))+
+    geom_line(aes(y=percent_inreg), color="black",size=1)+
+    labs(y ='Percent weighted effort \n within regulation areas') +
+    # Theme
+    theme_bw() + 
+    base_theme  +
+    theme(legend.position="none")+
+    annotate('rect', xmin=2014, xmax=2016, ymin=-Inf, ymax=Inf, alpha=.2, fill='black') +
+    geom_vline(aes(xintercept = mpayear), linetype = "dotted", color = "red",size=1)
+  
+  filename1 <- paste0(cucumber_data,'Figures/MPAs/', portcomplex, '/', portcomplex, '_perc.effort within regs.jpg')
   ggsave(filename = filename1, plot = p, width = 6, height = 4, units = "in", dpi = 300)
 }
 

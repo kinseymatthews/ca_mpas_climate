@@ -158,7 +158,7 @@ for(i in unique(fisheries_variables$metier)) {
   message("Fitting model for: ", i)
   
   test <- fisheries_variables %>%
-    filter(metier == i, total.hours != 0)
+    filter(metier ==i, total.hours != 0)
   
   smooth_vars <- c("BT_scaled", "SST_scaled")
   
@@ -174,7 +174,7 @@ for(i in unique(fisheries_variables$metier)) {
   # Dynamically build formula
   base_terms <- c("cost_per_gal_adjusted_scaled",
                   "distance_to_shore_km_scaled", "distance_complex_km_scaled",
-                  "(BT_scaled)", "(SST_scaled)",
+                  "BT_scaled", "SST_scaled",
                   "closed_pct_scaled", "fyear", "sin12", "cos12")
   
   # Include cost_per_pound_adjusted_scaled only if it exists and is not all NA
@@ -186,14 +186,15 @@ for(i in unique(fisheries_variables$metier)) {
   }
   
   formula_str <- paste("total.hours ~", paste(base_terms, collapse = " + "))
+   as.formula(formula_str)
   
-  # Create mesh = always has to go right before building the model!
+   # Create mesh = always has to go right before building the model!
   mesh <- make_mesh(test, xy_cols = c("block_long_dd","block_lat_dd"), cutoff = 10)
   bspde <- sdmTMBextra::add_barrier_mesh(mesh, 
                                          ca ,
                                          range_fraction = 0.02, proj_scaling = 1000, plot = TRUE)
   
- as.formula( formula_str)
+
   # Fit sdmTMB model
   set.seed(123)
   model <- sdmTMB(
@@ -227,11 +228,14 @@ models <- lapply(model_files, readRDS)
 names(models) <- gsub("^model_|\\.rds$", "", basename(model_files))
 
 # Example: look at the summary for San Francisco Squid Seine
-m<-(models[["Santa_Barbara_Set_gillnet"]])
+m<-(models[["Santa_Barbara_Urchin_dive"]])
 summary(m)
 sanity(m)
 
+#number of times smooth terms go to 0
+############
 
+############
 # Loop through models, print results
 for (f in model_files) {
   nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
@@ -248,36 +252,16 @@ for (f in model_files) {
   # Print sanity check
   print(sanity(m))
 }
+############
 
-
+############
+fishery_list <- c("CPFV", "Urchin_dive", "Squid_seine", "Set_gillnet", "Cucumber_dive", "Lobster_trap", "Cucumber_trawl", "Ridgeback_prawn", "Pink_shrimp_trawl")
 
 coef_table <- lapply(names(models), function(nm) {
   coefs <- broom::tidy(models[[nm]])
   coefs$model <- nm
   coefs
-}) %>% dplyr::bind_rows()
-
-head(coef_table)
-
-# Count positives vs negatives for each term
-coef_summary <- coef_table %>%
-  mutate(sign = case_when(
-    estimate > 0 ~ "positive",
-    estimate < 0 ~ "negative",
-    TRUE ~ "zero"
-  )) %>%
-  group_by(term, sign) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)
-
-coef_summary
-
-#county positive and negative per term organized by fishery and by port complex
-# Add city and fishery columns based on model name
-# Known fishery/metiers
-fishery_list <- c("CPFV", "Urchin_dive", "Squid_seine", "Set_gillnet", "Cucumber_dive", "Lobster_trap", "Cucumber_trawl", "Ridgeback_prawn", "Pink_shrimp_trawl")
-
-coef_table2 <- coef_table %>%
+}) %>% dplyr::bind_rows()%>%
   rowwise() %>%
   mutate(
     # Find fishery by matching the known list
@@ -293,18 +277,69 @@ coef_table2 <- coef_table %>%
       estimate < 0 ~ "negative",
       TRUE ~ "zero"
     )
-  ) %>%
+    )%>%
   ungroup()
 
 
+#for each fishing metier, figure out the most important coefficient, then for a fishery calculate 
+#the percent a variable is number one?
+coef_import<-coef_table%>%
+  group_by(model)%>%
+  mutate(
+    most.important = if_else(
+      term %in% c("cost_per_gal_adjusted_scaled", "distance_to_shore_km_scaled", "distance_complex_km_scaled", "closed_pct_scaled","cost_per_gpound_adjusted_scaled", "SST_scaled", "BT_scaled"),  # ← only terms to consider
+      if_else(abs(estimate) == max(abs(estimate[term %in% c("cost_per_gal_adjusted_scaled", "distance_to_shore_km_scaled", "distance_complex_km_scaled", "closed_pct_scaled","cost_per_gpound_adjusted_scaled", "SST_scaled", "BT_scaled")])), 1, 0),
+      0
+    )
+  )%>%
+  ungroup()%>%
+  mutate(term_type= case_when(
+    term %in% c("cost_per_gal_adjusted_scaled","cost_per_gpound_adjusted_scaled") ~ "Market",
+    term %in% c("closed_pct_scaled") ~ "Regulation",
+    term %in% c("distance_to_shore_km_scaled", "distance_complex_km_scaled") ~ "Physical",
+    term %in% c("SST_scaled", "BT_scaled") ~ "Environmental"
+  ))%>%
+  group_by(fishery,term_type)%>%
+  summarise(
+    count_1 = sum(most.important == 1),
+    count_0 = sum(most.important == 0),
+    total_metiers=n_distinct(model)
+  )%>%
+  mutate(percent=(count_1/total_metiers)*100)%>%
+  ungroup()
 
+ggplot(coef_import, aes(fill=term_type, y=fishery, x=percent)) + 
+  geom_bar(position="stack", stat="identity")
+
+
+
+
+
+
+
+###################### MAYBE DELETE
+
+# Count positives vs negatives for each term
+coef_summary <- coef_table %>%
+  mutate(sign = case_when(
+    estimate > 0 ~ "positive",
+    estimate < 0 ~ "negative",
+    TRUE ~ "zero"
+  )) %>%
+  group_by(term, sign) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)
+
+coef_summary
+
+#county positive and negative per term organized by fishery and by port complex
 # Example: summarize by fishery
-fishery_summary <- coef_table2 %>%
+fishery_summary <- coef_table %>%
   group_by(fishery, term, sign) %>%
   summarise(n = n(), .groups = "drop") %>%
   tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)
 
-port.complex_summary <- coef_table2 %>%
+port.complex_summary <- coef_table %>%
   group_by(port.complex, term, sign) %>%
   summarise(n = n(), .groups = "drop") %>%
   tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)

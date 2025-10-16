@@ -43,6 +43,15 @@ mpa_cv<-readRDS(paste0(filepath, 'mpa_cv.rds'))%>%
   mutate(metric="(e) MPA")%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
+reg_slope<-readRDS(paste0(filepath, 'reg_slope.rds'))%>%
+  rename(slope=slope.reg, slope2=slope.reg2)%>%
+  mutate(metric="(e) Regulation area")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
+
+reg_cv<-readRDS(paste0(filepath, 'reg_cv.rds'))%>%
+  mutate(metric="(e) REgulation area")%>%
+  filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
+
 distance_slope<-readRDS(paste0(filepath, 'distance_slope.rds'))%>%
   rename(slope=slope.distance)%>%
   mutate(metric="(e) Distance to shore")%>%
@@ -133,7 +142,9 @@ a<-plot_fun(area_slope)
 b<-plot_fun(latitude_slope)
 c<-plot_fun(extent_north_slope)
 d<-plot_fun(extent_south_slope)
-e<-plot_fun(mpa_slope)
+#e<-plot_fun(mpa_slope)
+e<-plot_fun(reg_slope)
+
 
 f<-ggplot(data=distance_slope, aes(x= slope, y=fishery2, color=port_complex))+
   geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -186,7 +197,8 @@ a2<-plot_fun(area_cv)
 b2<-plot_fun(latitude_cv)
 c2<-plot_fun(extent_north_cv)
 d2<-plot_fun(extent_south_cv)
-e2<-plot_fun(mpa_cv)
+#e2<-plot_fun(mpa_cv)
+e2<-plot_fun(reg_cv)
 f2<-plot_fun(distance_cv)
 ############
 
@@ -317,8 +329,8 @@ f2<-plot_fun(distance_cv)
   b<-plot_fun(latitude_slope)
   c<-plot_fun(extent_north_slope)
   d<-plot_fun(extent_south_slope)
-  e<-plot_fun(mpa_slope)
-  
+  #e<-plot_fun(mpa_slope)
+  e<-plot_fun(reg_slope)
   f<-ggplot(data=distance_slope, aes(x= slope, y=port_complex, color=fishery2))+
     geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
     geom_errorbarh(aes(xmin = CI_lower_bound, xmax = CI_upper_bound), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
@@ -370,7 +382,8 @@ f2<-plot_fun(distance_cv)
   b2<-plot_fun(latitude_cv)
   c2<-plot_fun(extent_north_cv)
   d2<-plot_fun(extent_south_cv)
-  e2<-plot_fun(mpa_cv)
+  #e2<-plot_fun(mpa_cv)
+  e2<-plot_fun(reg_cv)
   f2<-plot_fun(distance_cv)
   ############
   

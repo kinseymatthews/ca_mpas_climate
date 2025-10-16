@@ -204,7 +204,7 @@ fisheries_variables<-fisheries_variables%>%
 
 
 ## ------------------------
-## Function to go through different metiers and models 
+## Function to go through different metiers and type of models (Gamma, log normal) with and without smooth terms
 ## ------------------------
 fit_models<-function(df, metier_name){
   #filter to a single metier
@@ -220,19 +220,7 @@ fit_models<-function(df, metier_name){
   test <- test %>%
     filter(if_all(all_of(smooth_vars), ~ !is.na(.) & is.finite(.)))
   
-  #create mesh and barrier mesh
-  mesh <- make_mesh(
-    test,
-    c("block_long_dd", "block_lat_dd"),
-    cutoff = 10
-  )
-  
-  bspde <- sdmTMBextra::add_barrier_mesh(
-    mesh, west_coast,
-    range_fraction = 0.02,
-    proj_scaling = 1000
-  )
-  
+ 
   # ------------------------
   # Determine if cost_per_pound_adjusted_scaled exists
   # ------------------------
@@ -293,6 +281,20 @@ fit_models<-function(df, metier_name){
     m4 = Gamma(link = "log")
   )
   
+  #create mesh and barrier mesh
+  mesh <- make_mesh(
+    test,
+    c("block_long_dd", "block_lat_dd"),
+    cutoff = 10
+  )
+  
+  bspde <- sdmTMBextra::add_barrier_mesh(
+    mesh, west_coast,
+    range_fraction = 0.02,
+    proj_scaling = 1000
+  )
+  
+  
   # ------------------------
   # Fit models
   # ------------------------
@@ -332,8 +334,100 @@ results[["Los Angeles_CPFV"]]$m2$summary
 
 
 ## ------------------------
-## Mesh Prep
+## Function to go through different mesh sizes 
 ## ------------------------
+fit_models<-function(df, metier_name){
+  #filter to a single metier
+  test<-df%>%
+    filter(metier==metier_name) %>%
+    arrange(date) %>%
+    mutate(time_index = match(date, sort(unique(date))))
+  
+  smooth_vars <- c("BT_scaled", "SST_scaled")
+  test <- test %>%
+    filter(if_all(all_of(smooth_vars), ~ !is.na(.) & is.finite(.)))
+  
+#build formula
+  
+  include_pound <- "cost_per_pound_adjusted_scaled" %in% colnames(test) &&
+    !all(is.na(test$cost_per_pound_adjusted_scaled))
+  
+  if (include_pound) {
+    formula <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+  } else {
+    formula <- total.hours ~ cost_per_gal_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+  }
+  
+  
+  # ------------------------
+  # Create mesh  function
+  # ------------------------
+  #mesh cutoffs to try
+  cutoffs <- c(20, 15, 10, 5, 2)
+  
+  #loop over cutoffs
+  
+  results <- map(cutoffs, function(co) {
+    message("Fitting mesh with cutoff = ", co)
+    
+    # build mesh and barrier mesh
+    mesh <- make_mesh(
+      test,
+      c("block_long_dd", "block_lat_dd"),
+      cutoff = co
+    )
+    
+    
+    bspde <- sdmTMBextra::add_barrier_mesh(
+      mesh, west_coast,
+      range_fraction = 0.02,
+      proj_scaling = 1000
+    )
+    
+    fit <- sdmTMB(
+      data = test,
+      formula = formula,
+      mesh = bspde,
+      family = Gamma(link = "log"),
+      spatial = "on",
+      time = "time_index",
+      spatiotemporal = "iid"
+    )
+    
+    list(
+      cutoff = co,
+      model = fit,
+      summary = summary(fit),
+      sanity = sanity(fit),
+      AIC = AIC(fit),
+      logLik = logLik(fit)
+    )
+  })
+  
+  names(results) <- paste0("cutoff_", cutoffs)
+  return(results)
+}
+
+# ---- Run across multiple metiers ----
+metiers <- c("Santa Barbara_CPFV")  # expand as needed ,"Los Angeles_CPFV", "Santa Barbara_CPFV", 
+#"Los Angeles_Lobster trap","Los Angeles_Squid seine","Santa Barbara_Set gillnet",
+#"Santa Barbara_Squid seine"
+
+results <- map(metiers, ~ fit_models(
+  df = fisheries_variables,
+  metier_name = .x
+))
+names(results) <- metiers
+
+
+
+
 
 #mesh <- make_mesh(test, c("block_long_dd", "block_lat_dd"),n_knots =85, type = "kmeans" ) #performed worse
 mesh <- make_mesh(test, c("block_long_dd", "block_lat_dd"),cutoff=10)
@@ -352,76 +446,24 @@ ggplot( west_coast) +
   geom_sf(data = mesh_df_water, size = 1, colour = "blue") +
   geom_sf(data = mesh_df_land, size = 1, colour = "green")
 
-## ------------------------
-## Fitting the model
-## ------------------------
-set.seed(123)
-m <- sdmTMB(
-  data = test,
-  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
-    distance_complex_km_scaled + s(BT, k=10) + s(SST, k=8) + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
-  mesh = bspde, 
-  family = tweedie(link = "log"),
-  spatial = "on", 
-  time = "time_index",
-spatiotemporal = "iid"
-)
-summary(m)
-sanity(m)
 
 
-m2 <- sdmTMB(
-  data = test,
-  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
-    distance_complex_km_scaled + s(BT_scaled, k=10) + s(SST_scaled, k=8) + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
-  mesh = bspde, 
-  family = tweedie(link = "log"),
-  spatial = "on", 
- time = "time_index",
-  spatiotemporal = "iid"
-)
-summary(m2)
-sanity(m2)
 
 
-m3 <- sdmTMB(
-  data = test,
-  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
-    distance_complex_km_scaled + BT_scaled + SST_scaled + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
-  mesh = bspde, 
-  family = tweedie(link = "log"),
-  spatial = "on", 
-  time = "time_index",
-  spatiotemporal = "iid"
-)
-summary(m3)
-sanity(m3)
 
-m4 <- sdmTMB(
-  data = test,
-  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
-    distance_complex_km_scaled + s(BT_scaled, k=10) + s(SST_scaled, k=8)  + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
-  mesh = bspde, 
-  family = lognormal(link = "log"),
-  spatial = "on", 
-  time = "time_index",
-  spatiotemporal = "iid"
-)
-summary(m4)
-sanity(m4)
 
-m5 <- sdmTMB(
-  data = test,
-  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +distance_to_shore_km_scaled  +
-    distance_complex_km_scaled + s(BT_scaled) + s(SST_scaled) + (closed_pct_scaled) + (fyear) +  sin12 + cos12, 
-  mesh = bspde, 
-  family = Gamma(link = "log"),
-  spatial = "on", 
-  time = "time_index",
-  spatiotemporal = "iid"
-)
-summary(m5)
-sanity(m5)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## ------------------------

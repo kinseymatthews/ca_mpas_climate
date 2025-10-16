@@ -16,7 +16,15 @@ all_blocks<- st_transform(all_blocks, crs = st_crs(3310))%>%
   rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)%>%
   filter(blck_ty!="Offshore" & blck_st!="Oregon"& blck_st!="Washington")
 all_blocks <- st_make_valid(all_blocks)%>%
-  select(-c(blck_st, blck_ty, blck_sq, block_long_dd, block_lat_dd))
+  dplyr::select(-c(blck_st, blck_ty, blck_sq, block_long_dd, block_lat_dd))
+
+#spatial mapping data
+usa <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf")
+mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
+usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
+  st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
+usa_mexico_sf_proj<- st_transform(usa_mexico_sf, crs = 3310)
+
 
 ############
 
@@ -28,20 +36,28 @@ reg_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_
 
 #historical mpas
 hist_mpas_sf <- st_read(paste0(reg_data,"MPAs/processed data/historical mpas/historical mpas.shp"))%>%
-  select(-NAME)%>%
-  rename(name=Namenew)
+  dplyr::select(-NAME)%>%
+  rename(name=Namenew)%>%
+  mutate(type="MPA")
 #current mpas
-mpas_sf <- st_read(paste0(reg_data,"MPAs/processed data/current mpas/MPAs.shp"))
-DECA_sf <- st_read(paste0(reg_data,"DECA/processed/shapefile/DECA.shp"))
+mpas_sf <- st_read(paste0(reg_data,"MPAs/processed data/current mpas/MPAs.shp"))%>%
+  mutate(type="MPA")
+DECA_sf <- st_read(paste0(reg_data,"DECA/processed/shapefile/DECA.shp"))%>%
+  mutate(type="Non-MPA")
 EFHCA_sf <- st_read(paste0(reg_data,"EFHCA/processed/shapefile/EFHCA.shp"))%>%
-  rename(name=AREA_NAME)
-urchin_sf <- st_read(paste0(reg_data,"urchin closure/processed/shapefile/south capsar point.shp"))
-trawl_sf <- st_read(paste0(reg_data,"trawl/processed/shapefile/trawl_closed_areas.shp"))
-gillnet_sf <- st_read(paste0(reg_data,"gillnet/processed/shapefile/gillnet_closures.shp"))
+  rename(name=AREA_NAME)%>%
+  mutate(type="Non-MPA")
+urchin_sf <- st_read(paste0(reg_data,"urchin closure/processed/shapefile/south capsar point.shp"))%>%
+  mutate(type="Non-MPA")
+trawl_sf <- st_read(paste0(reg_data,"trawl/processed/shapefile/trawl_closed_areas.shp"))%>%
+  mutate(type="Non-MPA")
+gillnet_sf <- st_read(paste0(reg_data,"gillnet/processed/shapefile/gillnet_closures.shp"))%>%
+  mutate(type="Non-MPA")
 rca_sf <- st_read(paste0(reg_data,"RCA lines/processed/shapefile/RCA_Lines_All_nongroundfish_trawl.shp"))%>%
-  rename(name=RCA)
-
+  rename(name=RCA)%>%
+  mutate(type="Non-MPA")
 ############
+
 
 
 ############
@@ -91,44 +107,44 @@ rca_sf_comb <- st_transform(rca_sf_comb , st_crs(all_blocks))
 #Edit and combine management shapefiles
 #current mpas
 mpas_sf_comb <-mpas_sf_comb %>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+         Squid.seine,geometry, type)
 
 #historical mpas
 hist_mpas_sf_comb <-hist_mpas_sf_comb %>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+         Squid.seine,geometry, type)
 
 deca_sf_comb <- deca_sf_comb%>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+         Squid.seine,geometry, type)
 
 efhca_sf_comb <- efhca_sf_comb%>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)%>%
+         Squid.seine,geometry, type)%>%
   mutate(name = paste0(name, " EHFCA"))
 urchin_sf_comb <- urchin_sf_comb  %>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)%>%
+         Squid.seine,geometry, type)%>%
   mutate(name = paste0(name, " Urchin Closure"))
 trawl_sf_comb <- trawl_sf_comb%>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+         Squid.seine,geometry, type)
 gillnet_sf_comb <- gillnet_sf_comb%>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+         Squid.seine,geometry, type)
 
 rca_sf_comb <- rca_sf_comb%>%
-  select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
+  dplyr::select(name,Date.implemented, Year.implemented, Date.ended, Year.ended, CPFV, Cucumber.trawl, 
          Cucumber.dive, Urchin.dive,Set.gillnet, Halibut.trawl, Lobster.trap, Pink.shrimp.trawl,Ridgeback.prawn.trawl,
-         Squid.seine,geometry)
+         Squid.seine,geometry, type)
 
 #combine all together in one regulation file
 regulations_sf<-rbind(mpas_sf_comb ,hist_mpas_sf_comb,deca_sf_comb,efhca_sf_comb,urchin_sf_comb, 
@@ -149,7 +165,12 @@ regulations_sf <- st_zm(regulations_sf, drop = TRUE, what = "ZM")
 
 regulations_sf  <- regulations_sf  %>% 
   mutate(geometry = st_make_valid(geometry))
+
+saveRDS(regulations_sf, paste0(reg_data,"spatialregulations_perfishery.rds"))
+
 ############
+
+
 
 
 ############
@@ -204,12 +225,12 @@ calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_s
     left_join(all_blocks %>% st_drop_geometry(), by = "block_id") %>%
     mutate(closed_pct = as.numeric(closed_area / block_area)) %>%
     mutate(month_year = date_string, fishery = fishery) %>%
-    select(block_id, month_year, fishery, closed_pct)
+    dplyr::select(block_id, month_year, fishery, closed_pct)
   
   # Fill in blocks with 0 closure
   all_blocks <- all_blocks %>%
     st_drop_geometry() %>%
-    select(block_id) %>%
+    dplyr::select(block_id) %>%
     left_join(closed_area, by = "block_id") %>%
     mutate(month_year = date_string,
            closed_pct = replace_na(closed_pct, 0))
@@ -227,7 +248,7 @@ calculate_closure_for_month <- function(date_string, fishery, all_blocks, regs_s
    
     
     results <- results%>%
-    select(-geometry)
+      dplyr::select(-geometry)
   
     results_with_geom <- left_join(all_blocks, results, by = "block_id")
 
