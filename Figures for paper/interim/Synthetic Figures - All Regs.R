@@ -382,7 +382,7 @@ p<-ggplot(data=results, aes(x= CV, y=port_complex, color=fishery2))+
   geom_point(size = 2, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
   geom_errorbarh(aes(xmin = lower.CI, xmax = upper.CI), height = 0.2, position = position_dodge(width = 0.5)) +  # Apply dodge to error bars
   labs(
-    x = "CV of Area in MPA",
+    x = "CV of Area in regulation area",
     y = "Port Complex",
     color = "Fishery"
   )+

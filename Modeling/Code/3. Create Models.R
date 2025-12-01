@@ -6,6 +6,7 @@ library(ggeffects)
 library(ggcorrplot)
 library(INLA)
 library(broom)
+library(rnaturalearth)
 ############
 #Upload Data
 base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/"
@@ -21,7 +22,9 @@ regulations <- readRDS(file.path(base_path, "Variables/Regulation/monthly_percen
     month_year = gsub("-", "_", month_year),
     month_year = sub("^0+", "", month_year),
     fishery = gsub("\\.", " ", fishery)
-  )
+  )%>%
+  mutate(fishery = recode(fishery,
+                           "Halibut trawl" = "California halibut trawl"))
 
 
 #upload SST and BT
@@ -46,7 +49,8 @@ general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 
 #upload block information
 all_blocks <- st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp")) %>%
-  st_transform(3310) 
+  st_transform(3310) %>%
+  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))
 
 # Calculate centroids
 centroids <- st_centroid(all_blocks)
@@ -59,10 +63,16 @@ all_blocks <- all_blocks %>%
     block_lat_dd  = coords[,2]/1000
   ) %>%
   # Common filtering and renaming
-  select(-block_id)%>%
   rename(block_id = block_d) %>%
-  filter(blck_ty != "Offshore", !blck_st %in% c("Oregon","Washington"))%>%
-  select(-Min_Depthm, -Max_Depthm, -Avg_Depthm, -blck_st, -blck_ty, -blck_sq)
+  filter(blck_ty != "Offshore", !blck_st %in% c("Oregon","Washington"))
+
+#upload bathy data
+bathy.data<-read.csv(paste0(general_data, "fishingblockstatistics.csv"))%>%
+  dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
+  rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
+
+# merge bathymetry data with block data
+all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
 
 
 # Create sf version for mapping
@@ -80,6 +90,41 @@ ca <- rnaturalearth::ne_states(country = "United States of America", returnclass
   filter(iso_3166_2=="US-CA" )%>%
   st_transform(crs = 3310)
 
+#shore data for mesh
+# US West Coast states
+west_coast_us <- ne_states(
+  country = "United States of America", 
+  returnclass = "sf"
+) %>%
+  filter(iso_3166_2 %in% c("US-CA", "US-OR", "US-WA", "US-NV"))
+
+# Mexican Baja states
+baja <- ne_states(
+  country = "Mexico", 
+  returnclass = "sf"
+) %>%
+  filter(iso_3166_2 %in% c("MX-BCN", "MX-BCS"))
+
+# Combine and transform
+west_coast <- bind_rows(west_coast_us, baja) %>%
+  st_transform(crs = 3310)
+# base theme
+base_theme <- theme(axis.text=element_text(size=7),
+                    # axis.text.y = element_text(angle = 90, hjust = 0.5),
+                    axis.title=element_text(size=8),
+                    legend.text=element_text(size=8),
+                    legend.title=element_text(size=9),
+                    strip.text = element_text(size=10),
+                    plot.tag =element_text(size=9),
+                    # plot.title=element_blank(),
+                    # Gridlines
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.background = element_blank(),
+                    axis.line = element_line(colour = "black"),
+                    # Legend
+                    legend.key = element_rect(fill = NA, color=NA),
+                    legend.background = element_rect(fill=alpha('blue', 0)))
 
 ############
 
@@ -117,14 +162,16 @@ fisheries_variables<-fisheries %>%
          block_lat_dd =as.numeric(block_lat_dd ),
        metier=paste(port.complex, fishery, sep = "_")#create metier column
          
-  ) 
+  )
+
+saveRDS(fisheries_variables,paste0(base_path,"Modeling/Data/Processed Data/fisheries_df_with_variables.rds"))
 
 ############
 
 ############
 #scale variables
 num_vars <- c("cost_per_gal_adjusted", "cost_per_pound_adjusted", 
-              "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct")
+              "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct", "Avg_Depthm")
 
 fisheries_variables <- fisheries_variables%>%
   mutate(across(all_of(num_vars), ~ as.numeric(scale(.)), .names = "{.col}_scaled"))
@@ -132,13 +179,13 @@ fisheries_variables <- fisheries_variables%>%
 
 ############
 # Plot correlation between variables
-test_cor <- fisheries_variables %>% dplyr::select("cost_per_gal_adjusted", ,
-                                                  "cost_per_pound_adjusted", ,
-                                                  "distance_to_shore_km", , 
-                                                  "distance_complex_km", , 
-                                                  "BT",  
+test_cor <- fisheries_variables %>% dplyr::select("cost_per_gal_adjusted", 
+                                                  "cost_per_pound_adjusted", 
+                                                  "distance_to_shore_km",  
+                                                  "distance_complex_km",  
+                                                  "BT", 
                                                   "SST", 
-                                                  "closed_pct", )
+                                                  "closed_pct", "Avg_Depthm" )
 
 corr <- round(cor(test_cor, use = "pairwise.complete.obs"), 1)
 
@@ -152,6 +199,7 @@ ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 2.5) +
 # Make folder for saving models
 model_folder <- paste0(base_path, "Modeling/Data/Processed Data/Model_Results/")
 
+
 # Loop through each unique fishery/metier
 for(i in unique(fisheries_variables$metier)) {
   
@@ -159,13 +207,11 @@ for(i in unique(fisheries_variables$metier)) {
   
   test <- fisheries_variables %>%
     filter(metier ==i, total.hours != 0)
-  
-  smooth_vars <- c("BT_scaled", "SST_scaled")
-  
-  test <- test %>%
-    filter(!if_any(all_of(smooth_vars), is.na))
-  
 
+  na_var <- c("BT_scaled", "SST_scaled")
+  test <- test %>%
+    filter(if_all(all_of( na_var), ~ !is.na(.) & is.finite(.)))
+  
   # Time index
   test <- test %>%
     arrange(date) %>%
@@ -174,7 +220,7 @@ for(i in unique(fisheries_variables$metier)) {
   # Dynamically build formula
   base_terms <- c("cost_per_gal_adjusted_scaled",
                   "distance_to_shore_km_scaled", "distance_complex_km_scaled",
-                  "BT_scaled", "SST_scaled",
+                  "SST_scaled",  "Avg_Depthm_scaled",#"BT_scaled",
                   "closed_pct_scaled", "fyear", "sin12", "cos12")
   
   # Include cost_per_pound_adjusted_scaled only if it exists and is not all NA
@@ -186,32 +232,66 @@ for(i in unique(fisheries_variables$metier)) {
   }
   
   formula_str <- paste("total.hours ~", paste(base_terms, collapse = " + "))
-   as.formula(formula_str)
+  formula_final <- as.formula(formula_str)
   
    # Create mesh = always has to go right before building the model!
   mesh <- make_mesh(test, xy_cols = c("block_long_dd","block_lat_dd"), cutoff = 10)
   bspde <- sdmTMBextra::add_barrier_mesh(mesh, 
-                                         ca ,
+                                         west_coast ,
                                          range_fraction = 0.02, proj_scaling = 1000, plot = TRUE)
   
 
-  # Fit sdmTMB model
+  # Fit model
   set.seed(123)
-  model <- sdmTMB(
-    data = test,
-    formula =  as.formula( formula_str),
-    mesh = bspde,
-    family = Gamma(link = "log") ,
-    spatial = "on",
+  model <- try(
+    sdmTMB(
+      data = test,
+      formula = formula_final,
+      mesh = bspde,
+      family = Gamma(link = "log"),
+      spatial = "on",
       time = "time_index",
-     spatiotemporal = "iid"
+      spatiotemporal = "iid"
+    ),
+    silent = TRUE
   )
   
+  # Check convergence and fallback
+  if (inherits(model, "try-error") || !isTRUE(model$sd_report$pdHess)) {
+    message("⚠️ Full spatial model failed or Hessian not PD — refitting with spatial OFF.")
+    model <- sdmTMB(
+      data = test,
+      formula = formula_final,
+      mesh = bspde,
+      family = Gamma(link = "log"),
+      spatial = "off",
+      time = "time_index",
+      spatiotemporal = "iid"
+    )
+  }
   
-  summary(model)
+  # Check convergence and fallback
+  # --- 3. Fallback: spatial + spatiotemporal off ---
+  if (inherits(model, "try-error") || !isTRUE(model$sd_report$pdHess)) {
+    message("⚠️ Spatial-off model failed or Hessian not PD — refitting with both spatial and spatiotemporal OFF.")
+    model <- sdmTMB(
+      data = test,
+      formula = formula_final,
+      mesh = bspde,
+      family = Gamma(link = "log"),
+      spatial = "off",
+      time = "time_index",
+      spatiotemporal = "off"
+    )
+    
+  }
+  
+  # Print summary and sanity
+  print(summary(model))
+  print(sanity(model))
   
   # Save model
-  saveRDS(model, file = paste0(model_folder, "model_", gsub(" ","_", i), ".rds"))
+  saveRDS(model, file = paste0(model_folder, "model_", gsub(" ","_", i), "_Depth_no_BT.rds"))
 }
 ############
 
@@ -219,18 +299,20 @@ for(i in unique(fisheries_variables$metier)) {
 ############
 #read models back in
 # List all RDS model files
-model_files <- list.files(model_folder, pattern = "^model_.*\\.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
+model_files <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
 
 # Read them back into a named list
 models <- lapply(model_files, readRDS)
 
 # Strip off "model_" and ".rds" so names look like "San_Francisco_Squid_Seine"
-names(models) <- gsub("^model_|\\.rds$", "", basename(model_files))
+names(models) <- gsub("^model_|\\_Depth_no_BT.rds$", "", basename(model_files))
 
 # Example: look at the summary for San Francisco Squid Seine
-m<-(models[["Santa_Barbara_Urchin_dive"]])
+m<-(models[["Santa_Barbara_Squid_seine"]])
 summary(m)
 sanity(m)
+tidy(m)
+AIC(m)
 
 #number of times smooth terms go to 0
 ############
@@ -254,92 +336,113 @@ for (f in model_files) {
 }
 ############
 
+############ 
+
+#QQ plots
+for (f in model_files) {
+  nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
+
+  m <- readRDS(f)
+  # Safely attempt to extract residuals
+
+  resids <- residuals(m, type = "mle-mvn")
+  # Save QQ plot as a PNG file
+  png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids.png"), width = 800, height = 600)
+  
+  qqnorm(resids, main = paste("QQ Plot of Residuals -", nm))
+  qqline(resids, col = "red")
+  
+  dev.off() 
+}
 ############
-fishery_list <- c("CPFV", "Urchin_dive", "Squid_seine", "Set_gillnet", "Cucumber_dive", "Lobster_trap", "Cucumber_trawl", "Ridgeback_prawn", "Pink_shrimp_trawl")
 
-coef_table <- lapply(names(models), function(nm) {
-  coefs <- broom::tidy(models[[nm]])
-  coefs$model <- nm
-  coefs
-}) %>% dplyr::bind_rows()%>%
-  rowwise() %>%
-  mutate(
-    # Find fishery by matching the known list
-    fishery = {
-      f <- fishery_list[sapply(fishery_list, function(x) grepl(x, model))]
-      if(length(f) == 0) NA_character_ else f[1]
-    },
-    # Port complex is what's left after removing fishery
-    port.complex = if(!is.na(fishery)) sub(paste0("_", fishery, "$"), "", model) else model,
-    port.complex = gsub("_", " ", port.complex),
-    sign = case_when(
-      estimate > 0 ~ "positive",
-      estimate < 0 ~ "negative",
-      TRUE ~ "zero"
+############
+# RMSE across entire dataset:
+
+obs <- m$data$total.hours
+fitted <- predict(m, type = "response")$est
+rmse <- sqrt(mean((obs - fitted)^2, na.rm = TRUE))
+rmse
+
+pred_link <- predict(m, type = "link")$est
+obs_link <- log(m$data$total.hours)
+rmse_log <- sqrt(mean((obs_link - pred_link)^2, na.rm = TRUE))
+rmse_log
+############
+
+############
+#R2 mariginal and conditional R2. mariginal represents proportion of variance explained by fixed effects alone, while conditiional accoutns for both fixed and random effects
+R2_sdmTMB <- function(models) {
+  
+  # Function to compute R2 for one model
+  compute_R2 <- function(mod, name) {
+    # Fixed-effect variance on link scale
+    pred_link <- predict(mod, type = "link")$est
+    sigma2_f <- var(pred_link, na.rm = TRUE)
+    
+    # Random-effect variance
+    random_vals <- mod$sd_report$par.random
+    
+    # Spatial variance
+    sigma2_omega <- if (any(grepl("omega_s", names(random_vals)))) {
+      var(random_vals[grep("omega_s", names(random_vals))], na.rm = TRUE)
+    } else 0
+    
+    # Spatiotemporal variance
+    sigma2_epsilon <- if (any(grepl("epsilon_st", names(random_vals)))) {
+      var(random_vals[grep("epsilon_st", names(random_vals))], na.rm = TRUE)
+    } else 0
+    
+    sigma2_r <- sigma2_omega + sigma2_epsilon
+    
+    # Distribution-specific variance (Gamma/log)
+    ln_phi <- mod$sd_report$par.fixed["ln_phi"]
+    phi <- exp(ln_phi)
+    sigma2_d <- trigamma(phi)
+    
+    # Marginal and conditional R2
+    R2_marginal <- sigma2_f / (sigma2_f + sigma2_r + sigma2_d)
+    R2_conditional <- (sigma2_f + sigma2_r) / (sigma2_f + sigma2_r + sigma2_d)
+    
+    data.frame(
+      model_name = name,
+      R2_marginal = R2_marginal,
+      R2_conditional = R2_conditional,
+      sigma2_fixed = sigma2_f,
+      sigma2_random = sigma2_r,
+      sigma2_distribution = sigma2_d
     )
-    )%>%
-  ungroup()
+  }
+  
+  # Loop over all models and compute R2
+  results <- do.call(
+    rbind,
+    lapply(names(models), function(nm) {
+      mod <- models[[nm]]
+      tryCatch(
+        compute_R2(mod, nm),
+        error = function(e) {
+          data.frame(
+            model_name = nm,
+            R2_marginal = NA,
+            R2_conditional = NA,
+            sigma2_fixed = NA,
+            sigma2_random = NA,
+            sigma2_distribution = NA
+          )
+        }
+      )
+    })
+  )
+  
+  return(results)
+}
+
+R2_df <- R2_sdmTMB(models)
 
 
-#for each fishing metier, figure out the most important coefficient, then for a fishery calculate 
-#the percent a variable is number one?
-coef_import<-coef_table%>%
-  group_by(model)%>%
-  mutate(
-    most.important = if_else(
-      term %in% c("cost_per_gal_adjusted_scaled", "distance_to_shore_km_scaled", "distance_complex_km_scaled", "closed_pct_scaled","cost_per_gpound_adjusted_scaled", "SST_scaled", "BT_scaled"),  # ← only terms to consider
-      if_else(abs(estimate) == max(abs(estimate[term %in% c("cost_per_gal_adjusted_scaled", "distance_to_shore_km_scaled", "distance_complex_km_scaled", "closed_pct_scaled","cost_per_gpound_adjusted_scaled", "SST_scaled", "BT_scaled")])), 1, 0),
-      0
-    )
-  )%>%
-  ungroup()%>%
-  mutate(term_type= case_when(
-    term %in% c("cost_per_gal_adjusted_scaled","cost_per_gpound_adjusted_scaled") ~ "Market",
-    term %in% c("closed_pct_scaled") ~ "Regulation",
-    term %in% c("distance_to_shore_km_scaled", "distance_complex_km_scaled") ~ "Physical",
-    term %in% c("SST_scaled", "BT_scaled") ~ "Environmental"
-  ))%>%
-  group_by(fishery,term_type)%>%
-  summarise(
-    count_1 = sum(most.important == 1),
-    count_0 = sum(most.important == 0),
-    total_metiers=n_distinct(model)
-  )%>%
-  mutate(percent=(count_1/total_metiers)*100)%>%
-  ungroup()
-
-ggplot(coef_import, aes(fill=term_type, y=fishery, x=percent)) + 
-  geom_bar(position="stack", stat="identity")
-
+saveRDS(R2_df ,paste0(base_path,"Modeling/Data/Processed Data/Model_Results/Diagnostics/R2/Rc_Rm_results.rds"))
+############
 
 
 
-
-
-
-###################### MAYBE DELETE
-
-# Count positives vs negatives for each term
-coef_summary <- coef_table %>%
-  mutate(sign = case_when(
-    estimate > 0 ~ "positive",
-    estimate < 0 ~ "negative",
-    TRUE ~ "zero"
-  )) %>%
-  group_by(term, sign) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)
-
-coef_summary
-
-#county positive and negative per term organized by fishery and by port complex
-# Example: summarize by fishery
-fishery_summary <- coef_table %>%
-  group_by(fishery, term, sign) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)
-
-port.complex_summary <- coef_table %>%
-  group_by(port.complex, term, sign) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  tidyr::pivot_wider(names_from = sign, values_from = n, values_fill = 0)

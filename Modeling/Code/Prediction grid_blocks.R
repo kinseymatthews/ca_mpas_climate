@@ -9,14 +9,29 @@ library(tidyverse)
 
 
 ############### Base spatial extent of grid based on blocks
+general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+
+#upload bathy data
+bathy.data<-read.csv(paste0(general_data, "fishingblockstatistics.csv"))%>%
+  dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
+  rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)%>%
+  mutate(block_id=as.factor(block_id))
+
+
 all_blocks<-st_read(("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()
 all_blocks<- st_transform(all_blocks, crs = st_crs(3310))%>%
   filter(blck_ty!="Offshore" & blck_st!="Oregon"& blck_st!="Washington")%>%
   dplyr::select(-Max_Depthm,-Min_Depthm,-Avg_Depthm, -blck_sq,-block_d)%>%
   mutate(block_id=as.factor(as.numeric(block_id)))
+
+# merge bathymetry data with block data
+all_blocks<-left_join(all_blocks,bathy.data, by="block_id")
+
 all_blocks_df<-(all_blocks)%>%
   st_drop_geometry()
+
+
 #upload management regulations
 regulations<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Regulation/monthly_percent_closed_blocks.rds")%>%
   mutate(block_id=as.factor(block_id))%>%
@@ -102,7 +117,7 @@ prediction_grid <- expand_grid(
   fishery = fisheries,
   port.complex=port.complexes
 )%>%
-  mutate(month_year = format(date, "%Y-%m")) 
+  mutate(month_year = format(date, "%m-%Y")) 
 
 
 # Join back the block attributes
@@ -126,7 +141,7 @@ fisheries<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries
 metiers<-unique(fisheries$metier)
 
 #filter predicition grid for these metiers to remove metiers that we are not looking at 
-prediction_grid4<-prediction_grid%>%
+prediction_grid4<-prediction_grid2%>%
   filter(metier %in% metiers)
 
 saveRDS(prediction_grid4, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")

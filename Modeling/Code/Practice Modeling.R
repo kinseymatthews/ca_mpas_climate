@@ -40,7 +40,10 @@ general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_m
 
 #upload block information
 all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
-  st_as_sf()
+  st_as_sf()%>%
+  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
+  rename(block_id=block_d)
+  
 all_blocks<- st_transform(all_blocks, crs = st_crs(3310))
 # Calculate centroids
 centroids <- st_centroid(all_blocks)
@@ -50,16 +53,18 @@ coords <- st_coordinates(centroids)
 all_blocks$block_long_dd <- coords[,1]/ 1000
 all_blocks$block_lat_dd <- coords[,2]/ 1000
 
+bathy.data<-read.csv(paste0(general_data, "fishingblockstatistics.csv"))%>%
+  dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
+  rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
+
+##### merge bathymetry data with block data
+all_blocks<-left_join(all_blocks,bathy.data, by="block_id")%>%
+  filter(blck_ty!="Offshore" & blck_st!="Oregon"& blck_st!="Washington")
+
 all_blocks_sf<-all_blocks%>%
-  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
-  rename(block_id=block_d)%>%
-  filter(blck_ty!="Offshore" & blck_st!="Oregon"& blck_st!="Washington")%>%
   dplyr::select(-c(blck_st, blck_ty, blck_sq, block_lat_dd, block_long_dd))
 
 all_blocks<-all_blocks%>%
-  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
-  rename(block_id=block_d)%>%
-  filter(blck_ty!="Offshore" & blck_st!="Oregon"& blck_st!="Washington")%>%
   dplyr::select(-c(blck_st, blck_ty, blck_sq, geometry))%>%
   st_drop_geometry()
 
@@ -157,7 +162,7 @@ fisheries_variables$month <- format(fisheries_variables$date, "%m")
 ############
 #scale variables
 num_vars <- c("cost_per_gal_adjusted", "cost_per_pound_adjusted", 
-              "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct")
+              "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct", "Avg_Depthm")
 
 fisheries_variables <- fisheries_variables%>%
   mutate(across(all_of(num_vars), ~ as.numeric(scale(.)), .names = "{.col}_scaled"))
@@ -174,7 +179,7 @@ test_cor <- fisheries_variables %>% dplyr::select("cost_per_gal_adjusted", ,
                                    "distance_complex_km", , 
                                    "BT",  
                                    "SST", 
-                                   "closed_pct", )
+                                   "closed_pct","Avg_Depthm" )
 
 corr <- round(cor(test_cor, use = "pairwise.complete.obs"), 1)
 
@@ -201,7 +206,51 @@ fisheries_variables<-fisheries_variables%>%
   )
 #adding in variables that will represent the cyclical nature of months as putting
 #month is a smooth term with cubic spline did not work
+############
 
+
+############
+
+#practice - one fishery
+test<-fisheries_variables%>%
+  filter(metier=="Santa Barbara_Lobster trap")%>%
+  arrange(date) %>%
+  mutate(time_index = match(date, sort(unique(date))))
+
+smooth_vars <- c("BT_scaled", "SST_scaled")
+test <- test %>%
+  filter(if_all(all_of(smooth_vars), ~ !is.na(.) & is.finite(.)))
+
+#create mesh and barrier mesh
+mesh <- make_mesh(
+  test,
+  c("block_long_dd", "block_lat_dd"),
+  cutoff = 10
+)
+
+bspde <- sdmTMBextra::add_barrier_mesh(
+  mesh, west_coast,
+  range_fraction = 0.02,
+  proj_scaling = 1000, plot = TRUE
+)
+
+m <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled+
+    distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm_scaled+
+    SST_scaled+closed_pct_scaled + fyear + sin12 + cos12,
+  mesh = bspde,
+  family = Gamma(link = "log"),
+  spatial = "on",
+  time = "time_index",
+  spatiotemporal = "iid"
+)
+
+############
+
+
+
+############
 
 ## ------------------------
 ## Function to go through different metiers and type of models (Gamma, log normal) with and without smooth terms
@@ -233,13 +282,13 @@ fit_models<-function(df, metier_name){
   # Base terms (common to all models)
   base_terms <- c("cost_per_gal_adjusted_scaled",
                   "distance_to_shore_km_scaled", "distance_complex_km_scaled",
-                  "closed_pct_scaled", "fyear", "sin12", "cos12")
+                  "closed_pct_scaled", "fyear", "sin12", "cos12","Avg_Depthm")
   
   if (include_pound) {
     base_terms <- c("cost_per_gal_adjusted_scaled", 
                     "cost_per_pound_adjusted_scaled",
                     "distance_to_shore_km_scaled", "distance_complex_km_scaled",
-                    "closed_pct_scaled", "fyear", "sin12", "cos12")
+                    "closed_pct_scaled", "fyear", "sin12", "cos12","Avg_Depthm")
   }
   
   # Unsmooth models (linear BT and SST)
@@ -249,22 +298,22 @@ fit_models<-function(df, metier_name){
   # Smooth models (splines on BT and SST)
   if (include_pound) {
     f3 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled + Avg_Depthm+
       s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
       closed_pct_scaled + fyear + sin12 + cos12
     
     f4 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled + Avg_Depthm+
       s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
       closed_pct_scaled + fyear + sin12 + cos12
   } else {
     f3 <- total.hours ~ cost_per_gal_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm+
       s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
       closed_pct_scaled + fyear + sin12 + cos12
     
     f4 <- total.hours ~ cost_per_gal_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm+
       s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
       closed_pct_scaled + fyear + sin12 + cos12
   }
@@ -436,7 +485,7 @@ plot(mesh)
 #add on barrier
 bspde<-sdmTMBextra::add_barrier_mesh(
   mesh, west_coast, range_fraction = .01,
-  proj_scaling=1000, plot=TRUE
+  proj_scaling=1000, plot=FALSE
 )
 
 mesh_df_water <- bspde$mesh_sf[bspde$normal_triangles, ]
@@ -595,7 +644,7 @@ prediction_grid_final_sb_lob<-prediction_grid_final%>%
 prediction_grid_final_sb_lob$block_long_dd<- prediction_grid_final_sb_lob$block_long_dd / 1000
 prediction_grid_final_sb_lob$block_lat_dd <- prediction_grid_final_sb_lob$block_lat_dd / 1000
 
-predictions <- predict(m2, newdata = prediction_grid_final_sb_lob)
+predictions <- predict(m, newdata = prediction_grid_final_sb_lob)
 
 
 all_blocks_sf <-all_blocks_sf %>%
@@ -615,22 +664,21 @@ plot_map <- function(dat, column) {
 }
 
 
-plot_map(predictions_sf, exp(est)) +
+plot_map(predictions_sf2, exp(est)) +
   facet_wrap(~year) +
   ggtitle("Prediction (fixed effects + all random effects)")+
-
 scale_fill_viridis_c(
   trans = "sqrt",
-  limits = c(0, quantile(exp(predictions_sf$est), 0.995, na.rm = TRUE)),
+  limits = c(0, quantile(exp(predictions_sf2$est), 0.995, na.rm = TRUE)),
   na.value = "yellow"
 )
 
-plot_map(predictions_sf, exp(est_non_rf)) +
+plot_map(predictions_sf2, exp(est_non_rf)) +
   scale_fill_viridis_c(trans = "sqrt") +
   ggtitle("Prediction (fixed effects only)")
 
 
-plot_map(predictions_sf, omega_s) +
+plot_map(predictions_sf2, omega_s) +
   scale_fill_gradient2() +
   ggtitle("Spatial random effects only")
 

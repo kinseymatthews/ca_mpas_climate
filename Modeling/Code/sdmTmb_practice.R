@@ -51,3 +51,13 @@ m3 <- sdmTMB(
   spatiotemporal = "IID"
 )
 m3
+
+
+
+bnd <- INLA::inla.nonconvex.hull(cbind(pcod$X, pcod$Y), convex = -0.1)
+mesh_inla <- INLA::inla.mesh.2d(
+  boundary = bnd,
+  max.edge = c(100, 50)
+)
+mesh <- make_mesh(pcod, c("X", "Y"), mesh = mesh_inla)
+plot(mesh)

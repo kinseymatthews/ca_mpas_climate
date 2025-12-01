@@ -84,8 +84,8 @@ d2<-plot_fun(extent_south_cv)
 e2<-plot_fun(distance_cv)
 f2<-plot_fun(regulation_cv)
 
-filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/boxplot_cv_south.jpg')
-ggsave(filename = filename1, plot =  d2 , width = 10, height = 8, units = "in", dpi = 300)
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/boxplot_cv_regulation.jpg')
+ggsave(filename = filename1, plot =  f2 , width = 10, height = 8, units = "in", dpi = 300)
 #########
 
 

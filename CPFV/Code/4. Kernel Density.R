@@ -561,7 +561,7 @@ plot_fun<-function(portcomplex){
     p<-ggplot() +
       geom_raster(data = density_df, aes(x = x, y = y, fill = value)) +
       
-      scale_fill_gradientn(name = "Tow minutes", 
+      scale_fill_gradientn(name = "Kernel Density", 
                            colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
                            limits = c(0, max(density_df$value)),  # Adjust limits as needed
                            na.value = "white") +  # Set NA values to white
