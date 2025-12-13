@@ -86,6 +86,44 @@ baja <- ne_states(
 # Combine and transform
 west_coast <- bind_rows(west_coast_us, baja) %>%
   st_transform(crs = 3310)
+
+
+#prediction grid 
+#upload prediction grid
+prediction_grid<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")%>%
+  rename(block_long_dd=blck_ln_, block_lat_dd=blck_lt_ )%>%#rename to be same columns as mesh X and Y 
+  separate(month_year, into = c("month", "year"), sep = "-", convert = TRUE, remove = FALSE)%>%
+  mutate(year = as.integer(year),
+         month = as.integer(month),
+         fyear = as.factor(year),
+         fmonth_year = as.factor(month_year),
+         sin12 = sin(2 * pi * month / 12),
+         cos12 = cos(2 * pi * month / 12),
+         closed_pct=(closed_pct*100),
+         block_long_dd= as.numeric(block_long_dd),
+         block_lat_dd =as.numeric(block_lat_dd )
+         
+  )
+
+prediction_grid$month_year <- sub("^0+", "", prediction_grid$month_year)
+prediction_grid$month_year <- sub("-", "_", prediction_grid$month_year)
+prediction_grid$metier <- sub("_", " ", prediction_grid$metier)
+# Convert to sf object
+prediction_grid_sf <- st_as_sf(prediction_grid, coords = c("block_long_dd", "block_lat_dd"), crs = 4326)%>%
+  st_transform(crs = st_crs(3310))
+
+coords <- st_coordinates(prediction_grid_sf)
+# Add to the polygon data as new columns
+prediction_grid_sf$block_long_dd <- coords[,1]
+prediction_grid_sf$block_lat_dd <- coords[,2]#/ 1000
+
+#scale variables
+num_vars <- c("cost_per_gal_adjusted", "cost_per_pound_adjusted", 
+              "distance_to_shore_km", "distance_complex_km", "BT", "SST", "closed_pct", "Avg_Depthm")
+
+prediction_grid_sf <- prediction_grid_sf%>%
+  mutate(across(all_of(num_vars), ~ as.numeric(scale(.)), .names = "{.col}_scaled"))
+
 ############
 
 ############
@@ -128,7 +166,7 @@ fisheries_augmented <- bind_rows(fisheries, zero_grid)
 
 ############
 #create full dataframe by adding explanatory variables 
-fisheries_variables<-fisheries %>%
+fisheries_variables<-fisheries_augmented %>%
   mutate(date = my(month_year, tz = "UTC"))%>%
   left_join(fuel, by=c('port.complex','month_year','date'))%>%
   left_join(exvessel, by=c('port.complex','month_year','fishery','year'))%>%
@@ -199,7 +237,7 @@ ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 2.5) +
 
 fisheries_variables<-fisheries_variables%>%
   mutate(closed_pct=closed_pct*100)%>%
-  filter(total.hours!=0)%>%
+  #filter(total.hours!=0)%>%
   mutate(month=as.integer(month))%>%
   mutate(sin12 = (sin(2 * pi * month / 12)),
          cos12  = (cos(2 * pi * month / 12))
@@ -215,7 +253,11 @@ fisheries_variables<-fisheries_variables%>%
 test<-fisheries_variables%>%
   filter(metier=="Santa Barbara_Lobster trap")%>%
   arrange(date) %>%
-  mutate(time_index = match(date, sort(unique(date))))
+  mutate(time_index = match(date, sort(unique(date))))%>%
+  mutate(present=case_when(
+    total.hours>0 ~ 1,
+    total.hours==0 ~0
+  ))
 
 smooth_vars <- c("BT_scaled", "SST_scaled")
 test <- test %>%
@@ -238,17 +280,204 @@ m <- sdmTMB(
   data = test,
   formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled+
     distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm_scaled+
+    SST_scaled+closed_pct_scaled  + fyear + sin12 + cos12,
+  mesh = bspde,
+  family = delta_gamma(),
+  spatial = "on",
+  time = "time_index",
+  spatiotemporal = "ar1"
+)
+
+m2 <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled+
+    distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm_scaled+
     SST_scaled+closed_pct_scaled + fyear + sin12 + cos12,
   mesh = bspde,
-  family = Gamma(link = "log"),
+  family = tweedie(link = "log"),
+  spatial = "on",
+  time = "time_index",
+  spatiotemporal = "ar1"
+)
+
+m3 <- sdmTMB(
+  data = test,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled+
+    distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm_scaled+
+    SST_scaled+closed_pct_scaled + fyear + sin12 + cos12,
+  mesh = bspde,
+  family = tweedie(link = "log"),
   spatial = "on",
   time = "time_index",
   spatiotemporal = "iid"
 )
+AIC(m2,m3)
 
+#delta model two ways
+mesh1 <- make_mesh(
+  test,
+  c("block_long_dd", "block_lat_dd"),
+  cutoff = 10
+)
+bspde <- sdmTMBextra::add_barrier_mesh(
+  mesh1, west_coast,
+  range_fraction = 0.02,
+  proj_scaling = 1000, plot = TRUE
+)
+test2 <- subset(test, total.hours > 0)
+
+mesh2 <- make_mesh(test2,
+                   xy_cols = c("block_long_dd", "block_lat_dd"),
+                   mesh = bspde$mesh
+)
+
+
+#fit presence absence data
+m1 <- sdmTMB(
+  data = test,
+  formula = present ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled+
+    distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm_scaled+
+    SST_scaled+closed_pct_scaled + fyear + sin12 + cos12,
+  mesh = bspde,
+  family = binomial(link = "logit"),
+  spatial = "off",
+#  time = "time_index",
+  spatiotemporal = "off"
+)
+#fit non presence basnece data
+m2 <- sdmTMB(
+  data = test2,
+  formula = total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled+
+    distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm_scaled+
+    SST_scaled+closed_pct_scaled + fyear + sin12 + cos12,
+  mesh = mesh2,
+  family = Gamma(link = "log"),
+  spatial = "on",
+  time = "time_index",
+  spatiotemporal = "ar1"
+)
+m1
+sanity(m1)
+m2
+sanity(m2)
+
+pred_test_cold_1 <- predict(m1, newdata = grids$cold)
+pred_test_cold_2 <- predict(m2, newdata = grids$cold)
+predictions_sf_cold_1 <- left_join(pred_test_cold_1,all_blocks_sf, by = "block_id")%>%
+  st_as_sf()
+predictions_sf_cold_2 <- left_join(pred_test_cold_2,all_blocks_sf, by = "block_id")%>%
+  st_as_sf()
+
+ggplot(predictions_sf_cold_1) +
+  geom_sf(aes(fill = exp(est)), color = NA) +
+  scale_fill_viridis_c(trans = "sqrt") +
+  ggtitle("Cold-year Average Prediction") +
+  theme_minimal()
+
+ggplot(predictions_sf_cold_2) +
+  geom_sf(aes(fill = exp(est)), color = NA) +
+  scale_fill_viridis_c(trans = "sqrt") +
+  ggtitle("Warm-year Average Prediction") +
+  theme_minimal()
+pred<-grids$cold
+p_bin_prob <- m1$family$linkinv(pred_test_cold_1$est)
+p_pos_exp <- m2$family$linkinv(pred_test_cold_2$est)
+pred$est_exp <- p_bin_prob * p_pos_exp
+
+pred_sf <- left_join(pred,all_blocks_sf, by = "block_id")%>%
+  st_as_sf()
+
+ggplot(pred_sf) +
+  geom_sf(aes(fill = (est_exp)), color = NA) +
+  scale_fill_viridis_c(trans = "sqrt") +
+  ggtitle("Cold-year Average Prediction") +
+  theme_minimal()
 ############
 
+############
+#function to go through different spatiotemporal arguments - iid, ar1, rw
+# list of unique metiers
+metiers <- unique(fisheries_variables$metier)
 
+# initialize results dataframe
+aic_results <- data.frame(
+  metier = character(),
+  model = character(),
+  AIC = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (met in metiers) {
+  message("Processing metier: ", met)
+  smooth_vars <- c("BT_scaled", "SST_scaled")
+  
+  # subset and prepare data
+  test <- fisheries_variables %>%
+    filter(metier == met) %>%
+    arrange(date) %>%
+    mutate(time_index = match(date, sort(unique(date)))) %>%
+    filter(if_all(all_of(smooth_vars), ~ !is.na(.) & is.finite(.)))
+
+  #build formula
+  
+  include_pound <- "cost_per_pound_adjusted_scaled" %in% colnames(test) &&
+    !all(is.na(test$cost_per_pound_adjusted_scaled))
+  
+  if (include_pound) {
+    formula1 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+  } else {
+    formula1 <- total.hours ~ cost_per_gal_adjusted_scaled +
+      distance_to_shore_km_scaled + distance_complex_km_scaled +
+      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+      closed_pct_scaled + fyear + sin12 + cos12
+  }
+  
+  
+  # define spatiotemporal structures
+  spatiotemp_types <- c("iid", "ar1", "rw")
+  
+  for (st in spatiotemp_types) {
+    message("  Fitting spatiotemporal: ", st)
+    
+    # create mesh and barrier
+    mesh <- make_mesh(
+      test,
+      xy_cols = c("block_long_dd", "block_lat_dd"),
+      cutoff = 10
+    )
+    
+    bspde <- sdmTMBextra::add_barrier_mesh(
+      mesh, west_coast,
+      range_fraction = 0.02,
+      proj_scaling = 1000, plot = FALSE
+    )
+    
+    # fit model safely
+    fit <- 
+      sdmTMB(
+        data = test,
+        formula = formula1,
+        mesh = bspde,
+        family = Gamma(link = "log"),
+        spatial = "on",
+        time = "time_index",
+        spatiotemporal = st
+      )
+    
+    aic_results <- rbind(aic_results, data.frame(
+      metier = met,
+      model = st,
+      AIC = AIC(fit)))
+
+  }
+}
+
+# view results
+aic_results
+############
 
 ############
 
@@ -282,52 +511,52 @@ fit_models<-function(df, metier_name){
   # Base terms (common to all models)
   base_terms <- c("cost_per_gal_adjusted_scaled",
                   "distance_to_shore_km_scaled", "distance_complex_km_scaled",
-                  "closed_pct_scaled", "fyear", "sin12", "cos12","Avg_Depthm")
+                  "closed_pct_scaled",  "sin12", "cos12","Avg_Depthm_scaled","SST_scaled")
   
   if (include_pound) {
     base_terms <- c("cost_per_gal_adjusted_scaled", 
                     "cost_per_pound_adjusted_scaled",
                     "distance_to_shore_km_scaled", "distance_complex_km_scaled",
-                    "closed_pct_scaled", "fyear", "sin12", "cos12","Avg_Depthm")
+                    "closed_pct_scaled",  "sin12", "cos12", "Avg_Depthm_scaled","SST_scaled")
   }
   
   # Unsmooth models (linear BT and SST)
-  f1 <- reformulate(c(base_terms, "BT_scaled", "SST_scaled"), response = "total.hours")
- f2 <- reformulate(c(base_terms, "BT_scaled", "SST_scaled"), response = "total.hours")
+  f1 <- reformulate(c(base_terms, "fyear"), response = "total.hours")
+ f2 <- reformulate(c(base_terms,"year" ), response = "total.hours")
   
   # Smooth models (splines on BT and SST)
-  if (include_pound) {
-    f3 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled + Avg_Depthm+
-      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
-      closed_pct_scaled + fyear + sin12 + cos12
+  #if (include_pound) {
+ #   f3 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
+ #    distance_to_shore_km_scaled + distance_complex_km_scaled + Avg_Depthm+
+ #    s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+ #    closed_pct_scaled + fyear + sin12 + cos12
+ #  
+ #  f4 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
+ #    distance_to_shore_km_scaled + distance_complex_km_scaled + Avg_Depthm+
+ #    s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+ #    closed_pct_scaled + fyear + sin12 + cos12
+ #  } else {
+ #  f3 <- total.hours ~ cost_per_gal_adjusted_scaled +
+ #    distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm+
+ #    s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+ #    closed_pct_scaled + fyear + sin12 + cos12
     
-    f4 <- total.hours ~ cost_per_gal_adjusted_scaled + cost_per_pound_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled + Avg_Depthm+
-      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
-      closed_pct_scaled + fyear + sin12 + cos12
-  } else {
-    f3 <- total.hours ~ cost_per_gal_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm+
-      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
-      closed_pct_scaled + fyear + sin12 + cos12
-    
-    f4 <- total.hours ~ cost_per_gal_adjusted_scaled +
-      distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm+
-      s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
-      closed_pct_scaled + fyear + sin12 + cos12
-  }
+ # f4 <- total.hours ~ cost_per_gal_adjusted_scaled +
+ #   distance_to_shore_km_scaled + distance_complex_km_scaled +Avg_Depthm+
+ #   s(BT_scaled, k = 10) + s(SST_scaled, k = 8) +
+ #   closed_pct_scaled + fyear + sin12 + cos12
+  #}
   
   #formulas <- list(m1 = f1, m2 = f2, m3 = f3, m4 = f4)
-  formulas <- list(m1=f1, m2=f2, m3 = f3, m4 = f4)
+  formulas <- list(m1=f1, m2=f2)#, m3 = f3, m4 = f4)
   # ------------------------
   # Families
   # ------------------------
   families <- list(
-    m1 = lognormal(link = "log"),
-    m2 = Gamma(link = "log"),
-    m3 = lognormal(link = "log"),
-    m4 = Gamma(link = "log")
+    m1 = Gamma(link = "log"),
+    m2 = Gamma(link = "log")
+   # m3 = lognormal(link = "log"),
+   # m4 = Gamma(link = "log")
   )
   
   #create mesh and barrier mesh
@@ -355,7 +584,7 @@ fit_models<-function(df, metier_name){
       family = families[[.y]],
       spatial = "on",
       time = "time_index",
-      spatiotemporal = "iid"
+      spatiotemporal = "off"
     )
     list(model = fit, summary = summary(fit), sanity = sanity(fit))
   })
@@ -368,8 +597,9 @@ fit_models<-function(df, metier_name){
 # ---- Run across multiple metiers ----
 metiers <- c("Santa Barbara_Urchin dive","Los Angeles_CPFV", "Santa Barbara_CPFV", 
              "Los Angeles_Lobster trap","Los Angeles_Squid seine","Santa Barbara_Set gillnet",
-             "Santa Barbara_Squid seine")  # expand as needed
-
+             "Santa Barbara_Squid seine","Los Angeles_Urchin dive","San Diego_Urchin dive","Fort Bragg_Urchin dive",
+             "Santa Barbara_Lobster trap","Santa Barbara_Ridgeback prawn trawl",
+             "San Francisco_Squid seine" ,"Eureka_Pink shrimp trawl" ,"Santa Barbara_Cucumber trawl"  )
 results <- map(metiers, ~ fit_models(
   df = fisheries_variables,
   metier_name = .x
@@ -377,10 +607,23 @@ results <- map(metiers, ~ fit_models(
 names(results) <- metiers
 
 # Example: see summary of model 2 for San Diego_CPFV
-results[["Los Angeles_CPFV"]]$m2$summary
+m1<-results[["Santa Barbara_Squid seine"]]$m1$model
+m2<-results[["Santa Barbara_Squid seine"]]$m2$model
 
+AIC(m1,m2)
 
+aic_results <- map_df(names(results), function(met) {
+  m1 <- results[[met]]$m1$model
+  m2 <- results[[met]]$m2$model
+  
+  tibble(
+    metier = met,
+    AIC_m1 = AIC(m1),
+    AIC_m2 = AIC(m2)
+  )
+})
 
+aic_results
 
 ## ------------------------
 ## Function to go through different mesh sizes 

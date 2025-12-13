@@ -107,7 +107,7 @@ block_info <- all_blocks_df %>%
               distinct(block_id, .keep_all = TRUE)
 
 # Build full expansion: block × date × fishery
-dates <- seq(as.Date("2000-01-01"), as.Date("2023-12-31"), by = "month")
+dates <- seq(as.Date("2020-01-01"), as.Date("2023-12-31"), by = "month")
 port.complexes<-c("Eureka","Fort Bragg","Bodega Bay","San Francisco","Monterey",
                 "Morro Bay","Santa Barbara","Los Angeles","San Diego")
 
@@ -141,8 +141,8 @@ fisheries<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries
 metiers<-unique(fisheries$metier)
 
 #filter predicition grid for these metiers to remove metiers that we are not looking at 
-prediction_grid4<-prediction_grid2%>%
+prediction_grid3<-prediction_grid2%>%
   filter(metier %in% metiers)
 
-saveRDS(prediction_grid4, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")
+saveRDS(prediction_grid3, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")
 

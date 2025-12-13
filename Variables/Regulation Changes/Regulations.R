@@ -175,7 +175,7 @@ saveRDS(regulations_sf, paste0(reg_data,"spatialregulations_perfishery.rds"))
 
 ############
 #great a time grid
-dates <- seq(ymd("2000-01-01"), ymd("2023-12-01"), by = "1 month")
+dates <- seq(ymd("2000-01-01"), ymd("2026-12-01"), by = "1 month")
 time_grid <- tibble(month_year = format(dates, "%m-%Y"))
 ############
 
