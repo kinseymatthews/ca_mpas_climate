@@ -43,7 +43,8 @@ regulations<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheri
     # build a proper date (always first day of month)
     date = as.Date(paste(year, month, "01", sep = "-"))
   )%>%
-  dplyr::select(-year,-month,-month_year)
+  dplyr::select(-year,-month,-month_year)%>%
+  mutate(fishery = recode(fishery, "Halibut.trawl" = "California.halibut.trawl"))
 regulations$fishery <- gsub("\\.", " ", regulations$fishery)
 
 #upload SST and BT
@@ -95,7 +96,7 @@ fisheries <- c(
   "Cucumber trawl",
   "Cucumber dive",
   "Urchin dive",
-  "Halibut trawl",
+  "California halibut trawl",
   "Set gillnet",
   "Squid seine",
   "Lobster trap",
@@ -107,7 +108,7 @@ block_info <- all_blocks_df %>%
               distinct(block_id, .keep_all = TRUE)
 
 # Build full expansion: block × date × fishery
-dates <- seq(as.Date("2020-01-01"), as.Date("2023-12-31"), by = "month")
+dates <- seq(as.Date("2015-01-01"), as.Date("2023-12-31"), by = "month")
 port.complexes<-c("Eureka","Fort Bragg","Bodega Bay","San Francisco","Monterey",
                 "Morro Bay","Santa Barbara","Los Angeles","San Diego")
 
@@ -136,7 +137,6 @@ prediction_grid2 <- prediction_grid %>%
 fisheries<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/summarized_fishery_data_ready4model.rds")%>%
   filter(year>1999)%>%
   mutate(metier=paste(port.complex, fishery, sep = "_"))
-
 #collect unique metiers that we are modeling
 metiers<-unique(fisheries$metier)
 
@@ -145,4 +145,5 @@ prediction_grid3<-prediction_grid2%>%
   filter(metier %in% metiers)
 
 saveRDS(prediction_grid3, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")
+
 

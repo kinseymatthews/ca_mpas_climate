@@ -359,14 +359,14 @@ for(i in unique(fisheries_variables$metier)) {
 
 ############
 #read models back in
-# List all RDS model files
-model_files <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
+# List all RDS model files for presence absence
+model_files <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT_pa_delta.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
 
 # Read them back into a named list
 models <- lapply(model_files, readRDS)
 
 # Strip off "model_" and ".rds" so names look like "San_Francisco_Squid_Seine"
-names(models) <- gsub("^model_|\\_Depth_no_BT.rds$", "", basename(model_files))
+names(models) <- gsub("^model_|\\_Depth_no_BT_pa_delta.rds$", "", basename(model_files))
 
 # Example: look at the summary for San Francisco Squid Seine
 m<-(models[["Santa_Barbara_Squid_seine"]])
@@ -375,7 +375,6 @@ sanity(m)
 tidy(m)
 AIC(m)
 
-#number of times smooth terms go to 0
 ############
 
 ############
@@ -407,8 +406,15 @@ for (f in model_files) {
   # Safely attempt to extract residuals
   
   resids <- residuals(m, type = "mle-mvn")
+  resids <- resids[is.finite(resids)]
+  
+  if (length(resids) < 5) {
+    message("Skipping ", nm, ": no usable residuals")
+    next
+  }
+  
   # Save QQ plot as a PNG file
-  png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids.png"), width = 800, height = 600)
+  png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids_delta_pa.png"), width = 800, height = 600)
   
   qqnorm(resids, main = paste("QQ Plot of Residuals -", nm))
   qqline(resids, col = "red")
@@ -418,17 +424,50 @@ for (f in model_files) {
 ############
 
 ############
-# RMSE across entire dataset:
+#read models back in
+# List all RDS model files for presence absence
+model_files <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT_abundance_delta.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
 
-obs <- m$data$total.hours
-fitted <- predict(m, type = "response")$est
-rmse <- sqrt(mean((obs - fitted)^2, na.rm = TRUE))
-rmse
+# Read them back into a named list
+models <- lapply(model_files, readRDS)
 
-pred_link <- predict(m, type = "link")$est
-obs_link <- log(m$data$total.hours)
-rmse_log <- sqrt(mean((obs_link - pred_link)^2, na.rm = TRUE))
-rmse_log
+# Strip off "model_" and ".rds" so names look like "San_Francisco_Squid_Seine"
+names(models) <- gsub("^model_|\\_Depth_no_BT_abundance_delta.rds$", "", basename(model_files))
+
+# Example: look at the summary for San Francisco Squid Seine
+m<-(models[["Santa_Barbara_Squid_seine"]])
+summary(m)
+sanity(m)
+tidy(m)
+AIC(m)
+
+############
+
+############ 
+
+#QQ plots
+for (f in model_files) {
+  nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
+  
+  m <- readRDS(f)
+  # Safely attempt to extract residuals
+  
+  resids <- residuals(m, type = "mle-mvn")
+  resids <- resids[is.finite(resids)]
+  
+  if (length(resids) < 5) {
+    message("Skipping ", nm, ": no usable residuals")
+    next
+  }
+  
+  # Save QQ plot as a PNG file
+  png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids_delta_abundance.png"), width = 800, height = 600)
+  
+  qqnorm(resids, main = paste("QQ Plot of Residuals -", nm))
+  qqline(resids, col = "red")
+  
+  dev.off() 
+}
 ############
 
 ############
@@ -502,7 +541,7 @@ R2_sdmTMB <- function(models) {
 R2_df <- R2_sdmTMB(models)
 
 
-saveRDS(R2_df ,paste0(base_path,"Modeling/Data/Processed Data/Model_Results/Diagnostics/R2/Rc_Rm_results.rds"))
+saveRDS(R2_df ,paste0(base_path,"Modeling/Data/Processed Data/Model_Results/Diagnostics/R2/Rc_Rm_results_delta_pa.rds"))
 ############
 
 
