@@ -255,16 +255,17 @@ models_subset_abund <- models_abun[names(models_abun) %in% models_SST]
 
 
 ############ 
-#get all metiers for SST
-all_metiers <- intersect(
-  names(models_subset_abund),
-  names(models_subset_pa)
-)
+#get all metiers for SST and run spatial predictions - plot and save
+all_metiers <-# intersect(
+  names(models_subset_abund)#,
+ # names(models_subset_pa)
+#)
 
 temp_levels <- c("Cold", "Average", "Hot")
 
-plots_main <- list()
-plots_diff <- list()
+out_dir <- paste0(base_path, "Modeling/spatial_outputs/SST/")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
 
 for (met in all_metiers) {
   
@@ -277,11 +278,6 @@ for (met in all_metiers) {
   
   percentiles_metier <- percentiles_scaled %>%
     filter(metier == met)
-  
-  last_year <- data_df %>%
-    mutate(year = as.integer(format(date, "%Y"))) %>%
-    pull(year) %>%
-    max(na.rm = TRUE)
   
   peak_month <- peak.months %>%
     filter(metier == met) %>%
@@ -331,16 +327,17 @@ for (met in all_metiers) {
     
     g <- grids[[temp]]
     
-    # simulations
-    p_pa_sim   <- predict(m_pa,   newdata = g, nsim = 100)
-    p_abun_sim <- predict(m_abun, newdata = g, nsim = 100)
+    # predictions
+    p_pa   <- predict(m_pa,   newdata = g)
+    p_abun <- predict(m_abun, newdata = g)
     
-    pa_prob_sim  <- m_pa$family$linkinv(p_pa_sim)
-    abun_exp_sim <- m_abun$family$linkinv(p_abun_sim)
+    pa_prob  <- m_pa$family$linkinv(p_pa$est)
+    abun_exp <- m_abun$family$linkinv(p_abun$est)
     
-    combined_sim <- pa_prob_sim * abun_exp_sim
-    
-    g$median <- apply(combined_sim, 1, median)
+    # delta expectation (manual formula)
+    g$est_exp    <- pa_prob * abun_exp
+    g$est_pa     <- pa_prob
+    g$est_abun   <- abun_exp
     g$temp   <- temp
     
     pred_dfs[[temp]] <- g
@@ -351,72 +348,169 @@ for (met in all_metiers) {
     left_join(all_blocks_sf, by = "block_id") %>%
     st_as_sf()
   
-  #set order for plot 
-  pred_all$temp <- fct_relevel(pred_all$temp, "Cold", "Average", "Hot")
   
-# cold/avg/warm plots
-  p_main <- ggplot(pred_all) +
-    geom_sf(aes(fill = median), color = NA) +
-    scale_fill_viridis_c(trans = "sqrt",name = "Predicted effort") +
-    facet_wrap(~ temp) +
-    ggtitle(paste(met)) +
-    
-  #add black outline around density raster
-  guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2))  +
-  #add land
-  geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth = 0.2, inherit.aes = FALSE)+
-    # State waters
-    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
-    
-    #crop and axis
-    # Set the limits for the coordinate system
-    coord_sf(xlim = c(-450000, 350000), ylim = c(-600000,450000)) +
-    theme_bw() + base_theme 
+  # ---- SAVE COMBINED FILE ----
+  st_write(pred_all,
+           paste0(out_dir, met, "_SST_ALL.gpkg"),
+           delete_layer = TRUE)
   
-  name=paste0(base_path,'Modeling/figures/spatial predictions/SST/',met,'_spatial predictions_coldavghot.jpg')
-  ggsave(filename = name, plot =   p_main , width = 10, height = 6, units = "in", dpi = 300)
+  # ---- SAVE SEPARATE FILES ----
+  for (temp in temp_levels) {
+    
+    st_write(
+      pred_all %>% filter(temp == !!temp),
+      paste0(out_dir, met, "_SST_", toupper(temp), ".gpkg"),
+      delete_layer = TRUE
+    )
+  }
   
 
-  plots_main[[met]] <- p_main
-  
-  #warm- cold plot
+  #warm- average plot
   diff_df <- pred_all %>%
     st_drop_geometry() %>%
-    dplyr::select(block_id, temp, median) %>%
-    pivot_wider(names_from = temp, values_from = median) %>%
-    mutate(diff_warm_cold = Hot - Cold) %>%
+    dplyr::select(block_id, temp, est_exp ) %>%
+    pivot_wider(names_from = temp, values_from = est_exp ) %>%
+    mutate(diff_warm_avg = Hot - Average) %>%
     left_join(all_blocks_sf, by = "block_id") %>%
     st_as_sf()
   
-  p_diff <- ggplot(diff_df) +
-    geom_sf(aes(fill = diff_warm_cold), color = NA) +
-    scale_fill_gradient2(
-      low = "blue",
-      mid = "white",
-      high = "red",
-      midpoint = 0
-      ,name = "Predicted difference" ) +
-    ggtitle(paste(met, "— Hot minus Cold SST"))+
-    
-    #add black outline around density raster
-    guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2))  +
-    #add land
-    geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth = 0.2, inherit.aes = FALSE)+
-    # State waters
-    geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
-    
-    #crop and axis
-    # Set the limits for the coordinate system
-    coord_sf(xlim = c(-450000, 350000), ylim = c(-600000,450000)) +
-    theme_bw() + base_theme 
+  st_write(diff_df,
+           paste0(out_dir, met, "_SST_HOT_minus_AVERAGE.gpkg"),
+           delete_layer = TRUE)
+
+  #low- average plot
+  diff_df <- pred_all %>%
+    st_drop_geometry() %>%
+    dplyr::select(block_id, temp, est_exp ) %>%
+    pivot_wider(names_from = temp, values_from = est_exp ) %>%
+    mutate(diff_cold_avg = Cold - Average) %>%
+    left_join(all_blocks_sf, by = "block_id") %>%
+    st_as_sf()
   
+  st_write(diff_df,
+           paste0(out_dir, met, "_SST_Cold_minus_AVERAGE.gpkg"),
+           delete_layer = TRUE)
   
-  name=paste0(base_path,'Modeling/figures/spatial predictions/SST/',met,'_spatial predictions_differences.jpg')
-  ggsave(filename = name, plot =    p_diff , width = 10, height = 6, units = "in", dpi = 300)
-  
-  
-  
-  plots_diff[[met]] <- p_diff
+
+  gc() 
+
 }
+############ 
+
+
+############ 
+#read back in predictions and plot kernel density contours for hot versus cold versus average years
+#in addition, have center of gravities on plots 
+# ---- READ IN SAVED SPATIAL PREDICTIONS ----
+
+#create helper function to create contour
+make_kde_contour <- function(pred_sf) {
+  
+  pred_sf <- pred_sf %>%
+    mutate(
+      block_long_dd = block_long_dd * 1000,
+      block_lat_dd  = block_lat_dd  * 1000
+    ) %>%
+    st_as_sf(coords = c("block_long_dd", "block_lat_dd"), crs = 3310) %>%
+    as.data.frame()%>%
+    st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = 3310)%>%
+    #remove any bad spatial blocks
+    filter(!st_is_empty(.))
   
   
+  coords <- st_coordinates(pred_sf)
+  weights <- pred_sf$median
+  
+  # window for KDE
+  minx <- min(coords[,1]) - 20000
+  maxx <- max(coords[,1]) + 20000
+  miny <- min(coords[,2]) - 20000
+  maxy <- max(coords[,2]) + 20000
+  
+  points_ppp <- ppp(coords[,1], coords[,2],
+                    window = owin(c(minx, maxx), c(miny, maxy)))
+  
+  sigma <- bw.diggle(points_ppp)
+  
+  density <- density.ppp(
+    points_ppp,
+    sigma = sigma,
+    kernel = "gaussian",
+    weights = weights,
+    diggle = TRUE,
+    scalekernel = TRUE
+  )
+  
+  density_raster <- raster(as.im(density))
+  density_masked <- mask(density_raster, usa_mexico_sf_proj, inverse = TRUE)
+  
+  # 75% contour
+  density_df <- as.data.frame(rasterToPoints(density_masked))
+  names(density_df) <- c("x", "y", "value")
+  
+  density_values <- sort(density_df$value, decreasing = TRUE)
+  cdf <- cumsum(density_values) / sum(density_values)
+  contour_level <- density_values[which.min(abs(cdf - 0.75))]
+  
+  contour_lines <- rasterToContour(density_masked, levels = contour_level)
+  contour_sf <- st_as_sf(contour_lines)
+  st_crs(contour_sf) <- 3310
+  
+  return(contour_sf)
+}
+
+out_fig_dir <- paste0(base_path,
+                      "Modeling/figures/kernel_contours/SST/")
+
+for (met in all_metiers) {
+pred_cold <- st_read(paste0(base_path,
+                            "Modeling/spatial_outputs/SST/", met,"_SST_COLD.gpkg"))
+
+pred_avg <- st_read(paste0(base_path,
+                           "Modeling/spatial_outputs/SST/",met, "_SST_AVERAGE.gpkg"))
+
+pred_hot <- st_read(paste0(base_path,
+                           "Modeling/spatial_outputs/SST/",met,"_SST_HOT.gpkg"))
+
+
+
+#create contour for each level
+contour_cold <- make_kde_contour(pred_cold)
+contour_avg  <- make_kde_contour(pred_avg)
+contour_hot  <- make_kde_contour(pred_hot)
+
+contour_cold$temp <- "Cold"
+contour_avg$temp  <- "Average"
+contour_hot$temp  <- "Hot"
+
+all_contours <- bind_rows(contour_cold,
+                          contour_avg,
+                          contour_hot)
+
+p<-ggplot() +
+  geom_sf(data = usa_mexico_sf_proj, fill = "grey85", color = NA) +
+  
+  geom_sf(data = all_contours,
+          aes(color = temp),
+          linewidth = 0.5) +
+  
+  scale_color_manual(
+    values = c("Cold" = "blue",
+               "Average" = "black",
+               "Hot" = "red"),
+    name = "SST Scenario"
+  ) +
+  
+  coord_sf(xlim = c(-450000, 350000),
+           ylim = c(-600000, 450000)) +
+  
+  ggtitle(paste("75% KDE contours —", met)) +
+  theme_bw() + base_theme 
+
+ggsave(
+  filename = paste0(out_fig_dir, met, "_KDE_75pct_cold_avg_hot.jpg"),
+  plot = p,
+  width = 10, height = 7, dpi = 300
+)
+
+}

@@ -81,6 +81,7 @@ saveRDS(coef_table,paste0(model_folder,'model_results_variable_importance_delta_
 ############
 
 ############
+coef_table<-readRDS(paste0(model_folder,'model_results_variable_importance_delta_abundance.rds'))
 #for each fishing metier, figure out the most important coefficient, then for a fishery calculate 
 #the percent a variable is number one?
 coef_import<-coef_table%>%
@@ -199,7 +200,22 @@ ggsave(filename = filename1, plot =  p , width = 13, height = 6, units = "in", d
 
 ############
 
+#Change x and facet wrap
 
 
 
+p<-ggplot(df, aes(fill=sign, y=fishery, x=percent)) + 
+  geom_bar(position="stack", stat="identity", color = "black" ,size = 0.2  )+
+  base_theme+
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 10),  
+        axis.text.x = element_text(size = 10),  
+        axis.title.x = element_text(size = 14)  
+  )+ 
+  facet_wrap(~term, labeller = labeller(fishery = labels))+
+  scale_fill_manual(values = c("Positive" = "#E69F00", "Negative" = "#0072B2", "Neutral" = "#009E73"))+
+  labs(x="Percent")+
+  labs(fill = "Direction")
 
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/model_variable_direction_delta_abundance_2.jpg')
+ggsave(filename = filename1, plot =  p , width = 13, height = 6, units = "in", dpi = 300)

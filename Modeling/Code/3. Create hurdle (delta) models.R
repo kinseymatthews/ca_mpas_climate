@@ -201,7 +201,7 @@ fisheries_variables<-fisheries_augmented %>%
   ))
 
 
-#saveRDS(fisheries_variables,paste0(base_path,"Modeling/Data/Processed Data/fisheries_df_with_variables.rds"))
+saveRDS(fisheries_variables,paste0(base_path,"Modeling/Data/Processed Data/fisheries_df_with_variables.rds"))
 
 ############
 
