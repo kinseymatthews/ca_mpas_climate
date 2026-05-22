@@ -82,8 +82,8 @@ explor<- cuc%>%
   mutate(depth=depth_fa_set)%>%
   #Eliminate tows >5 hours (300 min)
   filter(duration_min<300 & duration_min>10)%>%
-#remove port complexes we dont care about
-filter(port.complex=="Eureka" | port.complex=="Monterey" | port.complex=="Morro Bay" | port.complex=="Santa Barbara"| port.complex=="Los Angeles")
+#remove port complexes we dont care about - only keep ones that we do care about 
+filter( port.complex=="Monterey" | port.complex=="Morro Bay" | port.complex=="Santa Barbara"| port.complex=="Los Angeles")
 
 #graph of duration 
 ggplot()+
@@ -155,7 +155,7 @@ plot_fun<-function(portcomplex){
   ggsave(filename = name, plot = p, width = 6, height = 6, units = "in", dpi = 300)
   
 }
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
@@ -227,7 +227,6 @@ plot_fun<-function(portcomplex){
   name=paste0(cucumber_data, 'Figures/Block Data/',portcomplex,'/',portcomplex,'_Animation_dive hours.gif')
   anim_save(name, anim)
 }
-plot_fun('Eureka')
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')

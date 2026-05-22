@@ -1,10 +1,12 @@
 name: california_fisheries_dashboard
-title:
+title: California_fisheries
 username: kinseymatthews
 account: kinseymatthews
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 14718825
-bundleId: 10278741
+bundleId: 12024783
 url: https://kinseymatthews.shinyapps.io/california_fisheries_dashboard/
 version: 1
+asMultiple: FALSE
+asStatic: FALSE

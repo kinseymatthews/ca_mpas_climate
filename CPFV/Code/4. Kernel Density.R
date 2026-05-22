@@ -218,7 +218,7 @@ plot_fun<-function(portcomplex){
     st_cast(contour_sf1, "POLYGON"),
     error = function(e) {
       message("st_cast failed, using st_polygonize instead")
-      st_polygonize(contours_sf1)
+      st_polygonize(contour_sf1)
     }
   )
   

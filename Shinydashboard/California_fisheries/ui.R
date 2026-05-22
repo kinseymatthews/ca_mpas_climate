@@ -2,7 +2,7 @@
 header <- dashboardHeader(
   
   # title ----
-  title = "California Fisheries",
+  title = "California Fishing Grounds",
   titleWidth = 400
   
 ) # END dashboardHeader
@@ -15,16 +15,18 @@ sidebar <- dashboardSidebar(
     id = "sidebarid",
     #introduction
     menuItem(text = "Welcome", tabName = "welcome", icon = icon("house")),
-    menuItem(text = "California Fishing Grounds", tabName = "welcome", icon = icon("house"),
+    menuItem(text = "California Fishing Grounds", tabName = "welcome", icon = icon("fish"),
              # exploratory analyses
-             menuSubItem(text = "Exploratory", tabName = "exploratory", icon = icon("layer-group")) ,
+             menuSubItem(text = "Exploratory", tabName = "exploratory", icon = icon("magnifying-glass")) ,
              #kernel density metrics
-             menuSubItem(text = "Kernel density metrics", tabName = "kdmetrics", icon = icon("layer-group")),
+             menuSubItem(text = "Kernel density metrics", tabName = "kdmetrics", icon = icon("chart-line")),
               #kernel density maps
-              menuItem(text = "Kernel density maps", tabName = "kdmaps", icon = icon("layer-group"))
+              menuSubItem(text = "Kernel density maps", tabName = "kdmaps", icon = icon("map")),
+             #spatial maps
+             menuSubItem(text = "Spatial predictions", tabName = "predictions", icon = icon("globe"))
              
              ),
-    menuItem(text = "Species distributions", tabName = "species", icon = icon("house")),
+   
     conditionalPanel(
       'input.sidebarid == "exploratory"',
       # fishery type pickerInput ----
@@ -37,8 +39,8 @@ sidebar <- dashboardSidebar(
       
       # port complex pickerInput ----
       pickerInput(inputId = "port.complex.input.exploratory", label = "Select port complex(es):",
-                  choices = unique(vessels_trips$port.complex), # alternatively: choices = c("rapid", "cascade" ...)
-                  selected = c("Monterey"),
+                  choices = NULL, # alternatively: choices = c("rapid", "cascade" ...)
+                  selected = NULL,
                   multiple = TRUE,
                   options = pickerOptions(actionsBox = TRUE) # creates "Select All / Deselect All" buttons
       ) # END channel type pickerInput
@@ -56,8 +58,8 @@ sidebar <- dashboardSidebar(
       
       # port complex pickerInput ----
       pickerInput(inputId = "port.complex.input", label = "Select port complex(es):",
-                  choices = unique(  KD_timeseries$port.complex), # alternatively: choices = c("rapid", "cascade" ...)
-                  selected = c("Monterey"),
+                  choices = NULL, # alternatively: choices = c("rapid", "cascade" ...)
+                  selected = NULL,
                   multiple = TRUE,
                   options = pickerOptions(actionsBox = TRUE) # creates "Select All / Deselect All" buttons
       ) # END channel type pickerInput
@@ -76,14 +78,38 @@ sidebar <- dashboardSidebar(
       
       # port complex pickerInput ----
       pickerInput(inputId = "port.complex.input.kdmaps", label = "Select port complex(es):",
-                  choices = unique(KD_contours_sepyears$port.complex), # alternatively: choices = c("rapid", "cascade" ...)
-                  selected = c("Monterey"),
+                  choices = NULL, # alternatively: choices = c("rapid", "cascade" ...)
+                  selected = NULL,
                   multiple = FALSE,
                   options = pickerOptions(actionsBox = FALSE) # creates "Select All / Deselect All" buttons
       ) # END channel type pickerInput
       
-    )#END third conditional panel
-    
+    ),#END third conditional panel
+
+    conditionalPanel(
+      'input.sidebarid == "predictions"',
+      pickerInput(inputId = "variable.input.predictions",
+                  label = "Select prediction type:",
+                  choices = c("Sea surface temperature" = "SST",
+                              "Ex-vessel price" = "exvessel",
+                              "Fuel" = "fuel"),
+                  selected = "SST",
+                  multiple = FALSE,
+                  options = pickerOptions(actionsBox = FALSE)
+      ),
+      pickerInput(inputId = "fishery.input.predictions",
+                  label = "Select fishery:",
+                  choices = NULL,
+                  multiple = FALSE,
+                  options = pickerOptions(actionsBox = FALSE)
+      ),
+      pickerInput(inputId = "portcomplex.input.predictions",
+                  label = "Select port complex:",
+                  choices = NULL,
+                  multiple = FALSE,
+                  options = pickerOptions(actionsBox = FALSE)
+      )
+    ) # END predictions conditional panel
   ) # END sidebarMenu
   
 ) # END dashboardSidebar
@@ -97,46 +123,38 @@ body <- dashboardBody(
     # welcome tabItem ----
     tabItem(tabName = "welcome",
             
-            # left-hand column ----
-            column(width = 8,
-                   
-                   # background info box ----
-                   box(width = NULL,
-                       
-                       includeMarkdown("text/background.md")
-                       
-                   ), # END background info box
-                   
-            ), # END left-hand column
+            # first fluidRow — main content ----
+            fluidRow(
+              
+              # left-hand column ----
+              column(width = 8,
+                     box(width = NULL,
+                         includeMarkdown("text/background.md")
+                     )
+              ), # END left-hand column
+              
+              # right-hand column ----
+              column(width = 4,
+                     
+                  
+                     fluidRow(
+                       box(width = NULL,
+                           includeMarkdown("text/disclaimer.md")
+                       )
+                     ) # END second fluidRow
+                     
+              ) # END right-hand column
+              
+            ), # END first fluidRow
             
-            # right-hand column ----
-            column(width = 4,
-                   
-                   # first fluidRow ----
-                   fluidRow(
-                     
-                     # data source box ----
+            # second fluidRow — acknowledgements ----
+            fluidRow(
+              column(width = 12,
                      box(width = NULL,
-                         
                          includeMarkdown("text/datacitation.md")
-                         
-                     ) # END data source box
-                     
-                   ), # END first fluidRow
-                   
-                   # second fluidRow ----
-                   fluidRow(
-                     
-                     # disclaimer box ----
-                     box(width = NULL,
-                         
-                         includeMarkdown("text/disclaimer.md")
-                         
-                     ) # END disclaimer box
-                     
-                   ) # END second fluidRow
-                   
-            ) # END right-hand column
+                     )
+              )
+            ) # END acknowledgements fluidRow
             
     ), # END welcome tabItem
     
@@ -205,6 +223,15 @@ body <- dashboardBody(
               ) # END leaflet box
               
             ), # END fluidRow
+            
+            
+            #shared legend row ----
+            fluidRow(
+              style = "padding-bottom: 20px;",
+              column(width = 12, align = "center",
+                     plotOutput(outputId = "kd_legend_output", height = "55px")
+              )
+            ), # END legend fluidRow
             
             # second fluidRow ----
             fluidRow(
@@ -277,8 +304,17 @@ body <- dashboardBody(
                   
               ) #end disclaimer
             ) # END second fluidrow
-    )
+    ),
+
     
+    tabItem(tabName = "predictions",
+            fluidRow(
+              box(width = 12,
+                  h4(textOutput("prediction_title"), align = "center"),
+                  imageOutput("prediction_plot")
+              )
+            )
+    ) # END predictions tabItem
   ) # END tabItems
   
 ) # END dashboardBody

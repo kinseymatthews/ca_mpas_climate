@@ -113,6 +113,6 @@ p<-ggplot(data=all, aes(x= CV, y=port_complex, fill=port_complex))+
                     guide = guide_legend(reverse = TRUE) )
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/boxplots.jpg')
-ggsave(filename = filename1, plot =  p , width = 10, height = 5, units = "in", dpi = 300)
+ggsave(filename = filename1, plot =  p , width = 8, height = 5, units = "in", dpi = 300)
 
 #########

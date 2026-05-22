@@ -9,7 +9,7 @@ cpfv<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_
 cuc_trawl<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Cucumber/Data/Processed Data/depth.rds")%>%
   dplyr::select(port.complex,year,Depth_m)%>%
   mutate(fishery="Cucumber trawl")%>%
-  filter(port.complex=="Eureka" |port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" )
+  filter(port.complex=="Los Angeles" |port.complex=="Monterey" |port.complex=="Morro Bay" |port.complex=="Santa Barbara" )
 cuc_dive<- readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Dive/Data/Processed Data/cucumber_depth.rds")%>%
   dplyr::select(port.complex,year,Med_depth_m_recorded)%>%
   mutate(fishery="Cucumber dive")%>%

@@ -5,13 +5,9 @@ library(shinyWidgets)
 library(markdown)
 library(shinycssloaders)
 library(sf)
-library(sp)
 library(spatstat)
 library(raster)
 
-
-# Set the working directory to your app folder
-print(getwd()) 
 #.......................add in custom theme.......................
 myCustomTheme <- function() {
   theme_light() +
@@ -45,11 +41,20 @@ vessels_trips<-readRDS("data/all_fisheries_vessels_trips.rds")
 vessels_trips$port.complex<- factor(vessels_trips$port.complex, levels = c( 'Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego'))
 
 #read in depths
-depths<-readRDS("data/all_fisheries_depth.rds")%>%
-  group_by(fishery,port.complex)%>%
-  filter(!duplicated(effort.identifier))%>%
-  ungroup()%>%
-  mutate(log_depth=log(-1*Depth_m))
+depths <- readRDS("data/all_fisheries_depth.rds") %>%
+  group_by(fishery, port.complex) %>%
+  filter(!duplicated(effort.identifier)) %>%
+  ungroup() %>%
+  mutate(log_depth = log(-1 * Depth_m)) %>%
+  group_by(fishery, port.complex, year) %>%
+  summarise(
+    lower = quantile(log_depth, 0.25, na.rm = TRUE),
+    middle = median(log_depth, na.rm = TRUE),
+    upper = quantile(log_depth, 0.75, na.rm = TRUE),
+    ymin = quantile(log_depth, 0.05, na.rm = TRUE),
+    ymax = quantile(log_depth, 0.95, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 
 #read in dataframe for latitude and extents, fishing gorund area, distance from shore, and effort in <PA
@@ -62,9 +67,7 @@ COG_sf<-readRDS("data/all_fisheries_COG.rds")%>%
   st_as_sf( coords = c("longitude_calculated", "cog_latitude"), crs = st_crs("+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs"))%>%
   st_transform( st_crs( 3310))
 
-#.......................wrangle data for all years combined KD......................
-KD_combinedyears<-readRDS("data/all_fisheries_KD_allyears.rds")
-KD_combinedyears <- st_transform(KD_combinedyears, crs = 3310)
+
 #.......................wrangle data for yearly KD......................
 #KD_sepyears<-readRDS("data/all_fisheries_KD_sepyears.rds")
 #KD_sepyears<-st_transform(KD_sepyears, crs = 3310)
@@ -76,3 +79,20 @@ KD_contours_sepyears <- st_read("data/allfisheries_KD_allcontours.gpkg")%>%
 
 
 KD_contours_sepyears$port.complex<- factor(KD_contours_sepyears$port.complex, levels = c( 'Eureka', 'Fort Bragg', 'Bodega Bay', 'San Francisco', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles', 'San Diego'))
+#.......................file names for spatial predictoins......................
+
+pred_files <- list.files("www", pattern = "^predictions_.*_differences\\.jpg$")
+pred_info <- do.call(rbind, lapply(pred_files, function(f) {
+  parts <- strsplit(gsub("\\.jpg$", "", f), "_")[[1]]
+  data.frame(fishery = parts[2], port.complex = parts[3], variable = parts[4])
+}))
+
+pred_info$port.complex.label <- gsub("([a-z])([A-Z])", "\\1 \\2", pred_info$port.complex)
+pred_info$fishery.label <- gsub("([a-z])([A-Z])", "\\1 \\2", pred_info$fishery)
+
+# raster metadata ----
+raster_files <- list.files("data/rasters/", pattern = "\\.tif$", full.names = FALSE)
+raster_meta <- do.call(rbind, strsplit(gsub(".tif", "", raster_files), "_"))
+colnames(raster_meta) <- c("fishery", "portcomplex", "year")
+available_rasters <- as.data.frame(raster_meta, stringsAsFactors = FALSE)
+available_rasters$year <- as.numeric(available_rasters$year)

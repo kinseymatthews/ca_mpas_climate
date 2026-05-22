@@ -273,18 +273,12 @@ plot_fun<-function(portcomplex){
   }
 }
 
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
 
-#importing yearly images and creating an animation
-years<-c(1995,1997:2006,2009,2010)
-frames<-paste0(cucumber_data,"Figures/MPAs/Eureka/Eureka",years,"regs_MPAs_cropped.jpg")
-m<-image_read(frames)
-m<-image_animate(m, fps=1)
-image_write(m, paste0(cucumber_data,"Figures/MPAs/Eureka/Eureka Kernel Densities_Animation.gif"))
 
 years<-c(1994:1997,1999,2000:2003)
 frames<-paste0(cucumber_data, "Figures/MPAs/Monterey/Monterey", years,"regs_MPAs_cropped.jpg")
@@ -304,7 +298,7 @@ m<-image_read(frames)
 m<-image_animate(m, fps=1)
 image_write(m,paste0(cucumber_data,"Figures/MPAs/Santa Barbara/Santa Barbara Kernel Densities_Animation.gif"))
 
-years<-c(1984,1986,1991,1994:2003,2009:2012,2014:2016,2020)
+years<-c(1984,1986,1991,1994:2003,2009:2012,2014:2016)
 frames<-paste0(cucumber_data,"Figures/MPAs/Los Angeles/Los Angeles", years,"regs_MPAs_cropped.jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
@@ -533,13 +527,13 @@ plot_fun<-function(portcomplex){
   
 }
 
-a<-plot_fun('Eureka')
+
 b<-plot_fun('Monterey')
 c<-plot_fun('Morro Bay')
 d<-plot_fun('Santa Barbara')
 e<-plot_fun('Los Angeles')
 
-all.volumes<-rbind(a,b,c,d,e)
+all.volumes<-rbind(b,c,d,e)
 
 all.volumes<-all.volumes%>%
   rename(port.complex=Portcomplex)%>%
@@ -566,7 +560,7 @@ plot_fun<-function(portcomplex){
   ggsave(filename = filename1, plot = p, width = 6, height = 4, units = "in", dpi = 300)
 }
 
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
@@ -591,7 +585,7 @@ plot_fun<-function(portcomplex){
   ggsave(filename = filename1, plot = p, width = 6, height = 4, units = "in", dpi = 300)
 }
 
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')

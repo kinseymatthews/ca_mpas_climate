@@ -1,4 +1,4 @@
-server <- function(input, output) {
+server <- function(input, output,session) {
   
   # Show modal only once at the beginning
   observe({
@@ -16,7 +16,7 @@ server <- function(input, output) {
   vessels_trips_filtered <- reactive ({
     
     validate(
-      need(length(input$port.complex.input) > 0, "Please select at least one port complex to visualize data for.")
+      need(length(input$port.complex.input.exploratory) > 0, "Please select at least one port complex to visualize data for.")
     )
     
     vessels_trips%>%
@@ -57,31 +57,43 @@ server <- function(input, output) {
   }) #END vessels plot
   
   # vdepth reactive dataframe ----
-  depth_filtered <- reactive ({
-    
+  # depth reactive dataframe ----
+  depth_filtered <- reactive({
     validate(
-      need(length(input$port.complex.input) > 0, "Please select at least one port complex to visualize data for.")
+      need(length(input$port.complex.input.exploratory) > 0, 
+           "Please select at least one port complex to visualize data for.")
     )
-    
-    depths%>%
-      filter(fishery %in% c(input$fishery.input.exploratory)) %>%
-      filter( port.complex %in% c(input$port.complex.input.exploratory))
-    
+    depths %>%
+      filter(fishery %in% input$fishery.input.exploratory) %>%
+      filter(port.complex %in% input$port.complex.input.exploratory)
   })
   
-  #depth scatterplot ----
-  output$depth_output <-renderPlot({ 
-    ggplot( depth_filtered(), aes(x=year,y=log_depth, color=port.complex))+
-      geom_rect(
-        aes(xmin = "2014", xmax = "2016",
-            ymin = -Inf, ymax = Inf),
-        fill = "gray80", alpha = 0.1, inherit.aes = FALSE)+
-      geom_boxplot()+
-      labs(y= "Logged depth (m)" ,x="Year", color="Port complex")+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+  # depth plot ----
+  output$depth_output <- renderPlot({
+    ggplot(depth_filtered(), aes(x = year, color = port.complex)) +
+      annotate("rect", xmin = "2014", xmax = "2016",
+               ymin = -Inf, ymax = Inf, fill = "gray80", alpha = 0.1) +
+      geom_boxplot(aes(ymin = ymin, lower = lower, middle = middle,
+                       upper = upper, ymax = ymax),
+                   stat = "identity") +
+      labs(y = "Logged depth (m)", x = "Year", color = "Port complex") +
+      scale_color_brewer(palette = 'RdYlBu', direction = -1) +
       myCustomTheme()
+  }) # END depth plot
+  
+  
+  # update port complexes based on fishery (exploratory) ----
+  observe({
+    req(input$fishery.input.exploratory)
+    available_ports <- vessels_trips %>%
+      filter(fishery == input$fishery.input.exploratory) %>%
+      pull(port.complex) %>%
+      unique()
     
-  }) #END depth scatterplot
+    updatePickerInput(session, "port.complex.input.exploratory",
+                      choices = available_ports,
+                      selected = available_ports[1])
+  })
   
   # KD time series dataframe ----
   KD_timeseries_filtered <- reactive ({
@@ -94,7 +106,26 @@ server <- function(input, output) {
       filter(fishery %in% c(input$fishery.input)) %>%
       filter( port.complex %in% c(input$port.complex.input))
     
-  }) #end reactive dataframe
+  }) %>% bindCache(input$fishery.input, input$port.complex.input) #end reactive dataframe
+  
+  #shared legend ----
+  # shared legend ----
+  output$kd_legend_output <- renderPlot({
+    p <- ggplot(KD_timeseries_filtered(), aes(x = year, color = port.complex)) +
+      geom_line(aes(y = COG_latitude)) +
+      scale_color_brewer(palette = 'RdYlBu', direction = -1) +
+      labs(color = "Port complex") +
+      myCustomTheme() +
+      theme(legend.position = "bottom",
+            legend.direction = "horizontal")
+    
+    g <- ggplotGrob(p)
+    legend_grob <- g$grobs[[which(sapply(g$grobs, function(x) x$name) == "guide-box")]]
+    
+    grid::grid.newpage()
+    grid::grid.draw(legend_grob)
+  }) # END shared legend
+  
   
   # latitude and extent graph ----
   output$lat_extent_output <-renderPlot({ 
@@ -117,7 +148,7 @@ server <- function(input, output) {
       scale_color_brewer(palette = 'RdYlBu', direction=-1) +
       labs(x="Year", y = bquote(atop("Fishing ground area", "(" ~ km^2 ~ ")")), color="Port complex")+
       myCustomTheme()+
-      theme(legend.position = "right")
+      theme(legend.position = "none")
   }) #END fishing ground area plot
   
   
@@ -143,18 +174,32 @@ server <- function(input, output) {
       theme(legend.position = "none")
   }) #END distance to shore plot
   
+  # update port complexes based on fishery (kdmetrics) ----
+  observe({
+    req(input$fishery.input)
+    available_ports <- KD_timeseries %>%
+      filter(fishery == input$fishery.input) %>%
+      pull(port.complex) %>%
+      unique()
+    
+    updatePickerInput(session, "port.complex.input",
+                      choices = available_ports,
+                      selected = available_ports[1])
+  })
+  
+  
   # COG reactivbe dataframe ----
   COG_filtered <- reactive ({
     
     validate(
-      need(length(input$port.complex.input) > 0, "Please select at least one port complex to visualize data for.")
+      need(length(input$port.complex.input.kdmaps) > 0, "Please select at least one port complex to visualize data for.")
     )
     
     COG_sf%>%
       filter(fishery %in% c(input$fishery.input.kdmaps)) %>%
       filter( port.complex %in% c(input$port.complex.input.kdmaps))
     
-  }) #end reactive dataframe
+  }) %>% bindCache(input$fishery.input.kdmaps, input$port.complex.input.kdmaps) #end reactive dataframe
   
   # COG figure ----
   output$cog_output <-renderPlot({ 
@@ -182,10 +227,17 @@ server <- function(input, output) {
       # Axes
     #  scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
      # scale_y_continuous(breaks=seq(maxx+.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
-      scale_color_viridis_c(name = "Year", option = "D") +
+      scale_color_viridis_c(name = NULL, option = "D") +
+      #add black outline around density raster
+      guides(color = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
+      
       # Theme
       myCustomTheme()+
-      theme(legend.position = "right")
+      theme(legend.position = "bottom",
+            axis.title = element_blank(),
+            legend.key.width = unit(2, "cm"),
+            legend.key.height = unit(0.4, "cm"),
+            plot.margin = margin(5, 5, 30, 5))
     
   }) #END fishing ground area plot
   output$cog_caption <- renderText({
@@ -193,118 +245,83 @@ server <- function(input, output) {
   })
   
   # KD all years combined reactive dataframe ----
-  KD_combinedyears_filtered <- reactive ({
+  KD_combinedyears_filtered <- reactive({
+    req(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
     
-    validate(
-      need(length(input$port.complex.input) > 0, "Please select at least one port complex to visualize data for.")
-    )
+    raster_file <- file.path("data/rasters", paste0(
+      input$fishery.input.kdmaps, "_",
+      input$port.complex.input.kdmaps, "_allyears.tif"))
     
-    KD_combinedyears%>%
-      filter(fishery %in% c(input$fishery.input.kdmaps)) %>%
-      filter( port.complex %in% c(input$port.complex.input.kdmaps))
+    validate(need(file.exists(raster_file), "No data available for this selection."))
     
-  }) #end reactive dataframe
+    r <- raster::raster(raster_file)
+    df <- as.data.frame(raster::rasterToPoints(r))
+    colnames(df) <- c("x", "y", "value")
+    df$value <- scales::rescale(df$value)
+    df
+  }) %>% bindCache(input$fishery.input.kdmaps, input$port.complex.input.kdmaps) 
+  #end reactive dataframe
+  
+  # KD all years contours reactive ----
+  KD_combinedyears_contours_filtered <- reactive({
+    req(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
+    
+    contour_file <- file.path("data", paste0(
+      input$fishery.input.kdmaps, "_KD_allyears_contours.gpkg"))
+    
+    validate(need(file.exists(contour_file), "No contour data available for this selection."))
+    
+    st_read(contour_file, quiet = TRUE) %>%
+      filter(portcomplex == input$port.complex.input.kdmaps)
+  }) %>% bindCache(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
   
   # KD figure ----
-  output$kd_allyears_output <-renderPlot({ 
-    # Get the filtered reactive data
-    kd_data <-  KD_combinedyears_filtered()
-   
-    
-    #extracting coordinates and weights
-    coordinates<-st_coordinates(kd_data)
-    weights<-kd_data$effort
-    
-    # Create a point pattern (ppp object)
-    minx<-(min(coordinates[,1]))
-    maxx<-(max(coordinates[,1]))
-    miny<-(min(coordinates[,2]))
-    maxy<-(max(coordinates[,2]))
-    
-    points_ppp <- ppp(coordinates[,1], coordinates[,2], window = owin(c(minx, maxx), c(miny, maxy)))
-    
-    # Compute kernel density estimation using raw and logcdata
-    sigma<-bw.diggle(points_ppp)
-    density <- density.ppp(points_ppp, sigma = sigma, kernel="gaussian",weights=weights, diggle=TRUE, scalekernel=TRUE, edge=TRUE)
-    
-    # Convert density to a raster (assuming a reasonable raster resolution)
-    density_raster <- as(raster(as.im(density)), "RasterLayer")
-    
-    # Mask the density raster with the land raster
-    density_masked <- mask(density_raster, usa_mexico_sf_proj, inverse=TRUE)
-    
-    # Convert density to a data frame
-    density_df <- as.data.frame(rasterToPoints(density_masked))
-    names(density_df) <- c("x", "y", "value")
-    
-
-    # Calculate the cumulative distribution function (CDF)
-    density_values <- sort(density_df$value, decreasing = TRUE)
-    cdf <- cumsum(density_values) / sum(density_values)
-    
-    # Find the contour level corresponding to 75% volume
-    contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
-    # Create contour lines from the density raster
-    contour_level_75_lines <- rasterToContour(density_masked, levels = c(contour_level_75))
-    
-    
-    # Convert contour lines to sf polygons
-    contour_75_sf <- st_as_sf(contour_level_75_lines)
-    st_crs(contour_75_sf) <-  3310    
-    # Normalize density values to the range 0-1
-    density_df$value <- scales::rescale(density_df$value)
-    
+  # KD figure ----
+  output$kd_allyears_output <- renderPlot({
+    kd_data <- KD_combinedyears_filtered()
+    contour_data <- KD_combinedyears_contours_filtered()
     
     ggplot() +
-      geom_raster(data = density_df, aes(x=x,y=y,fill = value)) +
-      
-      scale_fill_gradientn(name = "Kernel Density", 
-                           colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
-                           limits = c(0, max(density_df$value)),  # Adjust limits as needed
-                           na.value = "white") +  # Set NA values to white
-      
-      # Add contour lines at 75% volume boundary
-      geom_sf(data = contour_75_sf, color = "black", linewidth = 1)  +
-      
-      # Land
-      geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
-      # State waters
-      geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
-      # Crop
-      coord_sf(xlim = c(-450000, 350000), ylim = c(-600000,450000)) +
-      # Axes
-     # scale_x_continuous(breaks=seq(-125, -117, 2)) +
-      #scale_y_continuous(breaks=seq(32, 44, 2))+
-      myCustomTheme()+
-      theme(legend.position = "right",
-            axis.title=element_blank())
-    
-  }) #END fishing ground area plot
+      geom_raster(data = kd_data, aes(x = x, y = y, fill = value)) +
+      scale_fill_gradientn(name = NULL,
+                           colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),
+                           limits = c(0, 1),
+                           breaks = c(0, 0.25, 0.5, 0.75, 1.0),
+                           labels = c("0", "0.25", "0.5", "0.75", "1.0"),
+                           na.value = "white",
+                           guide = guide_colorbar(
+                             ticks.colour = "black",
+                             frame.colour = "black",
+                             frame.linewidth = 0.2)) +
+      geom_sf(data = contour_data, color = "black", linewidth = 1) +
+      geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white",
+              linewidth = 0.2, inherit.aes = FALSE) +
+      geom_sf(data = state_waters, color = "grey30", linewidth = 0.2,
+              inherit.aes = FALSE) +
+      coord_sf(xlim = c(-450000, 350000), ylim = c(-600000, 450000)) +
+      myCustomTheme() +
+      theme(legend.position = "bottom",
+            axis.title = element_blank(),
+            legend.key.width = unit(2, "cm"),
+            legend.key.height = unit(0.4, "cm"),
+            plot.margin = margin(5, 5, 30, 5))
+  }) #END kd all years plot
+
   
   output$kd_caption <- renderText({
    "Kernel density for all years"
   })
   
   #Input for yearly KDs  ----
-  # List all saved raster files (assumes file names like: CPFV_Central_2015.tif)
-  raster_files <- list.files("data/rasters/", pattern = "\\.tif$", full.names = FALSE)
-  
-  # Split filenames into components: fishery_portcomplex_year
-  raster_meta <- do.call(rbind, strsplit(gsub(".tif", "", raster_files), "_"))
-  colnames(raster_meta) <- c("fishery", "portcomplex", "year")
-  
-  # Convert to data frame
-  available_rasters <- as.data.frame(raster_meta, stringsAsFactors = FALSE)
-  available_rasters$year <- as.numeric(available_rasters$year)
-  
+
   
   output$year_selector <- renderUI({
-    req(input$fishery.input, input$port.complex.input)
+    req(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
     
     # Filter by selected fishery and port complex
     available_years <- available_rasters %>%
-      filter(fishery == input$fishery.input,
-             portcomplex == input$port.complex.input) %>%
+      filter(fishery == input$fishery.input.kdmaps,
+             portcomplex == input$port.complex.input.kdmaps) %>%
       pull(year) %>%
       unique() %>%
       sort()
@@ -390,6 +407,85 @@ server <- function(input, output) {
             axis.title=element_blank())
     
     
+  })
+  
+  # update port complexes based on fishery (kdmaps) ----
+  observe({
+    req(input$fishery.input.kdmaps)
+    available_ports <- KD_contours_sepyears %>%
+      filter(fishery == input$fishery.input.kdmaps) %>%
+      pull(port.complex) %>%
+      unique()
+    
+    updatePickerInput(session, "port.complex.input.kdmaps",
+                      choices = available_ports,
+                      selected = available_ports[1])
+  })
+  
+  # spatial predictions plots ----
+  
+  # update fishery based on variable ----
+
+  observe({
+    req(input$variable.input.predictions)
+    available_fisheries <- pred_info[pred_info$variable == input$variable.input.predictions, ]
+    
+    fishery_choices <- setNames(available_fisheries$fishery, available_fisheries$fishery.label)
+    fishery_choices <- fishery_choices[!duplicated(fishery_choices)]
+    
+    updatePickerInput(session, "fishery.input.predictions",
+                      choices = fishery_choices,
+                      selected = fishery_choices[1])
+  })
+
+  # update port complex based on fishery ----
+  observe({
+    req(input$fishery.input.predictions, input$variable.input.predictions)
+    available_ports <- pred_info[
+      pred_info$fishery == input$fishery.input.predictions &
+        pred_info$variable == input$variable.input.predictions, ]
+    
+    port_choices <- setNames(available_ports$port.complex, available_ports$port.complex.label)
+    port_choices <- port_choices[!duplicated(port_choices)]
+    
+    updatePickerInput(session, "portcomplex.input.predictions",
+                      choices = port_choices,
+                      selected = port_choices[1])
+  })
+  # render prediction image ----
+  output$prediction_plot <- renderImage({
+    req(input$fishery.input.predictions, 
+        input$portcomplex.input.predictions, 
+        input$variable.input.predictions)
+    
+    filename <- paste0("www/predictions_",
+                       input$fishery.input.predictions, "_",
+                       input$portcomplex.input.predictions, "_",
+                       input$variable.input.predictions, 
+                       "_differences.jpg")
+    
+    validate(need(file.exists(filename), "Image not found — check file name matches inputs exactly"))
+    
+    list(src = normalizePath(filename),
+         contentType = "image/jpeg",
+         width = "100%")
+  }, deleteFile = FALSE)
+  
+  
+  #adding in text
+  output$prediction_title <- renderText({
+    req(input$fishery.input.predictions,
+        input$portcomplex.input.predictions,
+        input$variable.input.predictions)
+    
+    variable_label <- c("SST" = "Sea surface temperature",
+                        "exvessel" = "Ex-vessel price",
+                        "fuel" = "Fuel")[input$variable.input.predictions]
+    
+    port_label <- pred_info$port.complex.label[pred_info$port.complex == input$portcomplex.input.predictions][1]
+    fishery_label <- pred_info$fishery.label[pred_info$fishery == input$fishery.input.predictions][1]
+    
+    paste0(variable_label, " predictions for the ", fishery_label, " fishery at ", port_label)
   })
 }
 

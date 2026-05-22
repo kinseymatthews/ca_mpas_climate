@@ -34,13 +34,13 @@ depth_cv<-readRDS(paste0(filepath, 'depth_cv.rds'))%>%
   mutate(metric="(e) Depth")%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
-mpa_slope<-readRDS(paste0(filepath, 'mpa_slope.rds'))%>%
-  rename(slope=slope.mpa, slope2=slope.mpa2)%>%
-  mutate(metric="(e) MPA")%>%
+reg_slope<-readRDS(paste0(filepath, 'reg_slope.rds'))%>%
+  rename(slope=slope.reg, slope2=slope.reg2)%>%
+  mutate(metric="(e) Spatial regulations")%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
-mpa_cv<-readRDS(paste0(filepath, 'mpa_cv.rds'))%>%
-  mutate(metric="(e) MPA")%>%
+reg_cv<-readRDS(paste0(filepath, 'reg_cv.rds'))%>%
+  mutate(metric="(e) Spatial regulations")%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")
 
 distance_slope<-readRDS(paste0(filepath, 'distance_slope.rds'))%>%
@@ -133,7 +133,7 @@ a<-plot_fun(area_slope)
 b<-plot_fun(latitude_slope)
 c<-plot_fun(extent_north_slope)
 d<-plot_fun(extent_south_slope)
-e<-plot_fun(mpa_slope)
+e<-plot_fun(reg_slope)
 
 f<-ggplot(data=distance_slope, aes(x= slope, y=fishery2, color=port_complex))+
   geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -143,7 +143,7 @@ f<-ggplot(data=distance_slope, aes(x= slope, y=fishery2, color=port_complex))+
     y = "Fishery",
     color = "Port Complex"
   )+
-  ggtitle('(e) Distance to shore')+
+  ggtitle('(f) Distance to shore')+
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
   #base_theme+
   theme(  panel.grid.major = element_blank(),
@@ -186,31 +186,31 @@ a2<-plot_fun(area_cv)
 b2<-plot_fun(latitude_cv)
 c2<-plot_fun(extent_north_cv)
 d2<-plot_fun(extent_south_cv)
-e2<-plot_fun(mpa_cv)
+e2<-plot_fun(reg_cv)
 f2<-plot_fun(distance_cv)
 ############
 
 
 ############
 
-  combined_plot <- a+b+c+d+e+f+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
-    theme(axis.text.y = element_blank(),  # Remove y-axis text
-          axis.title.x = element_blank(),# Remove x-axis text
-          axis.ticks.y = element_blank(), # Remove y-axis ticks
-          axis.title.y = element_blank(), # Remove y-axis title
-          legend.position = "none", #Hide legends by default
-          plot.margin=margin(0,0,0,0)
-    )      
+my_theme <- theme(
+  axis.text.y  = element_blank(),
+  axis.title.x = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.title.y = element_blank(),
+  legend.position = "none",
+  plot.margin = margin(0, 0, 0, 0),
+  panel.border    = element_rect(color = "white", fill = NA, linewidth = 2)
+)
+
+combined_plot <- (a + my_theme) + (b + my_theme) + (c + my_theme) +
+  (d + my_theme) + (e + my_theme) + (f + my_theme) +
+  plot_layout(ncol = 6, nrow = 1, widths = c(1,1,1,1,1,1))  
   
-    combined_plot2 <- a2+b2+c2+d2+e2+f2+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
-      theme(axis.text.y = element_blank(),  # Remove y-axis text
-            axis.title.x = element_blank(),# Remove x-axis text
-            axis.ticks.y = element_blank(), # Remove y-axis ticks
-            axis.title.y = element_blank(), # Remove y-axis title
-            legend.position = "none", #Hide legends by default
-            plot.margin=margin(0,0,0,0) )      
+
+combined_plot2 <- (a2 + my_theme) + (b2 + my_theme) + (c2 + my_theme) +
+  (d2 + my_theme) + (e2 + my_theme) + (f2 + my_theme) +
+  plot_layout(ncol = 6, nrow = 1, widths = c(1,1,1,1,1,1))  
     
   # Add the y-axis back only for the first plot
   combined_plot[[1]] <- combined_plot[[1]] + theme(
@@ -317,7 +317,7 @@ f2<-plot_fun(distance_cv)
   b<-plot_fun(latitude_slope)
   c<-plot_fun(extent_north_slope)
   d<-plot_fun(extent_south_slope)
-  e<-plot_fun(mpa_slope)
+  e<-plot_fun(reg_slope)
   
   f<-ggplot(data=distance_slope, aes(x= slope, y=port_complex, color=fishery2))+
     geom_point(size = 1.5, position = position_dodge(width = 0.5)) +  # Dodge points to avoid overlap
@@ -327,7 +327,7 @@ f2<-plot_fun(distance_cv)
       y = "Port Complex",
       color = "Fishery"
     )+
-    ggtitle('(e) Distance to shore')+
+    ggtitle('(f) Distance to shore')+
     geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Add vertical line at x = 0
     #base_theme+
     theme(  panel.grid.major = element_blank(),
@@ -370,31 +370,21 @@ f2<-plot_fun(distance_cv)
   b2<-plot_fun(latitude_cv)
   c2<-plot_fun(extent_north_cv)
   d2<-plot_fun(extent_south_cv)
-  e2<-plot_fun(mpa_cv)
+  e2<-plot_fun(reg_cv)
   f2<-plot_fun(distance_cv)
   ############
   
   
   ############
   
-  combined_plot <- a+b+c+d+e+f+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
-    theme(axis.text.y = element_blank(),  # Remove y-axis text
-          axis.title.x = element_blank(),# Remove x-axis text
-          axis.ticks.y = element_blank(), # Remove y-axis ticks
-          axis.title.y = element_blank(), # Remove y-axis title
-          legend.position = "none", #Hide legends by default
-          plot.margin=margin(0,0,0,0)
-    )      
+  combined_plot <- (a + my_theme) + (b + my_theme) + (c + my_theme) +
+    (d + my_theme) + (e + my_theme) + (f + my_theme) +
+    plot_layout(ncol = 6, nrow = 1, widths = c(1,1,1,1,1,1))  
   
-  combined_plot2 <- a2+b2+c2+d2+e2+f2+
-    plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
-    theme(axis.text.y = element_blank(),  # Remove y-axis text
-          axis.title.x = element_blank(),# Remove x-axis text
-          axis.ticks.y = element_blank(), # Remove y-axis ticks
-          axis.title.y = element_blank(), # Remove y-axis title
-          legend.position = "none", #Hide legends by default
-          plot.margin=margin(0,0,0,0) )      
+  
+  combined_plot2 <- (a2 + my_theme) + (b2 + my_theme) + (c2 + my_theme) +
+    (d2 + my_theme) + (e2 + my_theme) + (f2 + my_theme) +
+    plot_layout(ncol = 6, nrow = 1, widths = c(1,1,1,1,1,1))  
   
   # Add the y-axis back only for the first plot
   combined_plot[[1]] <- combined_plot[[1]] + theme(

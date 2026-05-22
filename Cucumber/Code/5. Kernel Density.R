@@ -315,7 +315,7 @@ plot_fun<-function(portcomplex){
   ggsave(filename = name, plot = p, width = 10, height = 6, units = "in", dpi = 300)
   
 }
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
@@ -512,19 +512,13 @@ plot_fun<-function(portcomplex){
   st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
   
 }
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
 
 
-#importing yearly images and creating an animation
-years<-c(1995,1997:2006,2009,2010)
-frames<-paste0(cucumber_data,"Figures/Kernel Density/Eureka/Eureka",years,".jpg")
-m<-image_read(frames)
-m<-image_animate(m, fps=1)
-image_write(m, paste0(cucumber_data,"Figures/Kernel Density/Eureka/Eureka Kernel Densities_Animation.gif"))
 
 years<-c(1994:1997,1999,2000:2003)
 frames<-paste0(cucumber_data, "Figures/Kernel Density/Monterey/Monterey", years,".jpg")
@@ -728,12 +722,12 @@ plot_fun<-function(portcomplex){
   
 }
 
-a<-plot_fun('Eureka')
+
 b<-plot_fun('Monterey')
 c<-plot_fun('Morro Bay')
 d<-plot_fun('Santa Barbara')
 e<-plot_fun('Los Angeles')
-all.volumes<-rbind(a,b,c,d,e)
+all.volumes<-rbind(b,c,d,e)
 
 all.volumes<-all.volumes%>%
   left_join(mpa,by="port.complex")%>%
@@ -743,7 +737,7 @@ saveRDS(all.volumes,paste0(cucumber_data,"Data/Processed Data/seacucumber_all co
 
 
 #order from north to south
-all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c( 'Eureka', 'Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
+all.volumes$port.complex<- factor(all.volumes$port.complex, levels = c('Monterey', 'Morro Bay', 'Santa Barbara', 'Los Angeles'))
 
 
 p<-ggplot(data=all.volumes, aes(x=Year))+
@@ -837,7 +831,7 @@ plot_fun<-function(portcomplex){
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
-plot_fun('Eureka')
+
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')

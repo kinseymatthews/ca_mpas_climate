@@ -1,18 +1,20 @@
 library(tidyverse)
 library(sf)
 library(pROC)
+library(patchwork)
 ############ 
-# Plot SST spatial predictions
+# Plot fuel spatial predictions
 ############ 
 base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/"
 
+
 # base theme
-base_theme <- theme(axis.text=element_text(size=7),
+base_theme <- theme(axis.text=element_text(size=9),
                     # axis.text.y = element_text(angle = 90, hjust = 0.5),
                     axis.title=element_text(size=8),
                     legend.text=element_text(size=8),
-                    legend.title=element_text(size=9),
-                    strip.text = element_text(size=10),
+                    legend.title=element_text(size=10),
+                    strip.text = element_text(size=12),
                     plot.tag =element_text(size=9),
                     # plot.title=element_blank(),
                     # Gridlines
@@ -49,6 +51,8 @@ files_all <- list.files(in_dir,
                         full.names = FALSE)
 
 all_metiers <- str_remove(files_all, "_fuel_ALL.gpkg")
+
+plot_list <- list()
 
 
 
@@ -170,7 +174,7 @@ for (met in all_metiers) {
     coord_sf(xlim = c(-450000, 350000),
              ylim = c(-600000, 450000)) +
     theme_bw() + base_theme +
-    ggtitle(paste(met, "— Low minus Average SST"))
+    ggtitle(paste(met, "— Low minus Average fuel"))
   
   ggsave(
     paste0(fig_dir, met, "_fuel_low_minus_avg.jpg"),
@@ -184,8 +188,26 @@ for (met in all_metiers) {
   # ---- COMBINE ----
   diff_all <- bind_rows(diff_high, diff_low)
   
+  
+  # Determine threshold per loop (e.g., 10th percentile)
+  threshold <- quantile(abs(diff_all$diff), 0.8, na.rm = TRUE)  # bottom 10% removed
+  
+  #now filter out blocks outside that percentile
+  
+  diff_all <-  diff_all%>%
+    filter(abs(diff) > threshold)
+  
   # ---- FORCE SYMMETRIC COLOR SCALE ----
-  max_abs <- max(abs(diff_all$diff), na.rm = TRUE)
+  # max_abs <- max(abs(diff_all$diff), na.rm = TRUE)
+  # get max and min coordinates for plotting
+  coordinates<-diff_all%>%
+    
+    st_coordinates()
+  # Create bounding block for plot
+  minx<-(min(coordinates[,1], na.rm = TRUE))
+  maxx<-(max(coordinates[,1], na.rm = TRUE))
+  miny<-(min(coordinates[,2], na.rm = TRUE))
+  maxy<-(max(coordinates[,2], na.rm = TRUE))
   
   p_diff_combined <- ggplot(diff_all) +
     geom_sf(aes(fill = diff), color = NA) +
@@ -195,8 +217,8 @@ for (met in all_metiers) {
       mid = "white",
       high = "red",
       midpoint = 0,
-      limits = c(-max_abs, max_abs),
-      name = "Predicted difference"
+     # limits = c(-max_abs, max_abs),
+      name = "Predicted difference\nin effort"
     ) +
     guides(fill = guide_colorbar(
       ticks.colour = "black",
@@ -212,10 +234,18 @@ for (met in all_metiers) {
             color = "grey30",
             linewidth = 0.2,
             inherit.aes = FALSE) +
-    coord_sf(xlim = c(-450000, 350000),
-             ylim = c(-600000, 450000)) +
-    theme_bw() + base_theme +
-    ggtitle(paste(met, "— fuel Differences"))
+    # Crop the plot using the bounding box of the contour
+    coord_sf(xlim = c(minx-1000, maxx+1000), ylim = c(miny-1000, maxy+1000)) +
+    # Whole-number degree breaks on both axes
+    scale_x_continuous(breaks = seq(-180, 180, by = 1)) +
+    scale_y_continuous(breaks = seq(-90, 90, by = 2)) +
+    theme_bw() + base_theme 
+   # ggtitle(paste(met, "— fuel Differences"))
+  
+  # ── Store the ggplot object with the metier name as the key ──────────────── 
+  plot_list[[met]] <- p_diff_combined
+  
+  
   
   ggsave(
     paste0(fig_dir, met, "_fuel_differences_side_by_side.jpg"),
@@ -226,6 +256,21 @@ for (met in all_metiers) {
   )
   gc()
 }
+
+############
+
+############
+my_theme <- theme(
+  axis.text    = element_text(size = 12),
+  plot.tag     = element_text(face = "bold", size = 14),
+  aspect.ratio = 1.2   # tweak this — higher = taller/narrower
+)
+#panels i want
+fuel_sf_squid <- plot_list[["San Francisco Squid seine"]]+ my_theme
+
+
+filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/spatial_predictions_fuel.jpg')
+ggsave(filename = filename1, plot =  fuel_sf_squid , width = 7, height = 4, units = "in", dpi = 300)
 
 ############
 

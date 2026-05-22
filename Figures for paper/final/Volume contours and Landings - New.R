@@ -60,36 +60,36 @@ read_fishery_data <- function(base_path, fishery_folder, files, fishery_name) {
 }
 
 # Read data for each fishery
-cpfv <- read_fishery_data(base_path, "CPFV", "all_portcomplex_contours_75_last5years.gpkg", "CPFV")%>%
+cpfv <- read_fishery_data(base_path, "CPFV", "CPFV_allyears_contours_75.gpkg", "CPFV")%>%
   mutate(comm_name="Mult-species_CPFV")
 
-cuc_trawl <- read_fishery_data(base_path, "Cucumber", "all_portcomplex_contours_75_last5years.gpkg", "Cucumber trawl")%>%
+cuc_trawl <- read_fishery_data(base_path, "Cucumber", "Cucumbertrawl_allyears_contours_75.gpkg", "Cucumber trawl")%>%
   mutate(comm_name="Giant red sea cucumber")
 
-cuc_dive <- read_fishery_data(base_path, "Dive","cucumber_all_portcomplex_contours_75_last5years.gpkg" , "Cucumber dive")%>%
+cuc_dive <- read_fishery_data(base_path, "Dive","cucumberdive_allyears_contours_75.gpkg" , "Cucumber dive")%>%
   mutate(comm_name="Warty sea cucumber")
 
-urchin <- read_fishery_data(base_path, "Dive", "urchin_all_portcomplex_contours_75_last5years.gpkg", "Urchin dive")%>%
+urchin <- read_fishery_data(base_path, "Dive", "urchin_allyears_contours_75.gpkg", "Urchin dive")%>%
   mutate(comm_name="Red sea urchin")
 
 
-gillnet <- read_fishery_data(base_path, "Gillnet","set_all_portcomplex_contours_75_last5years.gpkg", "Set gillnet")%>%
-  mutate(comm_name="Mult-species_gillnet")
+gillnet <- read_fishery_data(base_path, "Gillnet","setgillnet_allyears_contours_75.gpkg", "Set gillnet")%>%
+  mutate(comm_name="Mult--species_gillnet")
 
-halibut <- read_fishery_data(base_path, "Halibut","all_portcomplex_contours_75_last5years.gpkg", "Halibut trawl")%>%
+halibut <- read_fishery_data(base_path, "Halibut","halibut_allyears_contours_75.gpkg", "Halibut trawl")%>%
   mutate(comm_name="California halibut")
 
-lobster <- read_fishery_data(base_path, "Lobster","all_portcomplex_contours_75_last5years.gpkg", "Lobster trap")%>%
+lobster <- read_fishery_data(base_path, "Lobster","lobster_allyears_contours_75.gpkg", "Lobster trap")%>%
   mutate(comm_name="California spiny lobster")
 
 
-pink_shrimp <- read_fishery_data(base_path, "Shrimp", "pink_all_portcomplex_contours_75_last5years.gpkg", "Pink shrimp trawl")%>%
+pink_shrimp <- read_fishery_data(base_path, "Shrimp", "pinkshrimp_allyears_contours_75.gpkg", "Pink shrimp trawl")%>%
   mutate(comm_name="Pacific pink shrimp")
 
-ridgeback <- read_fishery_data(base_path, "Shrimp","ridge_all_portcomplex_contours_75_last5years.gpkg" , "Ridgeback prawn trawl")%>%
+ridgeback <- read_fishery_data(base_path, "Shrimp","ridgebacl_allyears_contours_75.gpkg" , "Ridgeback prawn trawl")%>%
   mutate(comm_name="Ridgeback prawn")
 
-squid <- read_fishery_data(base_path, "Squid","all_portcomplex_contours_75_last5years.gpkg", "Squid seine")%>%
+squid <- read_fishery_data(base_path, "Squid","squid_allyears_contours_75.gpkg", "Squid seine")%>%
   mutate(comm_name="Market squid")
 
 # Combine them all
@@ -184,7 +184,8 @@ plot_fun<-function(fish){
     # Land
     geom_sf(data=usa_mexico_sf_proj, fill="gray", col="black", linewidth=0.2, inherit.aes = F) +
     # Lines 
-    geom_sf(data = fishery_subset, aes(color = portcomplex), linewidth = 0.8) +
+    geom_sf(data = fishery_subset, aes(fill = portcomplex), alpha = 0.4   # <- transparency of fill + stroke together
+    )+
     # Port points with black borders
     geom_sf(data = landings_subset, aes(size = percentage, fill = portcomplex), 
             color = "black", pch = 21, stroke = 1.2) +#stroke controls how thick the borders are 

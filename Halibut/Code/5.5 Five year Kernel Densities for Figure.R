@@ -1,5 +1,11 @@
 library(tidyverse)
 library(sf)
+library(sp)
+library(spatstat)
+library(raster)
+library(magick)
+library(ggforce)
+library(RColorBrewer)
 
 
 #################

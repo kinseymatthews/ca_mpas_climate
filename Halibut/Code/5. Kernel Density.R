@@ -28,6 +28,8 @@ mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
 usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 usa_mexico_sf_proj<- st_transform(usa_mexico_sf, crs = 3310)
+# Union all geometries into one polygon
+usa_mexico_union <- st_union(usa_mexico_sf_proj)
 
 #port codes
 port<-read.csv( paste0(general_data,"Port Codes.csv"))
@@ -77,6 +79,15 @@ base_theme <- theme(axis.text=element_text(size=7),
 port.complex=c("Eureka","Fort Bragg","Bodega Bay","Monterey","San Francisco","Morro Bay","Santa Barbara","Los Angeles","San Diego")
 values=c(2012,2012,2007,2007,2007,2007,2012,2012,2012)
 mpa<-data.frame(port.complex=port.complex,mpayear=values)
+
+#mpas
+mpa_blocks<-wcfish::mpas_ca
+mpa_blocks<- st_transform(mpa_blocks, crs = 3310)%>%
+  st_make_valid()
+mpa_blocks <- st_cast(mpa_blocks, "POLYGON")
+# Union the MPAs so they are treated as a single shape
+mpa_blocks <- st_union(mpa_blocks)
+mpa_blocks <- st_make_valid(mpa_blocks)
 ############
 
 
@@ -104,13 +115,18 @@ sf_df<- explor %>%
   st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = "+proj=longlat +datum=WGS84 +no_defs")%>%
   #remove any bad spatial blocks
   filter(!st_is_empty(.))
+sf_df_projected <- st_transform(sf_df, crs = 3310)
+
 
 saveRDS(sf_df,("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Halibut/Data/Processed Data/halibut_summarizeddata_yearly.rds"))
+
+all_contours <- list()
+
 
 plot_fun<-function(portcomplex){ 
   
   #filtering for location
-  location<-sf_df %>%
+  location<-sf_df_projected %>%
     filter(port.complex==portcomplex)
   
   #extracting coordinates and weights
@@ -132,15 +148,21 @@ plot_fun<-function(portcomplex){
   # Convert density to a raster (assuhrsg a reasonable raster resolution)
   density_raster <- as(raster(as.im(density)), "RasterLayer")
   
+  
+  # Extend the extent of the density raster 
+   buffer_distance <- 20000
+   extended_extent <- extend(extent(density_raster), buffer_distance)
+  
+  # Create a new raster with the extended extent
+    extended_raster <- extend(density_raster, extended_extent, value = 0)
+  
   # Mask the density raster with the land raster
-  density_masked <- mask(density_raster, usa_mexico_sf, inverse=TRUE)
+  density_masked <- mask(density_raster, usa_mexico_sf_proj, inverse=TRUE)
   
   # Convert density to a data frame
   density_df <- as.data.frame(rasterToPoints(density_masked))
   names(density_df) <- c("x", "y", "value")
   
-  # Normalize density values to the range 0-1
-  density_df$value <- scales::rescale(density_df$value)
   
   # Calculate the cumulative distribution function (CDF)
   density_values <- sort(density_df$value, decreasing = TRUE)
@@ -148,6 +170,103 @@ plot_fun<-function(portcomplex){
   
   # Find the contour level corresponding to 75% volume
   contour_level <- density_values[which.min(abs(cdf - 0.75))]
+  
+  # Create contour lines from the density raster - using masked for plotting
+  contour_level_75_lines <- rasterToContour(density_masked, levels = c(contour_level))
+  # Create contour lines from the density raster - using extended for area - pretty much the exact same
+  contour_level_75_lines1 <- rasterToContour(extended_raster, levels = c(contour_level))
+  
+  # Convert contour lines to sf line for graphing
+  contour_sf <- st_as_sf(contour_level_75_lines)
+  st_crs(contour_sf) <-  3310
+  
+  
+  contour_sf1 <- st_as_sf(contour_level_75_lines1)
+  # fix inconsistent columns
+  contour_sf1 <- contour_sf1[, !names(contour_sf1) %in% "level.1"]
+  st_crs(contour_sf1) <-  3310
+  
+  # Convert the LINESTRING to POLYGON if needed
+  # Attempt to cast to POLYGON
+  closed_poly <- tryCatch(
+    st_cast(contour_sf1, "POLYGON"),
+    error = function(e) {
+      message("st_cast failed, using st_polygonize instead")
+      st_polygonize(contours_sf1)
+    }
+  )
+  
+  # Ensure valid geometry
+  closed_poly <- st_make_valid(closed_poly)
+  
+  # Ensure valid geometry
+  closed_poly <- st_make_valid(closed_poly)
+  
+  # Plot the closed polygon to verify the closure
+  plot(closed_poly)
+  
+  # Extract only the geometry of the USA/Mexico shapefile
+  usa_geometry <- st_geometry(usa_mexico_union)
+  
+  # First calculate the intersection (land area)
+  intersection <- st_intersection(closed_poly, usa_geometry)
+  
+  # Check if there is an intersection
+  if (nrow(intersection) > 0) {
+    # If there is an intersection, manually subtract the land portion from the ocean using st_difference
+    closed_poly_no_land <- st_difference(closed_poly, intersection)
+    plot(closed_poly_no_land)
+    
+    # Compute the 75% volume area (land portion removed)
+    area_75_m2 <- sum(st_area(closed_poly_no_land))
+  } else {
+    closed_poly_no_land <- closed_poly
+    plot(closed_poly_no_land)
+    # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+    area_75_m2 <- sum(st_area(closed_poly))
+  }
+  # Convert area from square meters to square kilometers
+  area_75_km2 <- as.numeric(area_75_m2) / 1e6  # Convert units object to numeric and divide by 1e6
+  #compute area of mpas within 75%
+  #turn mpas into polygons and calculate interactions between the two
+  
+  # Extract only the geometry of the USA/Mexico shapefile
+  block_geometry <- st_geometry(mpa_blocks)
+  
+  # First calculate the intersection (land area)
+  intersection <- st_intersection(closed_poly_no_land, block_geometry)
+  
+  closed_poly_no_land <- st_make_valid(closed_poly_no_land)
+  
+  # Check if there is an intersection
+  if (nrow(intersection) > 0) {
+    # If there is an intersection, manually subtract the mpa portion from the non mpa using st_difference
+    closed_poly_no_mpa <- st_difference(closed_poly_no_land, intersection)
+    plot(closed_poly_no_mpa)
+    
+    # Compute the 75% volume area (land portion removed)
+    area_75_m2_nompa <- sum(st_area(closed_poly_no_mpa))
+  } else {
+    # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+    area_75_m2_nompa <- sum(st_area(closed_poly_no_land))
+  }
+  
+  # Convert area from square meters to square kilometers
+  area_75_km2_nompa <- as.numeric(area_75_m2_nompa) / 1e6  # Convert units object to numeric and divide by 1e6
+  
+  closed_poly_no_land$portcomplex <- portcomplex
+  closed_poly_no_land$total_area <- area_75_km2
+  closed_poly_no_land$total_area_notinmpa <- area_75_km2_nompa
+  closed_poly_no_land$total_area_inmpa <- (area_75_km2-area_75_km2_nompa)
+  closed_poly_no_land<-  closed_poly_no_land%>%
+    mutate(percent_inmpa=((total_area_inmpa) / (total_area)) * 100)
+  
+  
+  # Save in list
+  all_contours[[portcomplex]] <<- closed_poly_no_land
+  
+  # Normalize density values to the range 0-1
+  density_df$value <- scales::rescale(density_df$value)
   
   #map
   p<-ggplot() +
@@ -159,8 +278,7 @@ plot_fun<-function(portcomplex){
                          na.value = "white") +  # Set NA values to white
     
     # Add contour lines at 75% volume boundary
-    geom_contour(data = density_df, aes(x = x, y = y, z = value), 
-                 breaks = contour_level, color = "black", size = 0.75) +
+    geom_sf(data = contour_sf, color = "black", linewidth = 1)  +
     # Land
     geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
     # State waters
@@ -189,6 +307,15 @@ plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
 plot_fun('Los Angeles')
+
+all_contours <- lapply(all_contours, function(x) {
+  x %>% mutate(level.1 = if (!"level.1" %in% names(x)) NA_real_ else level.1)
+})
+
+merged_contours <- do.call(rbind, all_contours)
+merged_file <- file.path(halibut_data, paste0('Data/Processed Data/halibut_allyears_contours_75.gpkg'))
+st_write(merged_contours, merged_file, delete_layer = TRUE, quiet = TRUE)
+
 ############
 
 

@@ -68,7 +68,7 @@ cuc.price.port.year.month.landings<-landings_cuc%>%
   group_by(port.complex,month_year)%>%
   summarize(all_landings=sum(landings_lbs), all_value=sum(value_usd))%>%
   mutate(price_lbs=(all_value/all_landings))%>%
-  filter(port.complex %in% c("Eureka","Los Angeles", "Monterey", "Morro Bay","Santa Barbara"))
+  filter(port.complex %in% c("Los Angeles", "Monterey", "Morro Bay","Santa Barbara"))
 
 
 saveRDS(cuc.price.port.year.month.landings, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/ex vessel price/data/processed/cuc_landing_exvessel_port_month_year_notadjusted.rds")

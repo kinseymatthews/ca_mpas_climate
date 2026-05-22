@@ -201,7 +201,7 @@ ggsave(filename = filename1, plot =  p , width = 13, height = 6, units = "in", d
 ############
 
 #Change x and facet wrap
-
+rightmost_term <- levels(df$term)[1] 
 
 
 p<-ggplot(df, aes(fill=sign, y=fishery, x=percent)) + 
@@ -215,7 +215,15 @@ p<-ggplot(df, aes(fill=sign, y=fishery, x=percent)) +
   facet_wrap(~term, labeller = labeller(fishery = labels))+
   scale_fill_manual(values = c("Positive" = "#E69F00", "Negative" = "#0072B2", "Neutral" = "#009E73"))+
   labs(x="Percent")+
-  labs(fill = "Direction")
+  labs(fill = "Direction")+
+  geom_text(
+    data = df %>% filter(term %in% c("Depth", "Fuel price", "Ex-vessel price")),
+    aes(label = paste0("n = ", total.metiers), x = 1.01),
+    hjust = 0,
+    size = 3
+  )+
+  coord_cartesian(clip = "off")
 
+p
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/model_variable_direction_delta_abundance_2.jpg')
-ggsave(filename = filename1, plot =  p , width = 13, height = 6, units = "in", dpi = 300)
+ggsave(filename = filename1, plot =  p , width = 10, height = 6, units = "in", dpi = 300)

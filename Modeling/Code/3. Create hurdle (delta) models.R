@@ -7,9 +7,13 @@ library(ggcorrplot)
 library(INLA)
 library(broom)
 library(rnaturalearth)
+library(magick)
 ############
 #Upload Data
 base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/"
+# Make folder for saving models
+model_folder <- paste0(base_path, "Modeling/Data/Processed Data/Model_Results/")
+
 
 #fisheries
 fisheries<-readRDS("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/summarized_fishery_data_ready4model.rds")%>%
@@ -233,9 +237,6 @@ ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 2.5) +
 
 
 ############
-# Make folder for saving models
-model_folder <- paste0(base_path, "Modeling/Data/Processed Data/Model_Results/")
-
 
 # Loop through each unique fishery/metier
 for(i in unique(fisheries_variables$metier)) {
@@ -403,6 +404,7 @@ for (f in model_files) {
   nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
   
   m <- readRDS(f)
+ 
   # Safely attempt to extract residuals
   
   resids <- residuals(m, type = "mle-mvn")
@@ -415,7 +417,6 @@ for (f in model_files) {
   
   # Save QQ plot as a PNG file
   png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids_delta_pa.png"), width = 800, height = 600)
-  
   qqnorm(resids, main = paste("QQ Plot of Residuals -", nm))
   qqline(resids, col = "red")
   
@@ -426,13 +427,13 @@ for (f in model_files) {
 ############
 #read models back in
 # List all RDS model files for presence absence
-model_files <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT_abundance_delta.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
+model_files_abund <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT_abundance_delta.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with Depth_no_BT_abundance_delta.rds”
 
 # Read them back into a named list
-models <- lapply(model_files, readRDS)
+models_abund  <- lapply(model_files_abund , readRDS)
 
 # Strip off "model_" and ".rds" so names look like "San_Francisco_Squid_Seine"
-names(models) <- gsub("^model_|\\_Depth_no_BT_abundance_delta.rds$", "", basename(model_files))
+names(models_abund ) <- gsub("^model_|\\_Depth_no_BT_abundance_delta.rds$", "", basename(model_files_abund ))
 
 # Example: look at the summary for San Francisco Squid Seine
 m<-(models[["Santa_Barbara_Squid_seine"]])
@@ -446,7 +447,7 @@ AIC(m)
 ############ 
 
 #QQ plots
-for (f in model_files) {
+for (f in model_files_abund ) {
   nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
   
   m <- readRDS(f)
@@ -545,4 +546,107 @@ saveRDS(R2_df ,paste0(base_path,"Modeling/Data/Processed Data/Model_Results/Diag
 ############
 
 
+############
+#plotting figure worthy QQ plots
+qq_folder <- paste0(model_folder, "Diagnostics/QQ_plots/")
+out_folder <- paste0(base_path, "All Fisheries Figures/")
+dir.create(out_folder, showWarnings = FALSE)
 
+# List both sets of QQ plots
+pa_files    <- list.files(qq_folder, pattern = "_pa_delta_qqplot.*\\.png$",        full.names = TRUE)
+abund_files <- list.files(qq_folder, pattern = "_abundance_delta_qqplot.*\\.png$", full.names = TRUE)
+
+# Extract clean metier name from PA files (use as key)
+clean_metier <- function(f, type = "pa") {
+  pattern <- if (type == "pa") "_Depth_no_BT_pa_delta_qqplot.*\\.png$" else "_Depth_no_BT_abundance_delta_qqplot.*\\.png$"
+  basename(f) %>% gsub("^model_", "", .) %>% gsub(pattern, "", .)
+}
+
+# Make a clean readable label from metier string
+# e.g. "Santa_Barbara_Squid_seine" -> "Santa Barbara | Squid Seine"
+port_complexes <- c("Eureka", "Fort_Bragg", "Bodega_Bay", "San_Francisco",
+                    "Monterey_Bay", "Morro_Bay", "Santa_Barbara", "Los_Angeles", "San_Diego")
+
+make_label <- function(metier) {
+  for (pc in port_complexes) {
+    if (startsWith(metier, pc)) {
+      port    <- gsub("_", " ", pc)
+      fishery <- gsub(paste0("^", pc, "_"), "", metier) %>% gsub("_", " ", .)
+      return(paste0(port, "  |  ", fishery))
+    }
+  }
+  gsub("_", " ", metier)
+}
+
+# Build lookup
+pa_df <- data.frame(
+  path   = pa_files,
+  metier = sapply(pa_files, clean_metier, type = "pa"),
+  stringsAsFactors = FALSE
+)
+
+ab_df <- data.frame(
+  path   = abund_files,
+  metier = sapply(abund_files, clean_metier, type = "abundance"),
+  stringsAsFactors = FALSE
+)
+combined_df <- inner_join(pa_df, ab_df, by = "metier", suffix = c("_pa", "_ab"))
+
+# Process each metier: crop title, label, join PA + abundance side by side
+process_pair <- function(pa_path, ab_path, metier) {
+  
+  label <- make_label(metier)
+  
+  pa_img <- image_read(pa_path) %>%
+    image_crop("800x560+0+40") %>%           # crop off base R title (~40px)
+    image_annotate("Presence-Absence",        # add clean subplot label
+                   size = 28, color = "gray30",
+                   gravity = "north", location = "+0+5")
+  
+  ab_img <- image_read(ab_path) %>%
+    image_crop("800x560+0+40") %>%
+    image_annotate("Abundance",
+                   size = 28, color = "gray30",
+                   gravity = "north", location = "+0+5")
+  
+  # Combine side by side
+  row_img <- image_append(c(pa_img, ab_img), stack = FALSE)
+  
+  # Add overall metier title above the pair
+  title_bar <- image_blank(1600, 50, color = "white") %>%
+    image_annotate(label, size = 32, color = "black",
+                   gravity = "center")
+  
+  image_append(c(title_bar, row_img), stack = TRUE)
+}
+
+# Build paired images for all metiers
+paired_imgs <- vector("list", nrow(combined_df))
+for (i in seq_len(nrow(combined_df))) {
+  message("Processing: ", combined_df$metier[i])
+  paired_imgs[[i]] <- process_pair(
+    combined_df$path_pa[i],
+    combined_df$path_ab[i],
+    combined_df$metier[i]
+  )
+}
+
+# --- Save one figure per fishery ---
+fishery_labels <- sapply(combined_df$metier, function(m) {
+  for (pc in port_complexes) {
+    if (startsWith(m, pc)) return(gsub(paste0("^", pc, "_"), "", m))
+  }
+  m
+})
+
+for (f in unique(fishery_labels)) {
+  idx  <- which(fishery_labels == f)
+  imgs <- image_join(paired_imgs[idx])
+  
+  # Stack all port complexes for this fishery vertically
+  fig  <- image_append(imgs, stack = TRUE)
+  
+  out_path <- paste0(out_folder, gsub(" ", "_", f), "_QQplots_supplement.png")
+  image_write(fig, out_path, quality = 95)
+  message("Saved: ", out_path)
+}

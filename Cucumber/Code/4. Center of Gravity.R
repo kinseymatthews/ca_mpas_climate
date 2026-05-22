@@ -216,13 +216,13 @@ plot_fun<-function(portcomplex){
   }
   all.data<- dplyr::bind_rows(datalist)
 }
-a<-plot_fun('Eureka')
+
 b<-plot_fun('Monterey')
 c<-plot_fun('Morro Bay')
 d<-plot_fun('Santa Barbara')
 e<-plot_fun('Los Angeles')
 
-df<-rbind(a,b,c,d,e)
+df<-rbind(b,c,d,e)
 saveRDS(df, paste0(cucumber_data,'Data/Processed Data/seacucumber_COG_distance_results_towhours_final.rds'))
 ###############
 
@@ -267,7 +267,6 @@ plot_fun<-function(portcomplex){
   
 }
 
-plot_fun('Eureka')
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
@@ -376,7 +375,6 @@ plot_fun<-function(portcomplex){
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
-plot_fun('Eureka')
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
@@ -417,7 +415,6 @@ plot_fun<-function(portcomplex){
   ggsave(filename = filename1, plot = p, width = 6, height = 3, units = "in", dpi = 300)
 }
 
-plot_fun('Eureka')
 plot_fun('Monterey')
 plot_fun('Morro Bay')
 plot_fun('Santa Barbara')
