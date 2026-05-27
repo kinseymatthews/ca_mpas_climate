@@ -32,106 +32,17 @@ blocks_crs <- crs(all_blocks)  # This returns a CRS object
 all_blocks_vect <- vect(all_blocks)  # all_blocks is your sf object
 ###############
 
-###############
-#Getting SST Data
-# Read in NetCDF file
-sst <- rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/SST_subset.nc")
-bt1 <- rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/bottomtemp_2000_2021.nc")
-bt2 <- rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/bottomtemp_2021_2025.nc")
-#combine two bottom temperature netcdfs
-
-# Rename layers in bt2 so they continue from bt1
-names(bt2) <- paste0("bottomT_", (nlyr(bt1) + 1):(nlyr(bt1) + nlyr(bt2)))
-bt <- c(bt1, bt2)
-
-
-#set CRS
-# Reproject SST and Bottom Temp to match blocks
-sst <- project(sst, crs(all_blocks))
-bt<- project(bt, crs(all_blocks))
-
-###############
-
 
 
 ###############
-#checking
-# First layer (Jan 2000)
-sst_jan2000 <- sst[[1]]
-
-# Extract mean SST by block
-vals <- extract(sst_jan2000, all_blocks_vect, fun = mean, na.rm = TRUE)
-
-# Combine with block ID
-result <- data.frame(
-  block_id = all_blocks$block_id,
-  date = as.Date("2000-01-01"),
-  SST = vals[,2]  # Second column is the extracted mean
-)
-
-head(result)
-###############
-
-###############
-#all now
-sst_means <- terra::extract(sst, all_blocks_vect, fun = mean, na.rm = TRUE)
-bt_means <- terra::extract(bt, all_blocks_vect, fun = mean, na.rm = TRUE)
-time_vals <- terra::time(sst)
-
-# Add block IDs from original data
-block_ids <- all_blocks_vect$block_id
-
-# For SST
-sst_long <- sst_means %>%
-  mutate(block_id = block_ids) %>%
-  dplyr::select(-ID) %>%
-  pivot_longer(
-    cols = starts_with("sst_"),  # or however your columns are named (e.g. layer.1)
-    names_to = "layer",
-    values_to = "SST"
-  ) %>%
-  mutate(
-    layer_num = as.integer(gsub("sst_", "", layer)),
-    date = time_vals[layer_num]
-  ) %>%
-  dplyr::select(block_id, date, SST)
-
-time_vals <- terra::time(bt)
-# For BT
-bt_long <- bt_means %>%
-  mutate(block_id = block_ids) %>%
-  dplyr::select(-ID) %>%
-  pivot_longer(
-    cols = starts_with("bottomT_"),  # or however your columns are named (e.g. layer.1)
-    names_to = "layer",
-    values_to = "BT"
-  ) %>%
-  mutate(
-    layer_num = as.integer(gsub("bottomT_", "", layer)),
-    date = time_vals[layer_num]
-  ) %>%
-  dplyr::select(block_id, date, BT)
-
-#ad them together
-sst_bt <- left_join(bt_long, sst_long, by = c("block_id", "date"))
-
-saveRDS(sst_bt, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/processed/monthly_sst_bt_OISST_GLORYS.rds")
-###############
-
-
-###############
-#SECOND WAY
-sst_bt_time1<-rast("c:/Users/kinse/Downloads/cmems_mod_glo_phy_my_0.083deg_P1M-m_1755106570377.nc")
-sst_bt_time2<-rast("c:/Users/kinse/Downloads/cmems_mod_glo_phy_myint_0.083deg_P1M-m_1755106870727.nc")
+sst_bt_time1<-rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/cmems_mod_glo_phy_my_0.083deg_P1M-m_1755106570377.nc")
+sst_bt_time2<-rast("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/raw/cmems_mod_glo_phy_myint_0.083deg_P1M-m_1755106870727.nc")
 
 # See available variables
-names(sst_bt_time1)       # Layer names
-varnames(sst_bt_time1)    # Variable metadata
-time(sst_bt_time1)        # Time dimension (if multiple months)
+#names(sst_bt_time1)       # Layer names
+#varnames(sst_bt_time1)    # Variable metadata
+#time(sst_bt_time1)        # Time dimension (if multiple months)
 
-names(sst_bt_time2)       # Layer names
-varnames(sst_bt_time2)    # Variable metadata
-time(sst_bt_time2)        # Time dimension (if multiple months)
 
 # Extract bottomT layers
 bt_time1 <- sst_bt_time1[[grep("^bottomT", names(sst_bt_time1))]]
@@ -161,32 +72,36 @@ sst <- c(sst_time1, sst_time2)
 sst <- project(sst, crs(all_blocks))
 bt<- project(bt, crs(all_blocks))
 
+# Extract using nearest raster cell instead of mean
+sst_filled <- focal(sst, w = matrix(1,3,3), fun = mean, na.rm = TRUE, na.policy="only")
+bt_filled <- focal(bt, w = matrix(1,3,3), fun = mean, na.rm = TRUE, na.policy="only")
+writeRaster(sst_filled, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/processed/monthly_sst_GLORYS_raster.tif")
+writeRaster(bt_filled, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/processed/monthly_bt_GLORYS_raster.tif")
 
 
-sst_means <- terra::extract(sst, all_blocks_vect, fun = mean, na.rm = TRUE)
-bt_means <- terra::extract(bt, all_blocks_vect, fun = mean, na.rm = TRUE)
-time_vals <- terra::time(sst)
+sst_means <- terra::extract(sst_filled, all_blocks_vect, fun = mean, na.rm = TRUE)
+bt_means <- terra::extract(bt_filled, all_blocks_vect, fun = mean, na.rm = TRUE)
+time_vals <- terra::time(sst_filled )
 
 # Add block IDs from original data
 block_ids <- all_blocks_vect$block_id
 
 # For SST
 sst_long <- sst_means %>%
-  slice(-1)%>%
   mutate(block_id = block_ids) %>%
   dplyr::select(-ID) %>%
   pivot_longer(
-    cols = starts_with("sst_"),  # or however your columns are named (e.g. layer.1)
+    cols = starts_with("thetao_depth=0.49402499_"),  # or however your columns are named (e.g. layer.1)
     names_to = "layer",
     values_to = "SST"
   ) %>%
   mutate(
-    layer_num = as.integer(gsub("sst_", "", layer)),
+    layer_num = as.integer(gsub("thetao_depth=0.49402499_", "", layer)),
     date = time_vals[layer_num]
   ) %>%
   dplyr::select(block_id, date, SST)
 
-time_vals <- terra::time(bt)
+time_vals <- terra::time(bt_filled)
 # For BT
 bt_long <- bt_means %>%
   mutate(block_id = block_ids) %>%
@@ -201,3 +116,10 @@ bt_long <- bt_means %>%
     date = time_vals[layer_num]
   ) %>%
   dplyr::select(block_id, date, BT)
+
+#ad them together
+sst_bt <- left_join(bt_long, sst_long, by = c("block_id", "date"))%>%
+  filter(!is.na(SST))
+
+saveRDS(sst_bt, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Temperature/processed/monthly_sst_bt_GLORYS.rds")
+###############
