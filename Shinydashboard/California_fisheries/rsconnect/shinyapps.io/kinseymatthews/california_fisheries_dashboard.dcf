@@ -5,7 +5,7 @@ account: kinseymatthews
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 14718825
-bundleId: 12024783
+bundleId: 12032683
 url: https://kinseymatthews.shinyapps.io/california_fisheries_dashboard/
 version: 1
 asMultiple: FALSE

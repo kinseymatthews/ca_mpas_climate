@@ -38,6 +38,15 @@ usa_mexico_union <- st_union(usa_mexico_sf_proj)
 state_waters <- readRDS( paste0(base_path,"All Fisheries Data/CA_state_waters_polyline.Rds"))
 state_waters <- st_transform(state_waters, crs = 3310)
 
+#mpas
+mpa_blocks<-wcfish::mpas_ca
+mpa_blocks<- st_transform(mpa_blocks, crs = 3310)%>%
+  st_make_valid()
+mpa_blocks <- st_cast(mpa_blocks, "POLYGON")
+# Union the MPAs so they are treated as a single shape
+mpa_blocks <- st_union(mpa_blocks)
+mpa_blocks <- st_make_valid(mpa_blocks)
+
 
 in_dir  <- paste0(base_path, "Modeling/spatial_outputs/exvessel/")
 fig_dir <- paste0(base_path, "Modeling/figures/spatial_predictions/exvessel/")
@@ -50,6 +59,30 @@ files_all <- list.files(in_dir,
 all_metiers <- str_remove(files_all, "_exvessel_ALL.gpkg")
 
 plot_list <- list()
+
+
+clean_met_name <- function(met) {
+  known_ports <- c("Fort Bragg", "Los Angeles", "Morro Bay", "San Diego",
+                   "San Francisco", "Santa Barbara", "Eureka", "Monterey",
+                   "Bodega Bay")
+  
+  port      <- known_ports[sapply(known_ports, function(p) startsWith(met, p))]
+  fishery   <- str_trim(str_remove(met, fixed(port)))
+  port_clean <- str_remove_all(port, " ")  # SanFrancisco, FortBragg, etc.
+  
+  # CamelCase each word, but preserve all-caps words like CPFV
+  to_camel <- function(x) {
+    words <- str_split(x, " ")[[1]]
+    words <- sapply(words, function(w) {
+      if (w == toupper(w) && nchar(w) > 1) w  # keep CPFV as-is
+      else paste0(toupper(substr(w, 1, 1)), tolower(substr(w, 2, nchar(w))))
+    })
+    paste(words, collapse = "")
+  }
+  
+  paste0(to_camel(fishery), "_", port_clean)
+}
+
 
 
 for (met in all_metiers) {
@@ -230,6 +263,8 @@ for (met in all_metiers) {
             color = "grey30",
             linewidth = 0.2,
             inherit.aes = FALSE) +
+    geom_sf(data = mpa_blocks, fill = "black", col = "white", linewidth = 0.2) +
+  
     # Crop the plot using the bounding box of the contour
     coord_sf(xlim = c(minx-1000, maxx+1000), ylim = c(miny-1000, maxy+1000)) +
     # Whole-number degree breaks on both axes
@@ -250,6 +285,16 @@ for (met in all_metiers) {
     height = 6,
     dpi = 300
   )
+  
+  # ── Save to Shiny www directory ──────────────────────────────────────────────
+  shiny_dir <- "C:/Users/kinse/Desktop/mpa climate fisheries/ca_mpas_climate/Shinydashboard/California_fisheries/www/"
+  
+  ggsave(
+    paste0(shiny_dir, "predictions_", clean_met_name(met), "_exvessel_differences.jpg"),
+    p_diff_combined,
+    width = 12, height = 6, dpi = 300
+  )
+  
   gc()
 }
 ############

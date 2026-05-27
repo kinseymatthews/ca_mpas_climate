@@ -39,6 +39,16 @@ state_waters <- readRDS( paste0(base_path,"All Fisheries Data/CA_state_waters_po
 state_waters <- st_transform(state_waters, crs = 3310)
 
 
+#mpas
+mpa_blocks<-wcfish::mpas_ca
+mpa_blocks<- st_transform(mpa_blocks, crs = 3310)%>%
+  st_make_valid()
+mpa_blocks <- st_cast(mpa_blocks, "POLYGON")
+# Union the MPAs so they are treated as a single shape
+mpa_blocks <- st_union(mpa_blocks)
+mpa_blocks <- st_make_valid(mpa_blocks)
+
+
 in_dir  <- paste0(base_path, "Modeling/spatial_outputs/SST/")
 fig_dir <- paste0(base_path, "Modeling/figures/spatial_predictions/SST/")
 out_fig_dir <- paste0(base_path,
@@ -53,6 +63,27 @@ all_metiers <- str_remove(files_all, "_SST_ALL.gpkg")
 
 plot_list <- list()
 
+clean_met_name <- function(met) {
+  known_ports <- c("Fort Bragg", "Los Angeles", "Morro Bay", "San Diego",
+                   "San Francisco", "Santa Barbara", "Eureka", "Monterey",
+                   "Bodega Bay")
+  
+  port      <- known_ports[sapply(known_ports, function(p) startsWith(met, p))]
+  fishery   <- str_trim(str_remove(met, fixed(port)))
+  port_clean <- str_remove_all(port, " ")  # SanFrancisco, FortBragg, etc.
+  
+  # CamelCase each word, but preserve all-caps words like CPFV
+  to_camel <- function(x) {
+    words <- str_split(x, " ")[[1]]
+    words <- sapply(words, function(w) {
+      if (w == toupper(w) && nchar(w) > 1) w  # keep CPFV as-is
+      else paste0(toupper(substr(w, 1, 1)), tolower(substr(w, 2, nchar(w))))
+    })
+    paste(words, collapse = "")
+  }
+  
+  paste0(to_camel(fishery), "_", port_clean)
+}
 
 for (met in all_metiers) {
   
@@ -233,6 +264,8 @@ for (met in all_metiers) {
             color = "grey30",
             linewidth = 0.2,
             inherit.aes = FALSE) +
+    geom_sf(data = mpa_blocks, fill = "black", col = "white", linewidth = 0.2) +
+   
     # Crop the plot using the bounding box of the contour
     coord_sf(xlim = c(minx, maxx), ylim = c(miny, maxy)) +
     # Whole-number degree breaks on both axes
@@ -252,6 +285,16 @@ for (met in all_metiers) {
     height = 6,
     dpi = 300
   )
+  
+  # ── Save to Shiny www directory ──────────────────────────────────────────────
+  shiny_dir <- "C:/Users/kinse/Desktop/mpa climate fisheries/ca_mpas_climate/Shinydashboard/California_fisheries/www/"
+  
+  ggsave(
+    paste0(shiny_dir, "predictions_", clean_met_name(met), "_SST_differences.jpg"),
+    p_diff_combined,
+    width = 12, height = 6, dpi = 300
+  )
+  
   gc()
 }
 
@@ -278,176 +321,3 @@ ggsave(filename = filename1, plot =  combined_plot , width = 7, height = 10, uni
 
 
 ############
-#Kernel density contours
-
-#using the presence/absence part of the hurdle/delta model to tell the model
-#which block IDs to include in the model and which ones to not include.
-#use the best threshold calculated from ROC to divide blocks in absence or presence
-# only include presences in effort model
-
-
-#but, does this make sense to do when you're predicting to artifical values? like the 90th, 10th, and median for SST?
-#cause 
-#upload entire dataset
-fisheries_full<-readRDS(paste0(base_path,"Modeling/Data/Processed Data/fisheries_df_with_variables.rds"))
-fisheries_reduced<-fisheries_full%>%
-  dplyr::select(block_id, fishery, port.complex, date, year, month,total.hours, present,month_year)%>%
-  mutate(metier=paste(port.complex,fishery, sep=" "))
-
-
-for (met in all_metiers) {
-  
-  message("Plotting: ", met)
-  
-  pred_all <- st_read(
-    paste0(in_dir, met, "_SST_ALL.gpkg"),
-    quiet = TRUE
-  )
-  
-  month_year_met<-unique(pred_all$month_year)
-  
-  fisheries_reduced_met<-fisheries_reduced%>%
-    filter(metier==met  & month_year==month_year_met)%>%# )present=="1"
-    mutate(block_id=as.factor(block_id))
-  
-  temps<-unique(pred_all$temp)
-  
-  prediction_list <- list()
-  
-  for (temp_met in temps) {
-    prediction<-pred_all%>%
-      filter(temp==temp_met)%>%
-      mutate(block_id=as.factor(block_id))%>%
-      left_join(fisheries_reduced_met, by=c("block_id","fishery","port.complex","date","year"))
-    
-    prediction <- prediction %>%
-      mutate(prob_pa = plogis(est_pa))
-    
-    roc <- pROC::roc(prediction$present, (prediction$prob_pa))
-    plot(roc, print.auc = TRUE, col = "blue", legacy.axes = TRUE)
-    auc <- pROC::auc(roc)
-    auc
-    #has Hot auc probably because it's saying everything is 0 but then only a few are 1 so only misclassifying a few
-    opt <- pROC::coords(roc,
-                        x = "best",
-                        best.method = "closest.topleft",
-                        ret = c("threshold", "sensitivity", "specificity", "accuracy"))
-    
-    opt
-    threshold<-opt$threshold
-    # in this example, threshold is 0.5185789, so, if remove all blocks with the probability of presence beCold this threshold value
-    prediction_filtered<-prediction%>%
-      filter(prob_pa>=threshold)
-    
-    prediction_list[[temp_met]] <- prediction_filtered
-  }
-  ############
-  #add them all together
-  df <- dplyr::bind_rows(prediction_list)
-  
-  make_kde_contour <- function(pred_sf) {
-    
-    pred_sf <- pred_sf %>%
-      mutate(
-        block_long_dd = block_long_dd * 1000,
-        block_lat_dd  = block_lat_dd  * 1000
-      ) %>%
-      st_drop_geometry%>%
-      st_as_sf(coords=c("block_long_dd", "block_lat_dd"), crs = 3310)%>%
-      #remove any bad spatial blocks
-      filter(!st_is_empty(.))
-    
-    
-    coords <- st_coordinates(pred_sf)
-    weights <- pred_sf$est_exp
-    
-    # window for KDE
-    minx <- min(coords[,1]) - 20000
-    maxx <- max(coords[,1]) + 20000
-    miny <- min(coords[,2]) - 20000
-    maxy <- max(coords[,2]) + 20000
-    
-    points_ppp <- ppp(coords[,1], coords[,2],
-                      window = owin(c(minx, maxx), c(miny, maxy)))
-    
-    sigma <- bw.diggle(points_ppp, hmax = 10000)
-    
-    density <- density.ppp(
-      points_ppp,
-      sigma = sigma,
-      kernel = "gaussian",
-      weights = weights,
-      diggle = TRUE,
-      scalekernel = TRUE
-    )
-    
-    density_raster <- raster(as.im(density))
-    density_masked <- mask(density_raster, usa_mexico_sf_proj, inverse = TRUE)
-    
-    # 75% contour
-    density_df <- as.data.frame(rasterToPoints(density_masked))
-    names(density_df) <- c("x", "y", "value")
-    
-    density_values <- sort(density_df$value, decreasing = TRUE)
-    cdf <- cumsum(density_values) / sum(density_values)
-    contour_level <- density_values[which.min(abs(cdf - 0.75))]
-    
-    contour_lines <- rasterToContour(density_masked, levels = contour_level)
-    contour_sf <- st_as_sf(contour_lines)
-    st_crs(contour_sf) <- 3310
-    
-    return(contour_sf)
-  }
-  
-  pred_hot <- df%>%
-    filter(temp=="Hot")
-  
-  pred_cold<- df%>%
-    filter(temp=="Cold")
-  
-  pred_avg <- df%>%
-    filter(temp=="Average")
-  
-  
-  #create contour for each level
-  contour_cold <- make_kde_contour(pred_cold)
-  contour_avg  <- make_kde_contour(pred_avg)
-  contour_Hot  <- make_kde_contour(pred_hot)
-  
-  contour_cold$temp <- "Cold"
-  contour_avg$temp  <- "Average"
-  contour_Hot$temp  <- "Hot"
-  
-  all_contours <- bind_rows(contour_cold,
-                            contour_avg,
-                            contour_Hot)
-  
-  p<-ggplot() +
-    geom_sf(data = usa_mexico_sf_proj, fill = "grey85", color = NA) +
-    
-    geom_sf(data = all_contours,
-            aes(color = temp),
-            linewidth = 0.5) +
-    
-    scale_color_manual(
-      values = c("Cold" = "blue",
-                 "Average" = "black",
-                 "Hot" = "red"),
-      name = "SST Scenario"
-    ) +
-    
-    coord_sf(xlim = c(-450000, 350000),
-             ylim = c(-600000, 450000)) +
-    
-    ggtitle(paste("75% KDE contours —", met)) +
-    theme_bw() + base_theme 
-  p
-  
-  ggsave(
-    filename = paste0(out_fig_dir, met, "_KDE_Cold_avg_Hot.jpg"),
-    plot = p,
-    width = 10, height = 7, dpi = 300
-  )
-  
-  dev.off()
-}
