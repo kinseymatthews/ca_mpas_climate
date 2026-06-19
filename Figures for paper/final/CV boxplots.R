@@ -1,7 +1,7 @@
 library(tidyverse)
 
 #########
-#upload adata
+#upload data
 filepath<-('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/data/')
 
 #area CV

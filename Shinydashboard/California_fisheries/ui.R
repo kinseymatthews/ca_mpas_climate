@@ -169,7 +169,8 @@ body <- dashboardBody(
               box(width = 6,
                   
                   plotOutput(outputId = "vessels_plot_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("vessels_caption")
                   
               ), # END input box
               
@@ -177,7 +178,8 @@ body <- dashboardBody(
               box(width = 6, 
                   
                   plotOutput(outputId = "trips_plot_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("trips_caption")
                   
               ) # END leaflet box
               
@@ -190,7 +192,8 @@ body <- dashboardBody(
               box(width = 12,
                   
                   plotOutput(outputId = "depth_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("depth_caption")
                   
               ) # END input box
               
@@ -210,7 +213,8 @@ body <- dashboardBody(
               box(width = 6,
                   
                   plotOutput(outputId = "lat_extent_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("latitude_caption")
                   
               ), # END input box
               
@@ -218,7 +222,8 @@ body <- dashboardBody(
               box(width = 6, 
                   
                   plotOutput(outputId = "area_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("area_caption")
                   
               ) # END leaflet box
               
@@ -240,7 +245,8 @@ body <- dashboardBody(
               box(width = 6,
                   
                   plotOutput(outputId = "shore_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("shore_caption")
                   
               ), # END input box
               
@@ -248,7 +254,8 @@ body <- dashboardBody(
               box(width = 6,
                   
                   plotOutput(outputId = "effort_mpa_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("mpa_caption")
                   
               )
               
@@ -300,7 +307,8 @@ body <- dashboardBody(
               box(width = 6,
                   
                   plotOutput(outputId = "kd_yearsseperate_output")%>% 
-                    shinycssloaders::withSpinner(color = "#006792", type = 1)
+                    shinycssloaders::withSpinner(color = "#006792", type = 1),
+                  textOutput("yearlykd_caption")
                   
               ) #end disclaimer
             ) # END second fluidrow

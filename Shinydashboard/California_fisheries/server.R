@@ -43,6 +43,9 @@ server <- function(input, output,session) {
   
   ) #END trips plot
   
+  output$trips_caption <- renderText({
+    "Number of fishing trips each year "
+  })
   #vessel plot ----
   output$vessels_plot_output <-renderPlot({ 
     
@@ -55,6 +58,10 @@ server <- function(input, output,session) {
       theme(legend.position = "none")
     
   }) #END vessels plot
+  
+  output$vessels_caption <- renderText({
+    "Number of vessels operating each year "
+  })
   
   # vdepth reactive dataframe ----
   # depth reactive dataframe ----
@@ -81,6 +88,9 @@ server <- function(input, output,session) {
       myCustomTheme()
   }) # END depth plot
   
+  output$depth_caption <- renderText({
+    "TBD"
+  })
   
   # update port complexes based on fishery (exploratory) ----
   observe({
@@ -140,6 +150,10 @@ server <- function(input, output,session) {
       theme(legend.position = "none")
   }) #END latitude extent plot
   
+  output$latitude_caption <- renderText({
+    "Yearly center of gravity latitudes "
+  })
+  
   # fishing ground area graph ----
   output$area_output <-renderPlot({ 
     
@@ -151,6 +165,9 @@ server <- function(input, output,session) {
       theme(legend.position = "none")
   }) #END fishing ground area plot
   
+  output$area_caption <- renderText({
+    "Area of core fishing grounds, calculated from the 75% volume contour of kernel density estimates"
+  })
   
   # distance to shore graph ----
   output$shore_output<-renderPlot({ 
@@ -163,7 +180,11 @@ server <- function(input, output,session) {
       theme(legend.position = "none")
   }) #END distance to shore plot
   
-  # distance to shore graph ----
+  output$shore_caption <- renderText({
+    "Distance of the center of gravity from the nearest mainland shoreline"
+  })
+  
+  # deffort mpa graph ----
   output$effort_mpa_output<-renderPlot({ 
     
     ggplot( KD_timeseries_filtered(), aes(x=year, y=percent_inmpa, color=port.complex))+
@@ -173,6 +194,10 @@ server <- function(input, output,session) {
       myCustomTheme()+
       theme(legend.position = "none")
   }) #END distance to shore plot
+  
+  output$mpa_caption <- renderText({
+    "Percent of core fishing ground area ‘within’ an MPA.  While fishing has not necessarily occurred within spatial management areas, it represents how much of a fisher’s core fishing grounds might be potentially impacted by spatial management."
+  })
   
   # update port complexes based on fishery (kdmetrics) ----
   observe({
@@ -309,7 +334,7 @@ server <- function(input, output,session) {
 
   
   output$kd_caption <- renderText({
-   "Kernel density for all years"
+   "Kernel density for all years combined. The black line represents the 75% volume contour"
   })
   
   #Input for yearly KDs  ----
@@ -407,6 +432,10 @@ server <- function(input, output,session) {
             axis.title=element_blank())
     
     
+  }) #END KD yearly figure
+  
+  output$yearlykd_caption <- renderText({
+    "Kernel density for specific years. The black line represents the 75% volume contour"
   })
   
   # update port complexes based on fishery (kdmaps) ----

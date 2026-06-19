@@ -5,7 +5,7 @@ library(tidyverse)
 library(cowplot)
 #################
 #filepaths
-general_data<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Data/'
+base_path<-'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/'
 #################
 #data
 #spatial mapping data
@@ -15,13 +15,21 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 california <- usa[usa$name == "California", ]
 # State waters
-state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
+state_waters <- readRDS( paste0(base_path,"All Fisheries Data/CA_state_waters_polyline.Rds"))
 
 #block data 
-all_blocks<-st_read(paste0(general_data,"Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
+all_blocks<-st_read(paste0(base_path,"All Fisheries Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
   st_as_sf()%>%
   filter(blck_ty=="Inshore" |blck_ty=="Midshore" )%>%
   filter(blck_st=="California")
+
+#upload port information - only plotting the major port of each complex
+ports<-read_sf(paste0(base_path,'Variables/Distance to Port Complex/Data/Raw/port codes_updated_April2025.shp'))%>%
+  rename(port=PortName)%>%
+  mutate(port = str_to_title(port))%>%
+  filter(port=="Eureka"| port=="Fort Bragg"| port=="Bodega Bay"| port=="San Francisco"| port=="Monterey"| port=="Morro Bay"| port=="Santa Barbara Harbor"| port=="Los Angeles"| port=="San Diego")%>%
+  mutate(MajorPort = str_to_title(MajorPort))%>%
+  rename(port.complex=MajorPort)
 
 
 #################
@@ -43,6 +51,20 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 #################
+# Define your ports
+ports <- data.frame(
+  name = c("San Francisco", "San Diego", "Los Angeles", "Santa Barbara",
+           "Monterey", "Morro Bay", "Bodega Bay", "Eureka", "Fort Bragg"),
+  x = c(-13627232, -13043736, -13161254, -13323925,
+        -13568975, -13454548, -13698044, -13821615, -13781778),
+  y = c(4552429, 3857689, 3996020, 4083595,
+        4384277, 4213724, 4626578, 4984091, 4782525)
+)
+
+# Convert to sf in EPSG:3857, then reproject to WGS84 to match your map
+ports_sf <- st_as_sf(ports, coords = c("x", "y"), crs = 3857) %>%
+  st_transform(crs = 4326)
+
 #plot
 main_plot<-ggplot(data=all_blocks, mapping=aes(fill=blck_ty)) +
   geom_sf() + 
@@ -52,11 +74,20 @@ main_plot<-ggplot(data=all_blocks, mapping=aes(fill=blck_ty)) +
   geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
   # State waters
   geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+  # Port points
+  geom_sf(data = ports_sf, inherit.aes = FALSE,
+          color = "black", size = 1.5) +
+  # Port labels
+  geom_sf_text(data = ports_sf, aes(label = name),
+               inherit.aes = FALSE,
+               size = 3.5, nudge_x = 0.3, hjust = 0) +
   # Crop
-  coord_sf(xlim = c(-117, -126), ylim = c(32.5,42)) +
+  coord_sf(xlim = c(-115.5, -126), ylim = c(32.5,42)) +
   # Axes
   scale_x_continuous(breaks=seq(-128, -117, 2)) +
   scale_y_continuous(breaks=seq(32, 44, 2)) + 
+ #no X and Y labels
+  labs(x = NULL, y = NULL) +
   # Theme
   theme_bw() + base_theme 
 
@@ -72,7 +103,8 @@ inset <- ggplot() +
 
 # Combine
 p<-ggdraw(main_plot) +
-  draw_plot(inset, x = 0.3915, y = 0.765, width = 0.28, height = 0.22)
+  draw_plot(inset, x = 0.422, y = 0.765, width = 0.28, height = 0.22)
 p
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CDFW blocks.jpg')
 ggsave(filename = filename1, plot =  p , width = 10, height = 5, units = "in", dpi = 300)
+

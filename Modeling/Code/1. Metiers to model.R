@@ -37,7 +37,7 @@ squid<-readRDS(('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca
 ############
 
 ############
-#create function to see if  there are landings in the past 
+#create function to see if  there are landings in the past 10 years
 
 plot_fun<-function(fishery, fishery_name){
   
