@@ -4,15 +4,16 @@ library(sf)
 library(sdmTMBextra)
 library(ggeffects)
 library(ggcorrplot)
-library(INLA)
 library(broom)
+library(INLAspacetime)
+library(INLA)
 library(rnaturalearth)
 library(magick)
 ############
 #Upload Data
 base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/"
 # Make folder for saving models
-model_folder <- paste0(base_path, "Modeling/Data/Processed Data/Model_Results/")
+model_folder <- ( "G:/Shared drives/bren-fisheriesclimate-modeling/Modeling/Data/Processed Data/Model_Results/")
 
 
 #fisheries
@@ -219,6 +220,12 @@ fisheries_variables <- fisheries_variables%>%
 ############
 
 ############
+# Drop the leftover geometry column (no rows change; keeps saved models smaller)
+if (inherits(fisheries_variables, "sf")) fisheries_variables <- st_drop_geometry(fisheries_variables)
+fisheries_variables <- fisheries_variables %>% select(-any_of("geometry"))
+############
+
+############
 # Plot correlation between variables
 test_cor <- fisheries_variables %>% dplyr::select("cost_per_gal_adjusted", 
                                                   "cost_per_pound_adjusted", 
@@ -237,25 +244,139 @@ ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 2.5) +
 
 
 ############
+#--------------------------------------------------
+# Acceptance rule, used for BOTH components:
+#   ran without error, Hessian positive definite, sanity() passes,
+#   and every random-field SD (sigma_O, sigma_E) < 10
+#--------------------------------------------------
+fit_ok <- function(m, max_sigma = 10) {
+  if (inherits(m, "try-error") || !isTRUE(m$sd_report$pdHess)) return(FALSE)
+  if (!isTRUE(sanity(m, silent = TRUE)$all_ok)) return(FALSE)
+  rp  <- tidy(m, effects = "ran_pars")
+  sig <- rp$estimate[rp$term %in% c("sigma_O", "sigma_E")]
+  all(sig < max_sigma)          # TRUE automatically when no fields are on
+}
 
+
+#--------------------------------------------------
+# Fallback ladder: the first rung that passes fit_ok() is kept.
+# Whenever an AR1 spatiotemporal field fails, IID is tried before
+# the spatiotemporal field is dropped entirely.
+#   1) spatial on  + spatiotemporal AR1
+#   2) spatial on  + spatiotemporal IID
+#   3) spatial on  + spatiotemporal off
+#   4) spatial off + spatiotemporal AR1
+#   5) spatial off + spatiotemporal IID
+#   6) spatial off + spatiotemporal off
+#--------------------------------------------------
+#--------------------------------------------------
+fit_ladder <- function(data, formula, family, mesh, start_step = 1) {
+  ladder <- list(
+    list(label = "1_full_ar1",             spatial = "on",  spatiotemporal = "ar1"),
+    list(label = "2_full_iid",             spatial = "on",  spatiotemporal = "iid"),
+    list(label = "3_spatiotemporal_off",   spatial = "on",  spatiotemporal = "off"),
+    list(label = "4_spatial_off_ar1",      spatial = "off", spatiotemporal = "ar1"),
+    list(label = "5_spatial_off_iid",      spatial = "off", spatiotemporal = "iid"),
+    list(label = "6_no_fields",            spatial = "off", spatiotemporal = "off")
+  )
+  
+  for (rung in ladder[start_step:length(ladder)]) {
+    message(format(Sys.time(), "%H:%M:%S"), "  Trying ", rung$label)
+    args <- list(data = data, formula = formula, family = family,
+                 spatial = rung$spatial, spatiotemporal = rung$spatiotemporal)
+    # Mesh and time are only passed when a field needs them
+    if (rung$spatial == "on" || rung$spatiotemporal != "off") args$mesh <- mesh
+    if (rung$spatiotemporal != "off") args$time <- "time_index"
+    
+    set.seed(123)
+    m <- try(do.call(sdmTMB, args), silent = TRUE)
+    
+    if (fit_ok(m)) {
+      attr(m, "fit_level") <- rung$label
+      message("  Accepted: ", rung$label)
+      return(m)
+    }
+    message("  Rejected: ", rung$label)
+  }
+  
+  # Nothing passed: keep the last attempt, flagged for review
+  warning("No rung passed all checks; returning the no-fields attempt flagged for review")
+  attr(m, "fit_level") <- if (inherits(m, "try-error")) "all_rungs_errored" else "6_no_fields_FAILED_CHECKS"
+  m
+}
+
+#--------------------------------------------------
+# Pull the numbers worth logging from one fitted model.
+# Safe on a try-error, so a total failure can't crash the loop.
+#--------------------------------------------------
+fit_summary <- function(m) {
+  if (inherits(m, "try-error")) {
+    return(tibble(fit_level = attr(m, "fit_level"), sigma_O = NA_real_, sigma_E = NA_real_,
+                  max_coef = NA_character_, max_abs_coef = NA_real_))
+  }
+  rp <- tryCatch(tidy(m, effects = "ran_pars"),
+                 error = function(e) tibble(term = character(), estimate = numeric()))
+  fx <- tidy(m) %>% filter(term != "(Intercept)")
+  tibble(
+    fit_level    = attr(m, "fit_level"),
+    sigma_O      = rp$estimate[rp$term == "sigma_O"][1],
+    sigma_E      = rp$estimate[rp$term == "sigma_E"][1],
+    max_coef     = fx$term[which.max(abs(fx$estimate))],   # flags exploding coefficients
+    max_abs_coef = max(abs(fx$estimate))
+  )
+}
+
+# Print summary + sanity only when the model actually exists
+print_fit <- function(m, label, metier) {
+  if (inherits(m, "try-error")) {
+    message(label, " failed to fit for ", metier, " — all rungs errored")
+  } else {
+    print(summary(m))
+    print(sanity(m))
+  }
+}
+
+
+
+
+
+#--------------------------------------------------
+# Main loop: every métier, both delta components
+#--------------------------------------------------
 # Loop through each unique fishery/metier
 for(i in unique(fisheries_variables$metier)) {
   
-  message("Fitting model for: ", i)
+  nm         <- gsub(" ", "_", i)
+  pa_file    <- paste0(out_folder, "model_", nm, "_Depth_no_BT_pa_delta_updated2026.rds")
+  abund_file <- paste0(out_folder, "model_", nm, "_Depth_no_BT_abundance_delta_updated2026.rds")
+  log_file   <- paste0(log_folder, nm, ".csv")
+  
+  # The log is written LAST, so it only exists if both models saved.
+  # If a job dies mid-métier, that métier is refit from scratch on resubmit.
+  if (file.exists(log_file)) {
+    message("Skipping ", i, " — already finished")
+    next
+  }
+  
+  message("\n==== Fitting delta model for: ", i, " ====")
+  
+  
   na_var <- c("BT_scaled", "SST_scaled")
   
+  # Keep rows with usable temperature data, in date order
   test <- fisheries_variables %>%
     filter(metier ==i)%>%
     filter(if_all(all_of( na_var), ~ !is.na(.) & is.finite(.))) %>%
     arrange(date) 
   
+  # Months that had any fishing effort
   test2 <- test %>%
     filter(total.hours != 0)%>%
     mutate(time_index = match(date, sort(unique(date))))
   
   dates<-unique(test2$month_year)
   
-  
+  # Restrict the presence/absence data to months with effort, then index time
   test <- test%>%
     filter(month_year %in% dates)%>%
     mutate(time_index = match(date, sort(unique(date))))
@@ -277,7 +398,7 @@ for(i in unique(fisheries_variables$metier)) {
   absence_formula  <- as.formula(paste("present ~", paste(base_terms, collapse = " + ")))
   abundance_formula <- as.formula(paste("total.hours ~", paste(base_terms, collapse = " + ")))
   
-  
+  #create presence/absence models
   # Create mesh = always has to go right before building the model!
   mesh <- make_mesh(test, xy_cols = c("block_long_dd","block_lat_dd"), cutoff = 10)
   mesh1 <- sdmTMBextra::add_barrier_mesh(mesh, 
@@ -285,17 +406,13 @@ for(i in unique(fisheries_variables$metier)) {
                                          range_fraction = 0.02, proj_scaling = 1000, plot = TRUE)
   
   
-  # Fit presnece/absence model
-  set.seed(123)
-  model1 <-  sdmTMB(
-      data = test,
-      formula = absence_formula,
-      mesh = mesh1,
-      family = binomial(link = "logit"),
-      spatial = "off",
-      spatiotemporal = "off"
-    )
+  model1 <- fit_ladder(test, absence_formula, binomial(link = "logit"), mesh1)
+  print_fit(model1, "Presence/absence model", i)
+  saveRDS(model1, pa_file)
   
+  # Create effort models
+  # Positive rows only; time_index is inherited from `test` so both
+  # components share the same time steps
   test2 <- test %>%
     filter(total.hours != 0)
   
@@ -304,349 +421,40 @@ for(i in unique(fisheries_variables$metier)) {
                      mesh = mesh1$mesh
   )
   
-  model2 <- try(
-    sdmTMB(
-      data = test2,
-      formula =  abundance_formula,
-      mesh = mesh2,
-      family = Gamma(link = "log"),
-      spatial = "on",
-      time = "time_index",
-      spatiotemporal = "ar1"
-    ),
-    silent = TRUE
-  )
-  
-  ## Fallback 1: spatial OFF
-  if (inherits(model2, "try-error") || !isTRUE(model2$sd_report$pdHess)) {
-    message("⚠️ Full model failed — refitting with spatial OFF")
-    model2 <- sdmTMB(
-      data = test2,
-      formula = abundance_formula,
-      mesh = mesh2,
-      family = Gamma(link = "log"),
-      spatial = "off",
-      time = "time_index",
-      spatiotemporal = "ar1"
-    )
-  }
-  
-  ## Fallback 2: spatial + spatiotemporal OFF
-  if (!isTRUE(model2$sd_report$pdHess)) {
-    message("⚠️ Spatial-off model failed — refitting with no random effects")
-    model2 <- sdmTMB(
-      data = test2,
-      formula =  abundance_formula,
-      family = Gamma(link = "log"),
-      spatial = "off",
-      spatiotemporal = "off"
-    )
-  }
+  model2 <- fit_ladder(test2, abundance_formula, Gamma(link = "log"), mesh2)
+  print_fit(model2, "Effort model", i)
+  saveRDS(model2, abund_file)
   
   
-  # Print summary and sanity
-  print(summary(model1))
-  print(sanity(model1))
+  # Log both components (written last = marks this métier as done)
+  bind_rows(
+    bind_cols(tibble(metier = i, component = "presence_absence"), fit_summary(model1)),
+    bind_cols(tibble(metier = i, component = "effort"),           fit_summary(model2))
+  ) %>%
+    mutate(time = format(Sys.time())) %>%
+    write_csv(log_file)
   
-  print(summary(model2))
-  print(sanity(model2))
+  # Free memory before the next métier (TMB objects hold compiled pointers)
+  rm(model1, model2, mesh, mesh1, mesh2, test, test2)
+  gc(full = TRUE)
   
-  # Save model
-  saveRDS(model1, file = paste0(model_folder, "model_", gsub(" ","_", i), "_Depth_no_BT_pa_delta.rds"))
-  saveRDS(model2, file = paste0(model_folder, "model_", gsub(" ","_", i), "_Depth_no_BT_abundance_delta.rds"))
-  }
-############
-
-
-############
-#read models back in
-# List all RDS model files for presence absence
-model_files <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT_pa_delta.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with .rds.”
-
-# Read them back into a named list
-models <- lapply(model_files, readRDS)
-
-# Strip off "model_" and ".rds" so names look like "San_Francisco_Squid_Seine"
-names(models) <- gsub("^model_|\\_Depth_no_BT_pa_delta.rds$", "", basename(model_files))
-
-# Example: look at the summary for San Francisco Squid Seine
-m<-(models[["Santa_Barbara_Squid_seine"]])
-summary(m)
-sanity(m)
-tidy(m)
-AIC(m)
-
-############
-
-############
-# Loop through models, print results
-for (f in model_files) {
-  nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
   
-  message("\n==========================")
-  message("Results for model: ", nm)
-  message("==========================\n")
   
-  m <- readRDS(f)
   
-  # Print summary
-  print(summary(m))
-  
-  # Print sanity check
-  print(sanity(m))
 }
-############
-
-############ 
-
-#QQ plots
-for (f in model_files) {
-  nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
-  
-  m <- readRDS(f)
- 
-  # Safely attempt to extract residuals
-  
-  resids <- residuals(m, type = "mle-mvn")
-  resids <- resids[is.finite(resids)]
-  
-  if (length(resids) < 5) {
-    message("Skipping ", nm, ": no usable residuals")
-    next
-  }
-  
-  # Save QQ plot as a PNG file
-  png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids_delta_pa.png"), width = 800, height = 600)
-  qqnorm(resids, main = paste("QQ Plot of Residuals -", nm))
-  qqline(resids, col = "red")
-  
-  dev.off() 
-}
-############
-
-############
-#read models back in
-# List all RDS model files for presence absence
-model_files_abund <- list.files(model_folder, pattern = "^model_.*\\_Depth_no_BT_abundance_delta.rds$", full.names = TRUE) #“Match any file that starts with model_ and ends with Depth_no_BT_abundance_delta.rds”
-
-# Read them back into a named list
-models_abund  <- lapply(model_files_abund , readRDS)
-
-# Strip off "model_" and ".rds" so names look like "San_Francisco_Squid_Seine"
-names(models_abund ) <- gsub("^model_|\\_Depth_no_BT_abundance_delta.rds$", "", basename(model_files_abund ))
-
-# Example: look at the summary for San Francisco Squid Seine
-m<-(models[["Santa_Barbara_Squid_seine"]])
-summary(m)
-sanity(m)
-tidy(m)
-AIC(m)
-
-############
-
-############ 
-
-#QQ plots
-for (f in model_files_abund ) {
-  nm <- gsub("^model_|\\.rds$", "", basename(f))  # clean name
-  
-  m <- readRDS(f)
-  # Safely attempt to extract residuals
-  
-  resids <- residuals(m, type = "mle-mvn")
-  resids <- resids[is.finite(resids)]
-  
-  if (length(resids) < 5) {
-    message("Skipping ", nm, ": no usable residuals")
-    next
-  }
-  
-  # Save QQ plot as a PNG file
-  png(paste0(model_folder,"Diagnostics/QQ_plots/",nm,"_qqplot_resids_delta_abundance.png"), width = 800, height = 600)
-  
-  qqnorm(resids, main = paste("QQ Plot of Residuals -", nm))
-  qqline(resids, col = "red")
-  
-  dev.off() 
-}
-############
-
-############
-#R2 mariginal and conditional R2. mariginal represents proportion of variance explained by fixed effects alone, while conditiional accoutns for both fixed and random effects
-R2_sdmTMB <- function(models) {
-  
-  # Function to compute R2 for one model
-  compute_R2 <- function(mod, name) {
-    # Fixed-effect variance on link scale
-    pred_link <- predict(mod, type = "link")$est
-    sigma2_f <- var(pred_link, na.rm = TRUE)
-    
-    # Random-effect variance
-    random_vals <- mod$sd_report$par.random
-    
-    # Spatial variance
-    sigma2_omega <- if (any(grepl("omega_s", names(random_vals)))) {
-      var(random_vals[grep("omega_s", names(random_vals))], na.rm = TRUE)
-    } else 0
-    
-    # Spatiotemporal variance
-    sigma2_epsilon <- if (any(grepl("epsilon_st", names(random_vals)))) {
-      var(random_vals[grep("epsilon_st", names(random_vals))], na.rm = TRUE)
-    } else 0
-    
-    sigma2_r <- sigma2_omega + sigma2_epsilon
-    
-    # Distribution-specific variance (Gamma/log)
-    ln_phi <- mod$sd_report$par.fixed["ln_phi"]
-    phi <- exp(ln_phi)
-    sigma2_d <- trigamma(phi)
-    
-    # Marginal and conditional R2
-    R2_marginal <- sigma2_f / (sigma2_f + sigma2_r + sigma2_d)
-    R2_conditional <- (sigma2_f + sigma2_r) / (sigma2_f + sigma2_r + sigma2_d)
-    
-    data.frame(
-      model_name = name,
-      R2_marginal = R2_marginal,
-      R2_conditional = R2_conditional,
-      sigma2_fixed = sigma2_f,
-      sigma2_random = sigma2_r,
-      sigma2_distribution = sigma2_d
-    )
-  }
-  
-  # Loop over all models and compute R2
-  results <- do.call(
-    rbind,
-    lapply(names(models), function(nm) {
-      mod <- models[[nm]]
-      tryCatch(
-        compute_R2(mod, nm),
-        error = function(e) {
-          data.frame(
-            model_name = nm,
-            R2_marginal = NA,
-            R2_conditional = NA,
-            sigma2_fixed = NA,
-            sigma2_random = NA,
-            sigma2_distribution = NA
-          )
-        }
-      )
-    })
-  )
-  
-  return(results)
-}
-
-R2_df <- R2_sdmTMB(models)
+# Combine every métier's log into one table
 
 
-saveRDS(R2_df ,paste0(base_path,"Modeling/Data/Processed Data/Model_Results/Diagnostics/R2/Rc_Rm_results_delta_pa.rds"))
-############
+# Read everything as text first so NA-only columns don't clash across files
+all_logs <- list.files(log_folder, pattern = "\\.csv$", full.names = TRUE) %>%
+  map_dfr(~ read_csv(.x, col_types = cols(.default = "c"))) %>%
+  type_convert()
+
+write_csv(all_logs, paste0(out_folder, "fit_levels_all_metiers.csv"))
+print(all_logs, n = Inf)
+
+message("Done.")
 
 
 ############
-#plotting figure worthy QQ plots
-qq_folder <- paste0(model_folder, "Diagnostics/QQ_plots/")
-out_folder <- paste0(base_path, "All Fisheries Figures/")
-dir.create(out_folder, showWarnings = FALSE)
 
-# List both sets of QQ plots
-pa_files    <- list.files(qq_folder, pattern = "_pa_delta_qqplot.*\\.png$",        full.names = TRUE)
-abund_files <- list.files(qq_folder, pattern = "_abundance_delta_qqplot.*\\.png$", full.names = TRUE)
-
-# Extract clean metier name from PA files (use as key)
-clean_metier <- function(f, type = "pa") {
-  pattern <- if (type == "pa") "_Depth_no_BT_pa_delta_qqplot.*\\.png$" else "_Depth_no_BT_abundance_delta_qqplot.*\\.png$"
-  basename(f) %>% gsub("^model_", "", .) %>% gsub(pattern, "", .)
-}
-
-# Make a clean readable label from metier string
-# e.g. "Santa_Barbara_Squid_seine" -> "Santa Barbara | Squid Seine"
-port_complexes <- c("Eureka", "Fort_Bragg", "Bodega_Bay", "San_Francisco",
-                    "Monterey_Bay", "Morro_Bay", "Santa_Barbara", "Los_Angeles", "San_Diego")
-
-make_label <- function(metier) {
-  for (pc in port_complexes) {
-    if (startsWith(metier, pc)) {
-      port    <- gsub("_", " ", pc)
-      fishery <- gsub(paste0("^", pc, "_"), "", metier) %>% gsub("_", " ", .)
-      return(paste0(port, "  |  ", fishery))
-    }
-  }
-  gsub("_", " ", metier)
-}
-
-# Build lookup
-pa_df <- data.frame(
-  path   = pa_files,
-  metier = sapply(pa_files, clean_metier, type = "pa"),
-  stringsAsFactors = FALSE
-)
-
-ab_df <- data.frame(
-  path   = abund_files,
-  metier = sapply(abund_files, clean_metier, type = "abundance"),
-  stringsAsFactors = FALSE
-)
-combined_df <- inner_join(pa_df, ab_df, by = "metier", suffix = c("_pa", "_ab"))
-
-# Process each metier: crop title, label, join PA + abundance side by side
-process_pair <- function(pa_path, ab_path, metier) {
-  
-  label <- make_label(metier)
-  
-  pa_img <- image_read(pa_path) %>%
-    image_crop("800x560+0+40") %>%           # crop off base R title (~40px)
-    image_annotate("Presence-Absence",        # add clean subplot label
-                   size = 28, color = "gray30",
-                   gravity = "north", location = "+0+5")
-  
-  ab_img <- image_read(ab_path) %>%
-    image_crop("800x560+0+40") %>%
-    image_annotate("Abundance",
-                   size = 28, color = "gray30",
-                   gravity = "north", location = "+0+5")
-  
-  # Combine side by side
-  row_img <- image_append(c(pa_img, ab_img), stack = FALSE)
-  
-  # Add overall metier title above the pair
-  title_bar <- image_blank(1600, 50, color = "white") %>%
-    image_annotate(label, size = 32, color = "black",
-                   gravity = "center")
-  
-  image_append(c(title_bar, row_img), stack = TRUE)
-}
-
-# Build paired images for all metiers
-paired_imgs <- vector("list", nrow(combined_df))
-for (i in seq_len(nrow(combined_df))) {
-  message("Processing: ", combined_df$metier[i])
-  paired_imgs[[i]] <- process_pair(
-    combined_df$path_pa[i],
-    combined_df$path_ab[i],
-    combined_df$metier[i]
-  )
-}
-
-# --- Save one figure per fishery ---
-fishery_labels <- sapply(combined_df$metier, function(m) {
-  for (pc in port_complexes) {
-    if (startsWith(m, pc)) return(gsub(paste0("^", pc, "_"), "", m))
-  }
-  m
-})
-
-for (f in unique(fishery_labels)) {
-  idx  <- which(fishery_labels == f)
-  imgs <- image_join(paired_imgs[idx])
-  
-  # Stack all port complexes for this fishery vertically
-  fig  <- image_append(imgs, stack = TRUE)
-  
-  out_path <- paste0(out_folder, gsub(" ", "_", f), "_QQplots_supplement.png")
-  image_write(fig, out_path, quality = 95)
-  message("Saved: ", out_path)
-}

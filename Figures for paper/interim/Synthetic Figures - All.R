@@ -392,7 +392,7 @@ f2<-plot_fun(distance_cv)
   
   combined_plot <- a+b+c+d+e+f+
     plot_layout(ncol = 6, nrow=1 ,widths = c(1, 1,1,1,1,1)) &
-    theme(axis.text.y = element_blank(),  # Remove y-axis text
+    patchwork::theme(axis.text.y = element_blank(),  # Remove y-axis text
           axis.title.x = element_blank(),# Remove x-axis text
           axis.ticks.y = element_blank(), # Remove y-axis ticks
           axis.title.y = element_blank(), # Remove y-axis title

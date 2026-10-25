@@ -687,7 +687,7 @@ c<-ggplot(data=COG_vcontours, aes(x=year))+
 
 e<-ggplot(data=combined_eureka, aes(x=Year))+
   geom_line(aes(y=distance_shore_km),size=.5)+
-  labs(y = ('Distance from shore \n(km)'), x='Year')+
+  labs(y = ('Distance from mainland \n(km)'), x='Year')+
   #point to highlight years
   geom_point(data =combined_eureka_years, 
              aes(x = Year, y = distance_shore_km), 

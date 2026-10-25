@@ -144,6 +144,6 @@ metiers<-unique(fisheries$metier)
 prediction_grid3<-prediction_grid2%>%
   filter(metier %in% metiers)
 
-saveRDS(prediction_grid3, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")
+saveRDS(prediction_grid3, "G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/prediction_grid_df.rds")
 
 

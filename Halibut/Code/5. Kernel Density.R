@@ -34,6 +34,17 @@ usa_mexico_union <- st_union(usa_mexico_sf_proj)
 #port codes
 port<-read.csv( paste0(general_data,"Port Codes.csv"))
 
+#upload port information - only plotting the major port of each complex
+ports<-read_sf('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Variables/Distance to Port Complex/Data/Raw/port codes_updated_April2025.shp')%>%
+  rename(port=PortName)%>%
+  mutate(port = str_to_title(port))%>%
+  filter(port=="Eureka"| port=="Fort Bragg"| port=="Bodega Bay"| port=="San Francisco"| port=="Monterey"| port=="Morro Bay"| port=="Santa Barbara Harbor"| port=="Los Angeles"| port=="San Diego")%>%
+  mutate(MajorPort = str_to_title(MajorPort))%>%
+  rename(port.complex=MajorPort)
+
+ports <- st_transform(ports, crs = 3310)
+
+
 # State waters
 state_waters <- readRDS( paste0(general_data,"CA_state_waters_polyline.Rds"))
 state_waters <- st_transform(state_waters, crs = 3310)
@@ -449,6 +460,10 @@ plot_fun<-function(portcomplex){
     # Normalize density values to the range 0-1
     density_df$value <- scales::rescale(density_df$value)
     
+    
+    ports_filtered<-ports%>%
+      filter( port.complex==portcomplex)
+    
     a<-COG_sf%>%
       filter(port.complex==portcomplex)%>%
       filter(year %in% unique_years)
@@ -470,17 +485,25 @@ plot_fun<-function(portcomplex){
     p<-ggplot() +
       geom_raster(data = density_df, aes(x = x, y = y, fill = value)) +
       
-      scale_fill_gradientn(name = "Tow minutes", 
+      scale_fill_gradientn(name = "Kernel Density", 
                            colors = c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1]),  # Spectral palette with white for 0
                            limits = c(0, max(density_df$value)),  # Adjust limits as needed
                            na.value = "white") +  # Set NA values to white
       # Add contour lines at 75% volume boundary
       geom_sf(data = contour_75_sf, color = "black", linewidth = 1)  +
-      
+      guides(fill = guide_colorbar(
+        ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2
+      )) +
       # Land
       geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
       # State waters
       geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+      geom_sf(data = ports_filtered,
+              shape  = 8,
+              color  = "red",
+              size   = 3,
+              stroke = 1.2,
+              inherit.aes = FALSE) + 
       #points COG
       # geom_sf(data=b,size=5, fill="white",color="black",pch=21)+
       # Crop the plot using the bounding box of the contour
@@ -531,27 +554,27 @@ years<-c(1981:2004,2006:2010,2014)
 frames<-paste0(halibut_data, "Figures/Kernel Density/Bodega Bay/Bodega Bay", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,paste0(halibut_data,"Figures/Kernel Density/Bodega Bay/Bodega Bay Kernel Densities_Animation.gif"))
+image_write(m,paste0(halibut_data,"Figures/Kernel Density/Bodega Bay/Bodega BayKernel Densities_Animation.gif"))
 
 years<-c(1981:2015,2017,2021,2022)
 frames<-paste0(halibut_data, "Figures/Kernel Density/Monterey/Monterey", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,paste0(halibut_data,"Figures/Kernel Density/Monterey/Monterey Kernel Densities_Animation.gif"))
+image_write(m,paste0(halibut_data,"Figures/Kernel Density/Monterey/MontereyKernel Densities_Animation.gif"))
 
 
 years<-c(1981:1982,1984:2022)
 frames<-paste0(halibut_data,"Figures/Kernel Density/Santa Barbara/Santa Barbara", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,paste0(halibut_data,"Figures/Kernel Density/Santa Barbara/Santa Barbara Kernel Densities_Animation.gif"))
+image_write(m,paste0(halibut_data,"Figures/Kernel Density/Santa Barbara/Santa BarbaraKernel Densities_Animation.gif"))
 
 
 years<-c(1981,1982,1997:2022)
 frames<-paste0(halibut_data,"Figures/Kernel Density/Los Angeles/Los Angeles", years,".jpg")
 m<-image_read(frames)
 m<-image_animate(m, fps=1)
-image_write(m,paste0(halibut_data,"Figures/Kernel Density/Los Angeles/Los Angeles Kernel Densities_Animation.gif"))
+image_write(m,paste0(halibut_data,"Figures/Kernel Density/Los Angeles/Los AngelesKernel Densities_Animation.gif"))
 ############
 
 ############

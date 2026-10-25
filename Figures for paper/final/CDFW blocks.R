@@ -15,13 +15,29 @@ usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 california <- usa[usa$name == "California", ]
 # State waters
-state_waters <- readRDS( paste0(base_path,"All Fisheries Data/CA_state_waters_polyline.Rds"))
+state_waters <- readRDS(paste0(base_path,"All Fisheries Data/CA_state_waters_polyline.Rds"))
 
 #block data 
+# block data
 all_blocks<-st_read(paste0(base_path,"All Fisheries Data/Blocks/All_Blocks_Updated_10Jul24.shp"))%>%
-  st_as_sf()%>%
-  filter(blck_ty=="Inshore" |blck_ty=="Midshore" )%>%
-  filter(blck_st=="California")
+  st_as_sf()
+
+all_blocks<- st_transform(all_blocks, crs = st_crs(4326))%>%
+  dplyr::select(!c(Min_Depthm,Max_Depthm,Avg_Depthm,block_id))%>%
+  rename(block_id=block_d, block_long_dd=blck_ln_,block_lat_dd=blck_lt_)
+
+#read  in bathymetry data with blocks
+bathy.data<-read.csv(paste0(base_path,"All Fisheries Data/fishingblockstatistics.csv"))%>%
+  dplyr::select(BLOCK_ID,MIN, MAX, RANGE, MEAN)%>%
+  rename(block_id=BLOCK_ID, Max_Depthm=MIN, Min_Depthm=MAX, Range_Depth=RANGE, Avg_Depthm=MEAN)
+
+bathy.data$block_id=as.double(bathy.data$block_id)
+
+# merge bathymetry data with block data
+all_blocks<-left_join(all_blocks,bathy.data, by="block_id")%>%
+  filter(blck_ty != "Offshore" & blck_st != "Oregon")
+all_blocks_df <- all_blocks %>% sf::st_drop_geometry()
+
 
 #upload port information - only plotting the major port of each complex
 ports<-read_sf(paste0(base_path,'Variables/Distance to Port Complex/Data/Raw/port codes_updated_April2025.shp'))%>%
@@ -30,6 +46,9 @@ ports<-read_sf(paste0(base_path,'Variables/Distance to Port Complex/Data/Raw/por
   filter(port=="Eureka"| port=="Fort Bragg"| port=="Bodega Bay"| port=="San Francisco"| port=="Monterey"| port=="Morro Bay"| port=="Santa Barbara Harbor"| port=="Los Angeles"| port=="San Diego")%>%
   mutate(MajorPort = str_to_title(MajorPort))%>%
   rename(port.complex=MajorPort)
+
+#upload Eureka CPFV non-confidential plots
+cpfv_block_data<-readRDS(("G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/CPFV/Data/Processed Data/CPFV_summarizeddata_sepyears.rds"))
 
 
 #################
@@ -51,6 +70,8 @@ base_theme <- theme(axis.text=element_text(size=7),
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
 #################
+
+#################
 # Define your ports
 ports <- data.frame(
   name = c("San Francisco", "San Diego", "Los Angeles", "Santa Barbara",
@@ -64,33 +85,72 @@ ports <- data.frame(
 # Convert to sf in EPSG:3857, then reproject to WGS84 to match your map
 ports_sf <- st_as_sf(ports, coords = c("x", "y"), crs = 3857) %>%
   st_transform(crs = 4326)
+#################
+
+#################
+#get CPFV eureka informaiton
+
+
+CPFV_blocks<-cpfv_block_data%>%
+  st_drop_geometry%>%
+  filter(port.complex %in% c("Eureka", "Monterey", "Los Angeles"),
+         year == 2022)%>%
+  # Rule of three: only now drop blocks with fewer than 3 vessels
+  filter(nvessels >= 3) %>%
+    group_by(port.complex)%>%
+    mutate(port_total_hours=sum(total_angler_hours, na.rm=TRUE),
+           pct_annual_effort = 100 * total_angler_hours / port_total_hours)%>%
+  ungroup() %>%    
+  left_join(all_blocks %>% 
+            dplyr::select(block_id))%>% 
+  sf::st_as_sf()%>%
+  filter(!st_is_empty(.))%>%
+  #remove blocks that dont exist
+  st_make_valid()
+
 
 #plot
-main_plot<-ggplot(data=all_blocks, mapping=aes(fill=blck_ty)) +
-  geom_sf() + 
-  scale_fill_manual(values = c("Inshore" = "#F77F00", "Midshore" = "#0099CC"),
-                    name = "Block Type")+
- # Land
-  geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
+main_plot <- ggplot(data = CPFV_blocks,
+                    mapping = aes(fill = port.complex, alpha = pct_annual_effort)) +
+  # All CDFW blocks as light grey background (drawn first so CPFV blocks sit on top)
+  geom_sf(data = all_blocks, fill = "white", color = "grey60",
+          linewidth = 0.15, inherit.aes = FALSE) +
+  # CPFV blocks: color = port, transparency = share of that port's annual effort
+  geom_sf(linewidth = 0.1, color = "grey40") +
+
+  scale_fill_manual(name = "Port complex",
+                    values = c("Eureka"      = "#0072B2",   # blue
+                               "Monterey"    = "#009E73",   # green
+                               "Los Angeles" = "#D55E00"),  # orange (Okabe-Ito, colorblind-safe)
+                    breaks = c("Eureka", "Monterey", "Los Angeles")) +  # legend order, north to south
+  scale_alpha_continuous(name = "Percent of annual\nangler hours",
+                         range = c(0.15, 1),                # faintest blocks still visible
+                         trans = "sqrt",                    # spreads out the many small values
+                         labels = scales::label_number(accuracy = 1, suffix = "%")) +
+  guides(
+    # Port legend: black outline + full opacity so the port colors read clearly
+    fill  = guide_legend(override.aes = list(color = "black", linewidth = 0.5, alpha = 1)),
+    # Effort legend: grey boxes (so it doesn't look tied to one port)
+    alpha = guide_legend(override.aes = list(fill = "grey20"))
+  ) +
+  # Land
+  geom_sf(data = usa_mexico_sf, fill = "grey85", col = "white", linewidth = 0.2, inherit.aes = FALSE) +
   # State waters
-  geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+  geom_sf(data = state_waters, color = "grey30", linewidth = 0.2, inherit.aes = FALSE) +
   # Port points
-  geom_sf(data = ports_sf, inherit.aes = FALSE,
-          color = "black", size = 1.5) +
+  geom_sf(data = ports_sf, inherit.aes = FALSE, color = "black", size = 1.5) +
   # Port labels
-  geom_sf_text(data = ports_sf, aes(label = name),
-               inherit.aes = FALSE,
+  geom_sf_text(data = ports_sf, aes(label = name), inherit.aes = FALSE,
                size = 3.5, nudge_x = 0.3, hjust = 0) +
   # Crop
-  coord_sf(xlim = c(-115.5, -126), ylim = c(32.5,42)) +
+  coord_sf(xlim = c(-115.5, -126), ylim = c(32.5, 42)) +
   # Axes
-  scale_x_continuous(breaks=seq(-128, -117, 2)) +
-  scale_y_continuous(breaks=seq(32, 44, 2)) + 
- #no X and Y labels
+  scale_x_continuous(breaks = seq(-128, -117, 2)) +
+  scale_y_continuous(breaks = seq(32, 44, 2)) +
   labs(x = NULL, y = NULL) +
-  # Theme
-  theme_bw() + base_theme 
+  theme_bw() + base_theme
 
+main_plot
 # Inset map
 inset <- ggplot() +
   geom_sf(data = usa, fill = "grey85", col = "white", linewidth = 0.3) +
@@ -103,8 +163,8 @@ inset <- ggplot() +
 
 # Combine
 p<-ggdraw(main_plot) +
-  draw_plot(inset, x = 0.422, y = 0.765, width = 0.28, height = 0.22)
-p
+  draw_plot(inset, x = 0.475, y = 0.783, width = 0.28, height = 0.22)
+
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/CDFW blocks.jpg')
-ggsave(filename = filename1, plot =  p , width = 10, height = 5, units = "in", dpi = 300)
+ggsave(filename = filename1, plot =  p , width = 6, height = 5, units = "in", dpi = 300)
 

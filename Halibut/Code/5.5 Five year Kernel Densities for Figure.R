@@ -29,6 +29,8 @@ mexico <- rnaturalearth::ne_countries(country="Mexico", returnclass = "sf")
 usa_mexico_sf <- dplyr::bind_rows(list(usa,mexico))%>%
   st_transform(usa_mexico_sf, crs = "+proj=longlat +datum=WGS84")
 usa_mexico_sf_proj<- st_transform(usa_mexico_sf, crs = 3310)
+# Union all geometries into one polygon
+usa_mexico_union <- st_union(usa_mexico_sf_proj)
 
 #port codes
 port<-read.csv( paste0(general_data,"Port Codes.csv"))
@@ -97,10 +99,10 @@ all_contours <- list()
 
 
 #Loop through each year and calculate kernel density
-for(this_complex in unique_complex){
+for(portcomplex in unique_complex){
   
   location <- sf_df_projected%>%
-    filter(port.complex==this_complex)
+    filter(port.complex==portcomplex)
   
   
   #extracting coordinates and weights
@@ -167,21 +169,74 @@ for(this_complex in unique_complex){
   contour_level_75 <- density_values[which.min(abs(cdf - 0.75))]
   
   # Create contour lines from the density raster
-  contour_level_75_lines <- rasterToContour(density_masked, levels = c(contour_level_75))
+  contour_level_75_lines <- rasterToContour(extended_raster, levels = c(contour_level_75))
   
   
   # Convert contour lines to sf polygons
   contour_75_sf <- st_as_sf(contour_level_75_lines)
   st_crs(contour_75_sf) <-  3310
   
-  #save into dataframe
-  contour_75_sf$portcomplex <- this_complex
-  all_contours[[this_complex]] <-    contour_75_sf
+  # Convert the LINESTRING to POLYGON if needed
+  # Attempt to cast to POLYGON
+  closed_poly <- tryCatch(
+    st_cast(contour_75_sf, "POLYGON"),
+    error = function(e) {
+      message("st_cast failed, using st_polygonize instead")
+      st_polygonize(contour_75_sf)
+    }
+  )
+  
+  # Ensure valid geometry
+  closed_poly <- st_make_valid(closed_poly)
+  
+  
+  
+  # Plot the closed polygon to verify the closure
+  plot(closed_poly)
+  
+  # Extract only the geometry of the USA/Mexico shapefile
+  usa_geometry <- st_geometry(usa_mexico_union)
+  
+  # First calculate the intersection (land area)
+  intersection <- st_intersection(closed_poly, usa_geometry)
+  
+  # Check if there is an intersection
+  if (nrow(intersection) > 0) {
+    # If there is an intersection, manually subtract the land portion from the ocean using st_difference
+    closed_poly_no_land <- st_difference(closed_poly, intersection)
+    plot(closed_poly_no_land)
+    
+    # Compute the 75% volume area (land portion removed)
+    area_75_m2 <- sum(st_area(closed_poly_no_land))
+  } else {
+    closed_poly_no_land <- closed_poly
+    plot(closed_poly_no_land)
+    # If there is no intersection with land, calculate the volume directly from the closed ocean polygon
+    area_75_m2 <- sum(st_area(closed_poly))
+  }
+  # Convert area from square meters to square kilometers
+  area_75_km2 <- as.numeric(area_75_m2) / 1e6  # Convert units object to numeric and divide by 1e6
+  #compute area of mpas within 75%
+  #turn mpas into polygons and calculate interactions between the two
+  
+  
+  closed_poly_no_land <- st_make_valid(closed_poly_no_land)
+  
+  
+  closed_poly_no_land$portcomplex <- portcomplex
+  closed_poly_no_land$total_area <- area_75_km2
+  
+  
+  # Save in list
+  all_contours[[portcomplex]] <- closed_poly_no_land
+  
 }  
 
 # ---- Save merged contours to contour directory ----
 # Combine all contours
-merged_contours <- do.call(rbind, all_contours)
+merged_contours <- all_contours |>
+  lapply(\(x) dplyr::select(x, level, portcomplex, total_area)) |>
+  dplyr::bind_rows()
 
 # Save to file
 st_write(merged_contours, file.path(halibut_data, "Data/Processed Data/all_portcomplex_contours_75_last5years.gpkg"),

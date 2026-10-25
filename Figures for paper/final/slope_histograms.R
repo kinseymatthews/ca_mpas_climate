@@ -7,45 +7,45 @@ filepath<-('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas
 
 area_slope<-readRDS(paste0(filepath, 'area_slope.rds'))%>%
   rename(slope=slope.area, slope2=slope.area2)%>%
-  mutate(metric="(a) Area", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(metric="(a) Area (km\u00B2/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(c(slope,fishery2,port_complex,metric,log_slope))
+  dplyr::select(c(slope,fishery2,port_complex,metric,log_slope))
 
 latitude_slope<-readRDS(paste0(filepath, 'latitude_slope.rds'))%>%
   rename(slope=slope.latitude, slope2=slope.latitude2)%>%
-  mutate(metric="(b) Latitude", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(metric="(b) Latitude (degrees/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(c(slope,fishery2,port_complex,metric,log_slope))
+  dplyr:: select(c(slope,fishery2,port_complex,metric,log_slope))
 
 extent_north_slope<-readRDS(paste0(filepath, 'extents_slope.rds'))%>%
   dplyr::select(-c(slope.south, CI_lower_bound_south,CI_upper_bound_south, CI_lower_clipped_south, CI_upper_clipped_south, CI_length_south,midpoint_south,CI_adjusted_length_south,CI_clipped_south, slope.south2,CI_lower_bound_south_2,CI_upper_bound_south_2))%>%
   rename(slope=slope.north, slope2=slope.north2, CI_lower_bound_2=CI_lower_bound_north_2, CI_upper_bound_2=CI_upper_bound_north_2)%>%
-  mutate(metric="(c) Northern extent", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(metric="(c) Northern extent (degrees/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(c(slope,fishery2,port_complex,metric,log_slope))
+  dplyr::select(c(slope,fishery2,port_complex,metric,log_slope))
 # Rename columns
 colnames(extent_north_slope) <- gsub("_north$", "", colnames(extent_north_slope))
 
 extent_south_slope<-readRDS(paste0(filepath, 'extents_slope.rds'))%>%
   dplyr::select(-c(slope.north, CI_lower_bound_north,CI_upper_bound_north, CI_lower_clipped_north, CI_upper_clipped_north, CI_length_north,midpoint_north,CI_adjusted_length_north,CI_clipped_north, slope.north2,CI_lower_bound_north_2,CI_upper_bound_north_2))%>%
   rename(slope=slope.south, slope2=slope.south2, CI_lower_bound_2=CI_lower_bound_south_2, CI_upper_bound_2=CI_upper_bound_south_2)%>%
-  mutate(metric="(d) Southern extent", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(metric="(d) Southern extent (degrees/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(c(slope,fishery2,port_complex,metric,log_slope))
+  dplyr::select(c(slope,fishery2,port_complex,metric,log_slope))
 # Rename columns
 colnames(extent_south_slope) <- gsub("_south$", "", colnames(extent_south_slope))
 
 distance_slope<-readRDS(paste0(filepath, 'distance_slope.rds'))%>%
   rename(slope=slope.distance)%>%
-  mutate(slope2=slope, metric="(e) Distance to shore", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(slope2=slope, metric="(e) Distance to shore (km/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(c(slope,fishery2,port_complex,metric,log_slope))
+  dplyr:: select(c(slope,fishery2,port_complex,metric,log_slope))
 
 reg_slope<-readRDS(paste0(filepath, 'reg_slope.rds'))%>%
   rename(slope=slope.reg)%>%
-  mutate(slope2=slope, metric="(f) Percent area in regulation", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(slope2=slope, metric="(f) Percent area in regulation (%/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
-  select(c(slope,fishery2,port_complex,metric,log_slope))
+  dplyr::select(c(slope,fishery2,port_complex,metric,log_slope))
 
 all.metrics<-rbind(area_slope, latitude_slope, extent_north_slope, extent_south_slope,distance_slope,reg_slope)
 
@@ -102,22 +102,22 @@ ggplot(reg_slope, aes(x = slope, fill = fishery2)) +            # Draw two histo
 
 # Annotation data (customize coordinates as needed)
 annotations_arrows <- data.frame(
-  metric = rep(c("(a) Area", "(b) Latitude", "(c) Northern extent", "(d) Southern extent", "(e) Distance to shore",
-                 "(f) Percent area in regulation"), each = 2),
-  x = c(-15, 15, -0.01, 0.01, -0.006, 0.006, -0.03,0.03,-50, 50, -.5,.5),         # start of arrow
-  xend = c(-180, 180, -0.1, .1, -0.07, 0.07,-0.35,0.35, -800, 850,-9.5,9.5),      # end of arrow
-  y = c(0.0055, 0.0055, 80, 80, 52, 52,40,40, 0.0018, 0.0018, 2.3,2.3),
-  yend = c(0.0055, 0.0055, 80, 80, 52, 52,40,40,0.0018, 0.0018, 2.3,2.3)
+  metric = rep(c("(a) Area (km\u00B2/year)", "(b) Latitude (degrees/year)", "(c) Northern extent (degrees/year)", "(d) Southern extent (degrees/year)", "(e) Distance to shore (km/year)",
+                 "(f) Percent area in regulation (%/year)"), each = 2),
+  x = c(-18, 18, -0.005, 0.005, -0.006, 0.006, -0.03,0.03,-50, 50, -.5,.5),         # start of arrow
+  xend = c(-300, 300, -0.13, 0.13, -0.09, 0.09,-0.6,0.6, -1200, 1400,-11,11),      # end of arrow
+  y = c(0.0055, 0.0055, 75, 75, 55, 55,38,38, 0.00155, 0.00155, 2.2,2.2),
+  yend = c(0.0055, 0.0055, 75, 75, 55, 55,38,38,0.00155, 0.00155, 2.2,2.2)
 )
 
 
 annotations_text <- data.frame(
-  metric = c("(a) Area", "(a) Area", "(b) Latitude", "(b) Latitude", "(c) Northern extent", "(c) Northern extent","(d) Southern extent","(d) Southern extent", "(e) Distance to shore",
-             "(e) Distance to shore", "(f) Percent area in regulation", "(f) Percent area in regulation"),
-  x = c(-85, 75, -0.05, 0.05, -0.03, 0.03, -0.15,0.15, -350, 400, -4.5,4.5),
-  y = c(0.0057, 0.0057, 83, 83, 54, 54,41.5,41.5,0.00188,0.00188,2.4,2.4),
+  metric = c("(a) Area (km\u00B2/year)", "(a) Area (km\u00B2/year)", "(b) Latitude (degrees/year)", "(b) Latitude (degrees/year)", "(c) Northern extent (degrees/year)", "(c) Northern extent (degrees/year)","(d) Southern extent (degrees/year)","(d) Southern extent (degrees/year)", "(e) Distance to shore (km/year)",
+             "(e) Distance to shore (km/year)", "(f) Percent area in regulation (%/year)", "(f) Percent area in regulation (%/year)"),
+  x = c(-145, 135, -0.055, 0.055, -0.04, 0.04, -0.28,0.28, -600, 700, -6,6),
+  y = c(0.006, 0.006, 82, 82, 60, 60,41.5,41.5,0.00167,0.00167,2.4,2.4),
   label = c("Getting smaller", "Getting larger", "Moving south", "Moving north", "Moving south", "Moving north","Moving south", "Moving north",
-            "Closer to shore", "Farther from shore", "Less area in regulation",  "More area in regulation")
+            "Closer to shore", "Farther from shore", "Less area",  "More area")
 )
 
 p<-ggplot(all.metrics, aes(x = slope)) + 
@@ -128,16 +128,22 @@ p<-ggplot(all.metrics, aes(x = slope)) +
   base_theme+
   theme(  panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          plot.title=element_text(size=10,margin = margin(t = 1)),
-          strip.text.x = element_text(hjust = 0),
+          plot.title=element_text(size=12,margin = margin(t = 1)),
+          strip.text.x = element_text(hjust = 0, size = 16,
+                                      margin = margin(t = 2, b = 18)),
           strip.background = element_rect(fill = "white", color = NA),  # White strip background
-          legend.position = "none")+
+          legend.position = "none",
+          axis.text = element_text(size=14),
+          axis.title = element_text(size=16),
+          panel.spacing.x = unit(1.0, "lines"),   # space between columns
+          panel.spacing.y = unit(2, "lines"),     # space between rows
+          plot.margin = margin(10, 20, 10, 10))+
 geom_segment(data = annotations_arrows,
              aes(x = x, xend = xend, y = y, yend = yend),
              arrow = arrow(length = unit(0.15, "inches")),
              inherit.aes = FALSE) +
   geom_text(data = annotations_text, aes(x = x, y = y, label = label),
-            inherit.aes = FALSE, size = 3) 
+            inherit.aes = FALSE, size = 5) 
 p
 
 filename1 <- ('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/histograms_slopes.jpg')

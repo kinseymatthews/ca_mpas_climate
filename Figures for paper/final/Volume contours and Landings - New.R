@@ -60,36 +60,36 @@ read_fishery_data <- function(base_path, fishery_folder, files, fishery_name) {
 }
 
 # Read data for each fishery
-cpfv <- read_fishery_data(base_path, "CPFV", "CPFV_allyears_contours_75.gpkg", "CPFV")%>%
+cpfv <- read_fishery_data(base_path, "CPFV", "all_portcomplex_contours_75_last5years.gpkg", "CPFV")%>%
   mutate(comm_name="Mult-species_CPFV")
 
-cuc_trawl <- read_fishery_data(base_path, "Cucumber", "Cucumbertrawl_allyears_contours_75.gpkg", "Cucumber trawl")%>%
+cuc_trawl <- read_fishery_data(base_path, "Cucumber", "all_portcomplex_contours_75_last5years.gpkg", "Cucumber trawl")%>%
   mutate(comm_name="Giant red sea cucumber")
 
-cuc_dive <- read_fishery_data(base_path, "Dive","cucumberdive_allyears_contours_75.gpkg" , "Cucumber dive")%>%
+cuc_dive <- read_fishery_data(base_path, "Dive","cucumber_all_portcomplex_contours_75_last5years.gpkg" , "Cucumber dive")%>%
   mutate(comm_name="Warty sea cucumber")
 
-urchin <- read_fishery_data(base_path, "Dive", "urchin_allyears_contours_75.gpkg", "Urchin dive")%>%
+urchin <- read_fishery_data(base_path, "Dive", "urchin_all_portcomplex_contours_75_last5years.gpkg", "Urchin dive")%>%
   mutate(comm_name="Red sea urchin")
 
 
-gillnet <- read_fishery_data(base_path, "Gillnet","setgillnet_allyears_contours_75.gpkg", "Set gillnet")%>%
+gillnet <- read_fishery_data(base_path, "Gillnet","set_all_portcomplex_contours_75_last5years.gpkg", "Set gillnet")%>%
   mutate(comm_name="Mult--species_gillnet")
 
-halibut <- read_fishery_data(base_path, "Halibut","halibut_allyears_contours_75.gpkg", "Halibut trawl")%>%
+halibut <- read_fishery_data(base_path, "Halibut","all_portcomplex_contours_75_last5years.gpkg", "Halibut trawl")%>%
   mutate(comm_name="California halibut")
 
-lobster <- read_fishery_data(base_path, "Lobster","lobster_allyears_contours_75.gpkg", "Lobster trap")%>%
+lobster <- read_fishery_data(base_path, "Lobster","all_portcomplex_contours_75_last5years.gpkg", "Lobster trap")%>%
   mutate(comm_name="California spiny lobster")
 
 
-pink_shrimp <- read_fishery_data(base_path, "Shrimp", "pinkshrimp_allyears_contours_75.gpkg", "Pink shrimp trawl")%>%
+pink_shrimp <- read_fishery_data(base_path, "Shrimp", "pink_all_portcomplex_contours_75_last5years.gpkg", "Pink shrimp trawl")%>%
   mutate(comm_name="Pacific pink shrimp")
 
-ridgeback <- read_fishery_data(base_path, "Shrimp","ridgebacl_allyears_contours_75.gpkg" , "Ridgeback prawn trawl")%>%
+ridgeback <- read_fishery_data(base_path, "Shrimp","ridge_all_portcomplex_contours_75_last5years.gpkg" , "Ridgeback prawn trawl")%>%
   mutate(comm_name="Ridgeback prawn")
 
-squid <- read_fishery_data(base_path, "Squid","squid_allyears_contours_75.gpkg", "Squid seine")%>%
+squid <- read_fishery_data(base_path, "Squid","all_portcomplex_contours_75_last5years.gpkg", "Squid seine")%>%
   mutate(comm_name="Market squid")
 
 # Combine them all
@@ -169,53 +169,80 @@ port_colors <- c(
   "San Diego"     =  "#A50026"
 )
 
-plot_fun<-function(fish){
-  fishery_subset<-all_fisheries%>%
-    filter(fishery==fish)
+plot_fun <- function(fish) {
   
-  name=fishery_subset$comm_name
-  ports=unique(fishery_subset$portcomplex)
+  fishery_subset <- all_fisheries %>%
+    filter(fishery == fish)
   
-  landings_subset<-landings_weights%>%
-    filter(comm_name %in% name)%>%
+  name  <- fishery_subset$comm_name
+  ports <- unique(fishery_subset$portcomplex)
+  
+  landings_subset <- landings_weights %>%
+    filter(comm_name %in% name) %>%
     filter(portcomplex %in% ports)
   
-  p<-ggplot() +
+  # ── Reproject landings to match plot CRS (EPSG:3310) ─────────────────────
+  landings_subset <- landings_subset %>%
+    st_transform(3310)
+  
+  # ── Extract coordinates after reprojection ────────────────────────────────
+  landings_coords <- landings_subset %>%
+    mutate(
+      X = st_coordinates(.)[, 1],
+      Y = st_coordinates(.)[, 2]
+    ) %>%
+    st_drop_geometry()
+  
+  # ── Offshore x position in EPSG:3310 meters
+  offshore_x <- -480000
+  
+  # ── Create offshore points as sf in EPSG:3310
+  landings_offshore <- landings_coords %>%
+    mutate(X_offshore = offshore_x) %>%
+    st_as_sf(coords = c("X_offshore", "Y"), crs = 3310)
+  
+  # ── Plot 
+  p <- ggplot() +
     # Land
-    geom_sf(data=usa_mexico_sf_proj, fill="gray", col="black", linewidth=0.2, inherit.aes = F) +
-    # Lines 
-    geom_sf(data = fishery_subset, aes(fill = portcomplex), alpha = 0.4   # <- transparency of fill + stroke together
-    )+
-    # Port points with black borders
-    geom_sf(data = landings_subset, aes(size = percentage, fill = portcomplex), 
-            color = "black", pch = 21, stroke = 1.2) +#stroke controls how thick the borders are 
-    
-    # Manual color scales (same palette)
+    geom_sf(data = usa_mexico_sf_proj, fill = "gray", col = "black",
+            linewidth = 0.2, inherit.aes = FALSE) +
+    # Fishery polygons
+    geom_sf(data = fishery_subset, aes(fill = portcomplex), alpha = 0.4) +
+    # Dotted leader lines from offshore dots to real port locations
+    geom_segment(data = landings_coords %>% mutate(X_offshore = offshore_x),
+                 aes(x = X_offshore, xend = X, y = Y, yend = Y),
+                 color = "grey50", linewidth = 0.3, linetype = "dotted") +
+    # Offshore dots colored and outlined by port complex
+    geom_sf(data = landings_offshore,
+            aes(size = percentage, fill = portcomplex,color = portcomplex),
+             pch = 21, stroke = 0.5, color="black") +
+    # Color scales — same name merges into one legend
+    scale_fill_manual(name  = "Port Complex", values = port_colors) +
     scale_color_manual(name = "Port Complex", values = port_colors) +
-    scale_fill_manual(name = "Port Complex", values = port_colors) +
-    # Shrink sizes overall
+    # Size scale
     scale_size_continuous(
-      name = "Landings (%)",
-      # control dot size on map
-      limits = c(0, 100),      # clip extremes
-      breaks = c(1, 25,  50,  90),  # consistent legend
-      labels = paste0(c(1, 25, 50,  90), "%"),
-      range = c(.5, 2)  # << Smaller point range
-    )  +  
+      name   = "Landings (%)",
+      limits = c(0, 100),
+      breaks = c(1, 25, 50, 90),
+      labels = paste0(c(1, 25, 50, 90), "%"),
+      range  = c(0.5, 5)
+    ) +
+    # X-axis labels: show fewer ticks
+    scale_x_continuous(breaks = seq(-128, -117, 4)) +
     # Crop
-    coord_sf(xlim = c(-470000, 270000), ylim = c(-600000, 460000)) +
-    ggtitle(paste0(fish))+
-    base_theme+
-    theme(plot.title = element_text(size = 10),
-          axis.text.x = element_text(size = 8),  # Adjust x-axis text size
-          axis.text.y = element_text(size = 8))  # Adjust y-axis text size)
-  
-  
+    coord_sf(xlim = c(-510000, 270000), ylim = c(-600000, 460000)) +
+    ggtitle(paste0(fish)) +
+    base_theme +
+    theme(plot.title    = element_text(size = 12),
+          axis.text.x   = element_text(size = 11),
+          axis.text.y   = element_text(size = 11),
+          axis.title    = element_blank(),          # removes both X and Y labels
+          legend.margin = margin(0, 0, 0, -10),
+          plot.margin   = margin(2, 2, 2, 2))
   return(p)
   
-  #filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/',fish,'Allports_LastVC.jpg')
-  #ggsave(filename = filename1, plot = p, width = 15, height = 8, units = "in", dpi = 300)
-  
+  # filename1 <- paste0('G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/', fish, 'Allports_LastVC.jpg')
+  # ggsave(filename = filename1, plot = p, width = 15, height = 8, units = "in", dpi = 300)
 }
 a <- plot_fun('Pink shrimp trawl')
 b <- plot_fun('Ridgeback prawn trawl')
@@ -242,13 +269,13 @@ dummy_sf <- st_as_sf(dummy_df, coords = c("lon", "lat"), crs = st_crs(usa_mexico
 legend_plot <- ggplot() +
   geom_sf(data = dummy_sf, aes(size = percentage, fill = portcomplex),
           shape = 21, color = "black", stroke = 1.2) +
-  scale_fill_manual(name = "Port Complex", values = port_colors) +
+  scale_fill_manual(name = "Port complex", values = port_colors) +
   scale_size_continuous(
     name = "Landings (%)",
     limits = c(0, 100),
     breaks = c(1, 25,  50,  90),  # consistent legend
     labels = paste0(c(1, 25, 50,  90), "%"),
-    range = c(.5, 2)  # << Smaller point range
+    range = c(.5, 5)  # << Smaller point range
   ) +
   guides(
     fill = guide_legend(order = 1, override.aes = list(size = 5)),
@@ -256,10 +283,12 @@ legend_plot <- ggplot() +
   ) +
   theme(
     legend.position = "right",
-    legend.text = element_text(size = 8),
-    legend.title = element_text(size = 9),
-    legend.key = element_blank()  # <- This removes the gray background
-  )
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.key = element_blank(),  
+    legend.margin = margin(0, 0, 0, -10),
+    plot.margin   = margin(1, 2, 2, 2)
+     )
 
 legend_only <- cowplot::get_legend(legend_plot)
 
@@ -267,8 +296,8 @@ legend_only <- cowplot::get_legend(legend_plot)
 clean_plot <- function(p, remove_y = TRUE, remove_x=TRUE) {
   p + theme(
     legend.position = "none",
-    axis.text.y = if (remove_y) element_blank() else element_text(size = 7),
-    axis.text.x = if (remove_x) element_blank()else element_text(size = 7)
+    axis.text.y = if (remove_y) element_blank() else element_text(size = 12),
+    axis.text.x = if (remove_x) element_blank()else element_text(size = 12)
   )
 }
 
@@ -294,10 +323,14 @@ final_plot <- plot_grid(
   plot_grid(top_row / bottom_row, ncol = 1),
   legend_only,
   ncol = 2,
-  rel_widths = c(4, .75)
+  rel_widths = c(5, .9),
+  align = "hv",
+  axis = "tblr"
 )
+
+final_plot
 
 
 # Save the final output
-filename1 <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/All fisheries_landings_5years.jpg"
-ggsave(filename = filename1, plot = final_plot, width = 10, height = 5, units = "in", dpi = 300)
+filename1 <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/All Fisheries Figures/All fisheries_landings_5years_2.jpg"
+ggsave(filename = filename1, plot = final_plot, width = 12, height = 6, units = "in", dpi = 300)

@@ -3,7 +3,7 @@ library(tidyverse)
 library(purrr)
 
 # Define base path and filenames
-base_path <- "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/"
+base_path <- "G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/"
 #file info = file name to upload, hours_col to sum for total effort, duration_min - if TRUE needs conversin to hours, and then 
 #fishery = final name to apply to fishery
 file_info <- list(
@@ -52,6 +52,6 @@ all_fisheries<-all_fisheries%>%
 # need to remove months where the lobster fishery doesnt operate (4 to 9)
 
 
-saveRDS(all_fisheries, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/summarized_fishery_data_ready4model.rds")
+saveRDS(all_fisheries, "G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate-modeling/Modeling/Data/Processed Data/summarized_fishery_data_ready4model.rds")
 
 

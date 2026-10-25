@@ -5,6 +5,7 @@ library(spatstat)
 library(raster)
 library(ggforce)
 library(RColorBrewer)
+library(magick)
 ############
 #spatial data for graphing
 
@@ -360,3 +361,100 @@ for (fishery in fisheries_list) {
 all_contours_combined <- do.call(rbind, all_contours_list)
 contours <- file.path(("C:/Users/kinse/Desktop/mpa climate fisheries/ca_mpas_climate/Shinydashboard/California_fisheries/data/allfisheries_KD_allcontours.gpkg"))
 st_write(all_contours_combined, contours, append=FALSE)
+
+###########
+#animation
+# Load everything the app uses: available_rasters (already filtered), KD_contours_sepyears,
+# COG_sf, ports, usa_mexico_sf_proj, state_waters, myCustomTheme, etc.
+source("global.R")
+
+out_root  <- "www/animations"
+frame_dir <- file.path(tempdir(), "kd_frames")   # temporary frame images
+fps       <- 1                                   # frames (years) per second
+
+# Fill palette: same as the app's yearly map
+kd_cols <- c("white", rev(RColorBrewer::brewer.pal(10, "Spectral"))[-1])
+
+# Every fishery x port complex that still has years after the < 3 vessel filter
+combos <- available_rasters2 %>% distinct(fishery, portcomplex)
+message(nrow(combos), " fishery x port complex combinations to animate")
+
+for (i in seq_len(nrow(combos))) {
+  
+  fish <- combos$fishery[i]
+  port <- combos$portcomplex[i]
+  
+  years <- available_rasters2 %>%
+    filter(fishery == fish, portcomplex == port) %>%
+    pull(year) %>% sort()
+  
+  if (length(years) < 2) {                 # an animation needs at least 2 frames
+    message("Skipping ", fish, " / ", port, ": only ", length(years), " year(s)")
+    next
+  }
+  message("Animating ", fish, " / ", port, " (", length(years), " years)")
+  
+  # ---- Fixed map window for all frames: COG extent + 80 km (same as the app's yearly map) ----
+  cog_xy <- COG_sf %>%
+    filter(fishery == fish, port.complex == port) %>%
+    st_transform(3310) %>%
+    st_coordinates()
+  if (nrow(cog_xy) == 0) { message("  No COG points, skipping"); next }
+  xlim <- range(cog_xy[, 1], na.rm = TRUE) + c(-80000, 80000)
+  ylim <- range(cog_xy[, 2], na.rm = TRUE) + c(-80000, 80000)
+  
+  port_pt <- st_transform(ports[ports$port.complex == port, ], 3310)
+  
+  # ---- Read every year's raster once ----
+  dens <- lapply(years, function(y) {
+    r  <- terra::rast(file.path("data/rasters", paste0(fish, "_", port, "_", y, ".tif")))
+    df <- as.data.frame(r, xy = TRUE)
+    colnames(df) <- c("x", "y", "value")
+    df
+  })
+  names(dens) <- years
+  
+  # One colour scale across all years, so colours are comparable from frame to frame
+  max_val <- max(sapply(dens, function(d) max(d$value, na.rm = TRUE)))
+  
+  # ---- One frame per year ----
+  unlink(frame_dir, recursive = TRUE)
+  dir.create(frame_dir, recursive = TRUE)
+  frame_files <- character(0)
+  
+  for (y in years) {
+    cont <- KD_contours_sepyears %>%
+      filter(fishery == fish, port.complex == port, as.character(year) == as.character(y))
+    
+    p <- ggplot() +
+      geom_raster(data = dens[[as.character(y)]], aes(x = x, y = y, fill = value)) +
+      scale_fill_gradientn(name = "Kernel density", colors = kd_cols,
+                           limits = c(0, max_val), na.value = "white") +
+      geom_sf(data = cont, color = "black", linewidth = 1) +                                     # 75% contour
+      geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth = 0.2, inherit.aes = FALSE) +
+      geom_sf(data = state_waters, color = "grey30", linewidth = 0.2, inherit.aes = FALSE) +
+      geom_sf(data = port_pt, shape = 8, color = "red", size = 3, stroke = 1.2, inherit.aes = FALSE) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      labs(title = y) +
+      myCustomTheme() +
+      theme(legend.position = "none",
+            axis.title = element_blank(),
+            plot.title = element_text(size = 18, face = "bold", hjust = 0.5))
+    
+    f <- file.path(frame_dir, paste0(y, ".png"))
+    ggsave(f, p, width = 6, height = 6, dpi = 120)
+    frame_files <- c(frame_files, f)
+  }
+  
+  # ---- Stitch frames into a GIF ----
+  out_dir <- file.path(out_root, fish)
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  
+  anim <- image_read(frame_files) %>% image_animate(fps = fps)
+  image_write(anim, file.path(out_dir, paste0(port, "Kernel Densities_Animation.gif")))
+  
+  rm(dens, anim); gc()
+}
+
+message("Done. Animations are in ", normalizePath(out_root))
+############

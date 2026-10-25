@@ -1,4 +1,5 @@
-#........................dashboardHeader.........................
+
+  #........................dashboardHeader.........................
 header <- dashboardHeader(
   
   # title ----
@@ -18,11 +19,11 @@ sidebar <- dashboardSidebar(
     menuItem(text = "California Fishing Grounds", tabName = "welcome", icon = icon("fish"),
              # exploratory analyses
              menuSubItem(text = "Exploratory", tabName = "exploratory", icon = icon("magnifying-glass")) ,
+             #kernel density maps
+             menuSubItem(text = "Kernel density maps", tabName = "kdmaps", icon = icon("map")),
              #kernel density metrics
              menuSubItem(text = "Kernel density metrics", tabName = "kdmetrics", icon = icon("chart-line")),
-              #kernel density maps
-              menuSubItem(text = "Kernel density maps", tabName = "kdmaps", icon = icon("map")),
-             #spatial maps
+            #spatial maps
              menuSubItem(text = "Spatial predictions", tabName = "predictions", icon = icon("globe"))
              
              ),
@@ -295,17 +296,20 @@ body <- dashboardBody(
             # second fluidRow ----
             fluidRow(
               
-              # COG box ----
-              box(width = 6,
-                  
-                  #bin number slider input here
-                  uiOutput("year_selector")
-                  
-              ), #END COG box
+              #animation box
+              box(
+                width = 6,
+                imageOutput("kd_animation_output") %>%
+                  shinycssloaders::withSpinner(color = "#006792", type = 1),
+                textOutput("kd_animation_caption")
+              ), #END animation box
+              
               
               # disclaimer box ----
               box(width = 6,
+                  uiOutput("year_selector"),
                   
+                  br(),
                   plotOutput(outputId = "kd_yearsseperate_output")%>% 
                     shinycssloaders::withSpinner(color = "#006792", type = 1),
                   textOutput("yearlykd_caption")
@@ -319,7 +323,8 @@ body <- dashboardBody(
             fluidRow(
               box(width = 12,
                   h4(textOutput("prediction_title"), align = "center"),
-                  imageOutput("prediction_plot")
+                  imageOutput("prediction_plot", height = "auto"),   # "auto" so the caption isn't covered
+                  textOutput("prediction_caption")
               )
             )
     ) # END predictions tabItem
@@ -328,4 +333,7 @@ body <- dashboardBody(
 ) # END dashboardBody
 
 #..................combine all in dashboardPage..................
-dashboardPage(header, sidebar, body)
+ui <- secure_app(
+  dashboardPage(header, sidebar, body)
+)
+

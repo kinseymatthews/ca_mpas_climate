@@ -107,16 +107,16 @@ ridge <- ridge %>% filter(fishery_portcomplex %in% valid_fishery_portcomplexes)
 squid <- squid %>% filter(fishery_portcomplex %in% valid_fishery_portcomplexes)
 ############
 
-saveRDS(cpfv,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/CPFV_filtered_modeling.rds')
-saveRDS(cuc_trawl,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/cuctrawl_filtered_modeling.rds')
-saveRDS(cuc_dive,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/cucdive_filtered_modeling.rds')
-saveRDS(urch,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/urch_filtered_modeling.rds')
-saveRDS(gill,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/gill_filtered_modeling.rds')
-saveRDS(hal,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/hal_filtered_modeling.rds')
-saveRDS(lob,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/lob_filtered_modeling.rds')
-saveRDS(pink,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/pink_filtered_modeling.rds')
-saveRDS(ridge,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/ridge_filtered_modeling.rds')
-saveRDS(squid,'G:/Shared drives/bren-fisheriesclimate/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/squid_filtered_modeling.rds')
+saveRDS(cpfv,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/CPFV_filtered_modeling.rds')
+saveRDS(cuc_trawl,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/cuctrawl_filtered_modeling.rds')
+saveRDS(cuc_dive,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/cucdive_filtered_modeling.rds')
+saveRDS(urch,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/urch_filtered_modeling.rds')
+saveRDS(gill,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/gill_filtered_modeling.rds')
+saveRDS(hal,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/hal_filtered_modeling.rds')
+saveRDS(lob,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/lob_filtered_modeling.rds')
+saveRDS(pink,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/pink_filtered_modeling.rds')
+saveRDS(ridge,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/ridge_filtered_modeling.rds')
+saveRDS(squid,'G:/Shared drives/bren-fisheriesclimate-modeling/mpa climate fisheries/ca_mpas_climate/Modeling/Data/Processed Data/squid_filtered_modeling.rds')
 
 
 

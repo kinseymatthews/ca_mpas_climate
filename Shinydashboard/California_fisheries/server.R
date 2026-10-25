@@ -1,5 +1,12 @@
 server <- function(input, output,session) {
   
+  
+  # Add this one line at the very top of your server
+  res_auth <- secure_server(
+    check_credentials = check_credentials(credentials)
+  )
+  
+  
   # Show modal only once at the beginning
   observe({
     showModal(modalDialog(
@@ -21,19 +28,28 @@ server <- function(input, output,session) {
     
     vessels_trips%>%
       filter(fishery %in% c(input$fishery.input.exploratory)) %>%
-      filter( port.complex %in% c(input$port.complex.input.exploratory))
+      filter( port.complex %in% c(input$port.complex.input.exploratory))%>%
+    mutate(port.complex = factor(port.complex, levels = port_order))
     
-  }) #end reactive dataframe
+  }) %>% bindCache(input$fishery.input.exploratory, input$port.complex.input.exploratory)
+  #end reactive dataframe
   
   
   #trips plot ----
   output$trips_plot_output <-renderPlot({ 
     
     ggplot(vessels_trips_filtered(), aes(x=year, y=ntrips, color=port.complex))+
-      geom_point()+
+      geom_point(size=2.5)+
       labs(x="Year", y="Number of trips", color="Port complex")+
-      geom_smooth(method="lm")+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+      geom_smooth(
+        aes(group = port.complex, fill = port.complex),
+        method = "glm",
+        method.args = list(family = quasipoisson),
+        se = TRUE,
+        alpha = 0.25
+      ) +
+      scale_fill_manual(values = rb_cols) +
+      scale_color_manual(values = rb_cols) +
       myCustomTheme()+
       theme(legend.position = "none")
     
@@ -44,23 +60,37 @@ server <- function(input, output,session) {
   ) #END trips plot
   
   output$trips_caption <- renderText({
-    "Number of fishing trips each year "
+    "Annual number of fishing trips in the selected fishery by port complex. Lines and confidence intervals represent a linear regression fit to the data to illustrate trends in effort. Years with fewer than three vessels are suppressed for confidentiality."
   })
   #vessel plot ----
-  output$vessels_plot_output <-renderPlot({ 
+  output$vessels_plot_output <- renderPlot({
     
-    ggplot(vessels_trips_filtered(), aes(x=year, y=nvessels, color=port.complex))+
-      geom_point()+
-      labs(x="Year", y="Number of vessels", color="Port complex")+
-      geom_smooth(method="lm")+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
-      myCustomTheme()+
+    ggplot(vessels_trips_filtered(),
+           aes(x = year, y = nvessels, color = port.complex)) +
+      
+      geom_point(size = 2.5) +
+      
+      geom_smooth(
+        aes(group = port.complex, fill = port.complex),
+        method = "glm",
+        method.args = list(family = poisson),
+        se = TRUE,
+        alpha = 0.25
+      ) +
+      
+      geom_hline(yintercept = 3, linetype = "dashed") +
+      
+      labs(x = "Year", y = "Number of vessels", color = "Port complex") +
+      
+      scale_color_manual(values = rb_cols) +
+      scale_fill_manual(values = rb_cols) +
+      
+      myCustomTheme() +
       theme(legend.position = "none")
-    
-  }) #END vessels plot
+  })#END vessels plot
   
   output$vessels_caption <- renderText({
-    "Number of vessels operating each year "
+    "Annual number of unique vessels landing in the selected fishery by port complex. The dashed black line marks three vessels, the minimum required to display confidential fisheries data; years below this threshold are suppressed. Lines and confidence intervals represent a linear regression fit to the data to illustrate trends in participation."
   })
   
   # vdepth reactive dataframe ----
@@ -72,37 +102,63 @@ server <- function(input, output,session) {
     )
     depths %>%
       filter(fishery %in% input$fishery.input.exploratory) %>%
-      filter(port.complex %in% input$port.complex.input.exploratory)
-  })
+      filter(port.complex %in% input$port.complex.input.exploratory)%>%
+      mutate(
+        port.complex = factor(port.complex, levels = port_order)
+      )
+  })  %>% bindCache(input$fishery.input.exploratory, input$port.complex.input.exploratory)
   
   # depth plot ----
   output$depth_output <- renderPlot({
+    
+    df <- depth_filtered()
+    
+    avg_df <- df %>%
+      group_by(port.complex) %>%
+      summarise(avg_depth = mean(mean, na.rm = TRUE), .groups = "drop")
+    
     ggplot(depth_filtered(), aes(x = year, color = port.complex)) +
       annotate("rect", xmin = "2014", xmax = "2016",
                ymin = -Inf, ymax = Inf, fill = "gray80", alpha = 0.1) +
       geom_boxplot(aes(ymin = ymin, lower = lower, middle = middle,
-                       upper = upper, ymax = ymax),
-                   stat = "identity") +
-      labs(y = "Logged depth (m)", x = "Year", color = "Port complex") +
-      scale_color_brewer(palette = 'RdYlBu', direction = -1) +
+                       upper = upper, ymax = ymax, fill=port.complex),
+                   stat = "identity", alpha=0.4) +
+      labs(y = "Depth (m)", x = "Year", color = "Port complex") +
+      scale_y_continuous(trans="log10") +
+      scale_color_manual(values = rb_cols) +
+      scale_fill_manual(values = rb_cols) +
+      geom_hline(
+        data = avg_df,
+        aes(yintercept = avg_depth, color = port.complex),
+        linetype = "dashed",
+        linewidth = 0.8
+      )+
+      guides(fill = "none")+
       myCustomTheme()
   }) # END depth plot
   
   output$depth_caption <- renderText({
-    "TBD"
+    "Annual distribution of fishing depth (m). Boxes show the interquartile range (25th–75th percentiles) with the median as the center line; whiskers extend to 1.5× the interquartile range, and points beyond the whiskers are shown individually. The colored horizontal line shows the mean depth across all years for that specific port complex. Years with fewer than three vessels are suppressed for confidentiality."
   })
   
   # update port complexes based on fishery (exploratory) ----
   observe({
+    
     req(input$fishery.input.exploratory)
+    
     available_ports <- vessels_trips %>%
       filter(fishery == input$fishery.input.exploratory) %>%
       pull(port.complex) %>%
       unique()
     
-    updatePickerInput(session, "port.complex.input.exploratory",
-                      choices = available_ports,
-                      selected = available_ports[1])
+    ordered_ports <- port_order[port_order %in% available_ports]
+    
+    updatePickerInput(
+      session,
+      "port.complex.input.exploratory",
+      choices = ordered_ports,
+      selected = ordered_ports[1]
+    )
   })
   
   # KD time series dataframe ----
@@ -123,7 +179,7 @@ server <- function(input, output,session) {
   output$kd_legend_output <- renderPlot({
     p <- ggplot(KD_timeseries_filtered(), aes(x = year, color = port.complex)) +
       geom_line(aes(y = COG_latitude)) +
-      scale_color_brewer(palette = 'RdYlBu', direction = -1) +
+      scale_color_manual(values = rb_cols) +
       labs(color = "Port complex") +
       myCustomTheme() +
       theme(legend.position = "bottom",
@@ -141,62 +197,62 @@ server <- function(input, output,session) {
   output$lat_extent_output <-renderPlot({ 
     
     ggplot( KD_timeseries_filtered(), aes(x=year, color=port.complex))+
-      geom_line(aes(y=COG_latitude),size=.5)+
-      geom_line(aes(y=northernmost_latitude_75), linetype = "dotted",size=.5)+
-      geom_line(aes(y=southernmost_latitude_75), linetype = "dotted",size=.5)+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
-      labs(x="Year", y="Latitude", color="Port complex")+
+      geom_line(aes(y=COG_latitude),size=1)+
+      geom_line(aes(y=northernmost_latitude_75), linetype = "dotted",size=1)+
+      geom_line(aes(y=southernmost_latitude_75), linetype = "dotted",size=1)+
+      scale_color_manual(values = rb_cols) +
+      labs(x="Year", y="Latitude  (°N)", color="Port complex")+
       myCustomTheme()+
       theme(legend.position = "none")
   }) #END latitude extent plot
   
   output$latitude_caption <- renderText({
-    "Yearly center of gravity latitudes "
+    "Annual latitude (°N) of the fishing center of gravity, the effort-weighted mean location of fishing activity, by port complex. Dotted lines indicate the northern and southernmost extent of the fishing grounds mapped through kernel density estimation."
   })
   
   # fishing ground area graph ----
   output$area_output <-renderPlot({ 
     
     ggplot( KD_timeseries_filtered(), aes(x=year, color=port.complex))+
-      geom_line(aes(y=area_75_km2),size=.5)+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
+      geom_line(aes(y=area_75_km2),size=1)+
+      scale_color_manual(values = rb_cols) +
       labs(x="Year", y = bquote(atop("Fishing ground area", "(" ~ km^2 ~ ")")), color="Port complex")+
       myCustomTheme()+
       theme(legend.position = "none")
   }) #END fishing ground area plot
   
   output$area_caption <- renderText({
-    "Area of core fishing grounds, calculated from the 75% volume contour of kernel density estimates"
+    "Annual area (km²) of core fishing grounds, defined as the 75% volume contour of a kernel density estimate of fishing locations, by port complex. "
   })
   
   # distance to shore graph ----
   output$shore_output<-renderPlot({ 
     
     ggplot( KD_timeseries_filtered(), aes(x=year, y=distance_shore_km, color=port.complex))+
-      geom_line(size=.5)+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
-      labs(x="Year", y = ('Distance from shore \n(km)'), color="Port complex")+
+      geom_line(size=1)+
+      scale_color_manual(values = rb_cols) +
+      labs(x="Year", y = ('Distance from mainland \n(km)'), color="Port complex")+
       myCustomTheme()+
       theme(legend.position = "none")
   }) #END distance to shore plot
   
   output$shore_caption <- renderText({
-    "Distance of the center of gravity from the nearest mainland shoreline"
+    "Distance (km) of the annual fishing center of gravity to the nearest point on the mainland by port complex."
   })
   
   # deffort mpa graph ----
   output$effort_mpa_output<-renderPlot({ 
     
     ggplot( KD_timeseries_filtered(), aes(x=year, y=percent_inmpa, color=port.complex))+
-      geom_line(size=.5)+
-      scale_color_brewer(palette = 'RdYlBu', direction=-1) +
-      labs(x="Year", y = ('Effort in MPA \n(%)'), color="Port complex")+
+      geom_line(size=1)+
+      scale_color_manual(values = rb_cols) +
+      labs(x="Year", y = ('% of desirable fishing grounds in MPAs'), color="Port complex")+
       myCustomTheme()+
       theme(legend.position = "none")
   }) #END distance to shore plot
   
   output$mpa_caption <- renderText({
-    "Percent of core fishing ground area ‘within’ an MPA.  While fishing has not necessarily occurred within spatial management areas, it represents how much of a fisher’s core fishing grounds might be potentially impacted by spatial management."
+    "Percent of core fishing ground area (75% KDE contour) that overlaps with marine protected areas by port complex. Overlap does not indicate fishing occurred inside MPAs; it reflects the share of core grounds potentially affected by spatial management."
   })
   
   # update port complexes based on fishery (kdmetrics) ----
@@ -230,6 +286,11 @@ server <- function(input, output,session) {
   output$cog_output <-renderPlot({ 
     # Get the filtered reactive data
     cog_data <- COG_filtered()
+
+    # Filter ports to only selected port complexes 
+    ports_filtered <- ports %>%
+      filter(port.complex %in% input$port.complex.input.kdmaps) %>%
+      st_transform(st_crs(cog_data))  # make sure CRS matches
     
     #extracting coordinates 
     coordinates<-st_coordinates(cog_data)
@@ -246,27 +307,47 @@ server <- function(input, output,session) {
       # State waters
       geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
       # points
-      geom_sf(data=cog_data , aes(color=(year)),size=.75)+
-      # Crop
-      coord_sf(xlim = c(minx-80000, maxx+80000), ylim = c(miny-80000, maxy+80000)) +
-      # Axes
-    #  scale_x_continuous(breaks=seq(minx-.5, maxx+.5, .5),labels=scales::number_format(accuracy=0.50)) +
-     # scale_y_continuous(breaks=seq(maxx+.5, maxy+.5, .5),labels=scales::number_format(accuracy=0.50)) + 
-      scale_color_viridis_c(name = NULL, option = "D") +
-      #add black outline around density raster
-      guides(color = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
+      geom_sf(data=cog_data , aes(color=(year)),size=1.5)+
+      # Port locations — star shape, black fill, stands out from COG points
+      # Port locations
+      geom_sf(data = ports_filtered,
+              shape  = 8,
+              color  = "red",
+              size   = 3,
+              stroke = 1.2,
+              inherit.aes = FALSE) +
       
+      scale_color_viridis_c(
+        name  = NULL,
+        option = "D",
+        guide  = guide_colorbar(order = 1,
+                                ticks.colour    = "black",
+                                frame.colour    = "black",
+                                frame.linewidth = 0.2)
+      ) +
+      scale_shape_manual(
+        name   = NULL,
+        values = c("Port Complex" = 8),   # 8 = asterisk star
+        guide  = guide_legend(order = 2,
+                              override.aes = list(color = "black", size = 3))
+      ) +
+      # Crop
+      coord_sf(xlim = c(minx-40000, maxx+40000), ylim = c(miny-40000, maxy+40000)) +
+      # Axes
+      scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +  # only 3 x-axis ticks
+      scale_y_continuous(breaks = scales::pretty_breaks(n = 4)) +
       # Theme
       myCustomTheme()+
-      theme(legend.position = "bottom",
-            axis.title = element_blank(),
-            legend.key.width = unit(2, "cm"),
+      theme(legend.position   = "bottom",
+            axis.title        = element_blank(),
+            legend.key.width  = unit(2, "cm"),
             legend.key.height = unit(0.4, "cm"),
-            plot.margin = margin(5, 5, 30, 5))
+            legend.box        = "vertical",        # stack legends vertically
+            plot.margin       = margin(5, 40, 30, 5))  # increase right margin
     
-  }) #END fishing ground area plot
+  }) #END COG plot
   output$cog_caption <- renderText({
-    "Yearly centers of gravity"
+    "Annual fishing center of gravity (effort-weighted mean location) with points colored by year. The red star marks the port complex."
   })
   
   # KD all years combined reactive dataframe ----
@@ -279,8 +360,8 @@ server <- function(input, output,session) {
     
     validate(need(file.exists(raster_file), "No data available for this selection."))
     
-    r <- raster::raster(raster_file)
-    df <- as.data.frame(raster::rasterToPoints(r))
+    r <- terra::rast(raster_file)
+    df <- as.data.frame(r, xy = TRUE)
     colnames(df) <- c("x", "y", "value")
     df$value <- scales::rescale(df$value)
     df
@@ -300,11 +381,16 @@ server <- function(input, output,session) {
       filter(portcomplex == input$port.complex.input.kdmaps)
   }) %>% bindCache(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
   
-  # KD figure ----
+ 
   # KD figure ----
   output$kd_allyears_output <- renderPlot({
     kd_data <- KD_combinedyears_filtered()
     contour_data <- KD_combinedyears_contours_filtered()
+    
+    # Filter ports to selected port complexes 
+    ports_filtered <- ports %>%
+      filter(port.complex %in% input$port.complex.input.kdmaps) %>%
+      st_transform(3310)
     
     ggplot() +
       geom_raster(data = kd_data, aes(x = x, y = y, fill = value)) +
@@ -323,6 +409,13 @@ server <- function(input, output,session) {
               linewidth = 0.2, inherit.aes = FALSE) +
       geom_sf(data = state_waters, color = "grey30", linewidth = 0.2,
               inherit.aes = FALSE) +
+      # Port star markers
+      geom_sf(data = ports_filtered,
+              shape  = 8,
+              color  = "red",
+              size   = 3,
+              stroke = 1.2,
+              inherit.aes = FALSE) +
       coord_sf(xlim = c(-450000, 350000), ylim = c(-600000, 450000)) +
       myCustomTheme() +
       theme(legend.position = "bottom",
@@ -334,8 +427,35 @@ server <- function(input, output,session) {
 
   
   output$kd_caption <- renderText({
-   "Kernel density for all years combined. The black line represents the 75% volume contour"
+   "Kernel density of fishing locations in the selected fishery across all years. Warmer colors indicate higher relative density. The black line marks the 75% volume contour (core fishing grounds), and the red star marks the port complex."
   })
+  
+  
+  #input for animation KD ----
+  output$kd_animation_output <- renderImage({
+    
+    req(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
+    
+    fishery <- input$fishery.input.kdmaps
+    
+    port <- input$port.complex.input.kdmaps
+    
+    gif_file <- file.path(
+      "www",
+      "animations",
+      fishery,
+      paste0(port, "Kernel Densities_Animation.gif")
+    )
+    
+    validate(need(file.exists(gif_file), paste("Not found:", gif_file)))
+    
+    list(
+      src = normalizePath(gif_file),
+      contentType = "image/gif",
+      width = "100%"
+    )
+    
+  }, deleteFile = FALSE)
   
   #Input for yearly KDs  ----
 
@@ -344,7 +464,7 @@ server <- function(input, output,session) {
     req(input$fishery.input.kdmaps, input$port.complex.input.kdmaps)
     
     # Filter by selected fishery and port complex
-    available_years <- available_rasters %>%
+    available_years <- available_rasters2 %>%
       filter(fishery == input$fishery.input.kdmaps,
              portcomplex == input$port.complex.input.kdmaps) %>%
       pull(year) %>%
@@ -395,6 +515,11 @@ server <- function(input, output,session) {
     kd_den_data <-   KD_sepyears_density_filtered()
     kd_cont_data <- KD_sepyears_contours_filtered()
 
+    # Filter ports to selected port complexes 
+    ports_filtered <- ports %>%
+      filter(port.complex %in% input$port.complex.input.kdmaps) %>%
+      st_transform(3310)
+    
     # Get the filtered reactive data
     cog_data <- COG_filtered()%>%
       st_transform(crs = 3310)
@@ -422,6 +547,13 @@ server <- function(input, output,session) {
       geom_sf(data = usa_mexico_sf_proj, fill = "grey85", col = "white", linewidth=0.2, inherit.aes = F) +
       # State waters
       geom_sf(data=state_waters, color="grey30", linewidth=0.2, inherit.aes = F) +
+      # Port star markers
+      geom_sf(data = ports_filtered,
+              shape  = 8,
+              color  = "red",
+              size   = 3,
+              stroke = 1.2,
+              inherit.aes = FALSE) +
       # Crop
       coord_sf(xlim = c(minx-80000, maxx+80000), ylim = c(miny-80000, maxy+80000)) +
       # Axes
@@ -435,7 +567,7 @@ server <- function(input, output,session) {
   }) #END KD yearly figure
   
   output$yearlykd_caption <- renderText({
-    "Kernel density for specific years. The black line represents the 75% volume contour"
+    "Kernel density of fishing locations for the selected year. Warmer colors indicate higher relative density. The black line marks the 75% volume contour (core fishing grounds), and the red star marks the port complex. Years with fewer than three vessels are suppressed for confidentiality."
   })
   
   # update port complexes based on fishery (kdmaps) ----
@@ -444,11 +576,15 @@ server <- function(input, output,session) {
     available_ports <- KD_contours_sepyears %>%
       filter(fishery == input$fishery.input.kdmaps) %>%
       pull(port.complex) %>%
-      unique()
+      unique()%>%
+      as.character()
+    
+    ordered_ports <- port_order[port_order %in% available_ports]
+    
     
     updatePickerInput(session, "port.complex.input.kdmaps",
-                      choices = available_ports,
-                      selected = available_ports[1])
+                      choices = ordered_ports,
+                      selected = ordered_ports[1])
   })
   
   # spatial predictions plots ----
@@ -481,19 +617,22 @@ server <- function(input, output,session) {
                       choices = port_choices,
                       selected = port_choices[1])
   })
+  
   # render prediction image ----
   output$prediction_plot <- renderImage({
-    req(input$fishery.input.predictions, 
-        input$portcomplex.input.predictions, 
+    req(input$fishery.input.predictions,
+        input$portcomplex.input.predictions,
         input$variable.input.predictions)
     
-    filename <- paste0("www/predictions_",
-                       input$fishery.input.predictions, "_",
-                       input$portcomplex.input.predictions, "_",
-                       input$variable.input.predictions, 
-                       "_differences.jpg")
+    # Look up the actual file name instead of rebuilding it
+    file <- pred_info$file[pred_info$fishery      == input$fishery.input.predictions &
+                             pred_info$port.complex == input$portcomplex.input.predictions &
+                             pred_info$variable     == input$variable.input.predictions][1]
     
-    validate(need(file.exists(filename), "Image not found — check file name matches inputs exactly"))
+    validate(need(!is.na(file), "No prediction map for this selection."))
+    
+    filename <- file.path("www", file)
+    validate(need(file.exists(filename), paste("Image not found:", filename)))
     
     list(src = normalizePath(filename),
          contentType = "image/jpeg",
@@ -515,6 +654,12 @@ server <- function(input, output,session) {
     fishery_label <- pred_info$fishery.label[pred_info$fishery == input$fishery.input.predictions][1]
     
     paste0(variable_label, " predictions for the ", fishery_label, " fishery at ", port_label)
-  })
+  
+    })
+     # prediction caption ----
+    output$prediction_caption <- renderText({
+      "Predicted change in relative fishing effort under low and high conditions for the selected fishery and port complex. Predictions come from the full model, which combines the probability of fishing (presence/absence) with effort given presence. They are made for the last operable year in the month with the highest landings over the final five years of data. The selected variable is set to its 10th or 90th percentile while all other dynamic variables are held at their means. Values show the difference from a prediction with all variables at their means: red indicates more effort than average conditions, and blue indicates less. Black polygons show marine protected areas, and the red star marks the port complex."
+   
+    })
 }
 
