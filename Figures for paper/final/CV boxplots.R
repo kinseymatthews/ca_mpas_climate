@@ -20,14 +20,14 @@ latitude_cv<-readRDS(paste0(filepath, 'latitude_cv.rds'))%>%
 #northern extent CV
 extent_north_cv<-readRDS(paste0(filepath, 'extents_cv.rds'))%>%
   dplyr::select(-c(CV2, lower.CI2, upper.CI2,lower.CI2.2, upper.CI2.2))%>%
-  mutate(metric="(d) Northern extent")%>%
+  mutate(metric="(c) Northern extent")%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet" &
            !(fishery2 == "Pink shrimp trawl" & port_complex == "Monterey"))%>%
   dplyr::select(-c(lower.CI.2, upper.CI.2))
 #southern extent CV
 extent_south_cv<-readRDS(paste0(filepath, 'extents_cv.rds'))%>%
   dplyr::select(-c(CV, lower.CI, upper.CI,lower.CI.2, upper.CI.2))%>%
-  mutate(metric="(c) Southern extent")%>%
+  mutate(metric="(d) Southern extent")%>%
   rename(CV=CV2, lower.CI=lower.CI2, upper.CI=upper.CI2,lower.CI.2=lower.CI2.2, upper.CI.2=upper.CI2.2)%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet" &
            !(fishery2 == "Pink shrimp trawl" & port_complex == "Monterey"))%>%
@@ -42,7 +42,7 @@ distance_cv<-readRDS(paste0(filepath, 'distance_cv.rds'))%>%
 
 #spatial regulation CV
 regulation_cv<-readRDS(paste0(filepath, 'reg_cv.rds'))%>%
-  mutate(metric="(f) Area in regulation")%>%
+  mutate(metric="(f) Percent area in regulation")%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet" &
            !(fishery2 == "Pink shrimp trawl" & port_complex == "Monterey"))
 
@@ -105,9 +105,7 @@ ggsave(filename = filename1, plot =  f2 , width = 10, height = 8, units = "in", 
 
 
 #########
-#all together but without nothern extent
-all.plot<-all%>%
-  filter(metric!="(d) Northern extent")
+
 
 p <- ggplot(data = all, aes(x = CV, y = port_complex, fill = port_complex)) +
   geom_boxplot() +

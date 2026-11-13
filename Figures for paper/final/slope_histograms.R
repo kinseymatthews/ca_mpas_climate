@@ -37,7 +37,7 @@ colnames(extent_south_slope) <- gsub("_south$", "", colnames(extent_south_slope)
 
 distance_slope<-readRDS(paste0(filepath, 'distance_slope.rds'))%>%
   rename(slope=slope.distance)%>%
-  mutate(slope2=slope, metric="(e) Distance to shore (km/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
+  mutate(slope2=slope, metric="(e) Distance to mainland (km/year)", log_slope=sign(slope)*log10(1 + abs(slope)))%>%
   filter(fishery2!="Spot prawn trawl" & fishery2!="Drift gillnet")%>%
   dplyr:: select(c(slope,fishery2,port_complex,metric,log_slope))
 
@@ -102,22 +102,22 @@ ggplot(reg_slope, aes(x = slope, fill = fishery2)) +            # Draw two histo
 
 # Annotation data (customize coordinates as needed)
 annotations_arrows <- data.frame(
-  metric = rep(c("(a) Area (km\u00B2/year)", "(b) Latitude (degrees/year)", "(c) Northern extent (degrees/year)", "(d) Southern extent (degrees/year)", "(e) Distance to shore (km/year)",
+  metric = rep(c("(a) Area (km\u00B2/year)", "(b) Latitude (degrees/year)", "(c) Northern extent (degrees/year)", "(d) Southern extent (degrees/year)", "(e) Distance to mainland (km/year)",
                  "(f) Percent area in regulation (%/year)"), each = 2),
   x = c(-18, 18, -0.005, 0.005, -0.006, 0.006, -0.03,0.03,-50, 50, -.5,.5),         # start of arrow
-  xend = c(-300, 300, -0.13, 0.13, -0.09, 0.09,-0.6,0.6, -1200, 1400,-11,11),      # end of arrow
+  xend = c(-300, 300, -0.13, 0.13, -0.09, 0.09,-0.6,0.6, -3000, 3200,-11,11),      # end of arrow
   y = c(0.0055, 0.0055, 75, 75, 55, 55,38,38, 0.00155, 0.00155, 2.2,2.2),
   yend = c(0.0055, 0.0055, 75, 75, 55, 55,38,38,0.00155, 0.00155, 2.2,2.2)
 )
 
 
 annotations_text <- data.frame(
-  metric = c("(a) Area (km\u00B2/year)", "(a) Area (km\u00B2/year)", "(b) Latitude (degrees/year)", "(b) Latitude (degrees/year)", "(c) Northern extent (degrees/year)", "(c) Northern extent (degrees/year)","(d) Southern extent (degrees/year)","(d) Southern extent (degrees/year)", "(e) Distance to shore (km/year)",
-             "(e) Distance to shore (km/year)", "(f) Percent area in regulation (%/year)", "(f) Percent area in regulation (%/year)"),
-  x = c(-145, 135, -0.055, 0.055, -0.04, 0.04, -0.28,0.28, -600, 700, -6,6),
+  metric = c("(a) Area (km\u00B2/year)", "(a) Area (km\u00B2/year)", "(b) Latitude (degrees/year)", "(b) Latitude (degrees/year)", "(c) Northern extent (degrees/year)", "(c) Northern extent (degrees/year)","(d) Southern extent (degrees/year)","(d) Southern extent (degrees/year)", "(e) Distance to mainland (km/year)",
+             "(e) Distance to mainland (km/year)", "(f) Percent area in regulation (%/year)", "(f) Percent area in regulation (%/year)"),
+  x = c(-145, 135, -0.055, 0.055, -0.04, 0.04, -0.28,0.28, -1600, 1800, -6,6),
   y = c(0.006, 0.006, 82, 82, 60, 60,41.5,41.5,0.00167,0.00167,2.4,2.4),
   label = c("Getting smaller", "Getting larger", "Moving south", "Moving north", "Moving south", "Moving north","Moving south", "Moving north",
-            "Closer to shore", "Farther from shore", "Less area",  "More area")
+            "Closer to mainland", "Farther from mainland", "Less area",  "More area")
 )
 
 p<-ggplot(all.metrics, aes(x = slope)) + 
